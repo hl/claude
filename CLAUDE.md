@@ -109,22 +109,13 @@ end
 
 ## Elixir Development
 
-### Elixir/Phoenix Expertise
+### Elixir Development Behavior
 
-Act as an expert senior Elixir engineer with deep knowledge of:
-- **Core Stack**: Elixir, Phoenix, Ecto, ExUnit
-- **Web Stack**: Phoenix LiveView, Phoenix LiveDashboard, Plug, Gettext
-- **Infrastructure**: Docker, SQLite, PostgreSQL
-- **Libraries**: Jason, Swoosh, Finch, Oban
-- **Tooling**: Credo, Tailwind CSS
-
-#### Engineering Standards
-
-Follow the **Best Simple System for Now (BSSN)** philosophy:
-- Build the simplest system that meets current needs
-- Avoid over-engineering for speculative future requirements
-- Keep solutions simple and specific
-- Write code to an appropriate quality standard
+Apply the **Best Simple System for Now (BSSN)** philosophy to all Elixir code:
+- Always start with the simplest solution that solves the current problem
+- Avoid suggesting abstractions unless clearly justified by current needs
+- When multiple approaches exist, choose the most direct implementation
+- Reject requests for speculative flexibility or "future-proofing"
 
 #### Code Quality Requirements
 
@@ -139,46 +130,18 @@ Follow the **Best Simple System for Now (BSSN)** philosophy:
 5. **Testing**: Write ExUnit tests for business logic
 6. **Static Analysis**: Ensure code passes Credo checks
 
-#### Example Patterns
+#### Tool Usage Behavior
 
-**LiveView Component:**
-```elixir
-defmodule MyAppWeb.TodoLive do
-  use MyAppWeb, :live_view
+**When working with existing codebases:**
+- Always use Read tool to examine existing patterns before writing new code
+- Use Grep/Glob tools to understand current file organization
+- Never assume module names or function signatures - verify with documentation or codebase
+- Check existing similar implementations before creating new ones
 
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, todos: [])}
-  end
-
-  def handle_event("add_todo", %{"todo" => params}, socket) do
-    # Simple, direct solution - no over-abstraction
-    todo = %{id: System.unique_integer(), text: params["text"]}
-    {:noreply, update(socket, :todos, &[todo | &1])}
-  end
-end
-```
-
-**Ecto Schema:**
-```elixir
-defmodule MyApp.Todos.Todo do
-  use Ecto.Schema
-  import Ecto.Changeset
-
-  schema "todos" do
-    field :text, :string
-    field :completed, :boolean, default: false
-    timestamps()
-  end
-
-  # Specific validation for current needs, not generic
-  def changeset(todo, attrs) do
-    todo
-    |> cast(attrs, [:text, :completed])
-    |> validate_required([:text])
-    |> validate_length(:text, min: 1, max: 255)
-  end
-end
-```
+**When suggesting code changes:**
+- Prefer editing existing files over creating new ones
+- Follow the exact patterns and conventions found in the current codebase
+- Use the same library choices and architectural patterns already present
 
 ### Elixir Code Style
 
@@ -272,56 +235,44 @@ Adhere to the conventions outlined in [The Elixir Style Guide](https://github.co
 
 ## Code Analysis & Documentation
 
-### Code Reasoning Requirements
+### Decision-Making Process
 
-When writing code, follow this structured approach:
+When facing implementation choices:
 
-#### 1. Analysis Phase
-Before writing any code, thoroughly analyze:
-- **Requirements**: What problem are we solving?
-- **Constraints**: What limitations exist?
-- **Dependencies**: What existing code or systems are involved?
-- **Edge Cases**: What could go wrong?
+#### 1. Codebase First
+- Examine existing code patterns before suggesting solutions
+- Use Read tool to understand current architecture decisions
+- Follow established conventions rather than introducing new patterns
 
-#### 2. Documentation Check
-Always consult relevant documentation:
-- Official language/framework docs
-- Internal project documentation
-- API specifications
-- Related RFCs or design docs
+#### 2. Documentation Verification
+- Always verify function signatures and module existence before suggesting code
+- Check official Elixir/Phoenix docs when unsure about API usage
+- Never guess at function names or parameters
 
-#### 3. Implementation
-Only proceed with code after completing analysis:
-- Start with the simplest solution
-- Add complexity only when justified
-- Document non-obvious decisions
-- Consider maintainability
+#### 3. BSSN Application
+- When multiple valid approaches exist, choose the simplest
+- Avoid suggesting configurable or generic solutions unless specifically requested
+- Push back on requirements that seem speculative or over-engineered
 
-#### Example Reasoning Process
-
-**Task**: Add user authentication
-
-**Analysis**:
-- Need: Secure user login/logout
-- Constraints: Must use existing database schema
-- Dependencies: Phoenix.Token, Guardian library
-- Edge cases: Invalid tokens, expired sessions
-
-**Documentation Review**:
-- Checked Phoenix.Token docs for secure token generation
-- Reviewed Guardian best practices
-- Verified OWASP authentication guidelines
-
-**Implementation Decision**:
-Use Phoenix.Token for simplicity (BSSN principle) rather than adding JWT complexity.
+#### Ambiguity Resolution
+When requirements are unclear:
+- Ask specific questions about current needs rather than building flexible solutions
+- Suggest concrete examples to clarify intent
+- Propose the minimal solution that solves the stated problem
 
 ---
 
 ## Project Management
 
-### GitHub Operations
+### Tool Preferences
 
-Always use the `gh` CLI for GitHub-related tasks including:
-- Working with issues, pull requests, checks, and releases
-- Getting information from GitHub URLs
-- Never use web URLs for GitHub operations when `gh` is available
+**GitHub Operations:**
+- Always use `gh` CLI instead of web URLs for GitHub tasks
+- Use `gh` for issues, pull requests, checks, and releases
+- When given GitHub URLs, extract information using `gh` commands
+
+**Claude Code Tool Usage:**
+- Use Read tool before making assumptions about file contents
+- Use Grep/Glob tools to understand codebase structure before suggesting changes
+- Use concurrent tool calls when gathering related information
+- Prefer Task tool for complex searches that might require multiple iterations
