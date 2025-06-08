@@ -2,3 +2,4 @@ projects/
 statsig/
 todos/
 *.local.json
+ide/
