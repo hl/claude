@@ -61,6 +61,108 @@ Follow the BSSN philosophy: Build the **simplest** system that meets the needs *
 
 ---
 
+## MCP Server Usage
+
+### Tool Hierarchy
+
+When multiple tools can accomplish the same task, use this preference order:
+
+1. **Sequential Thinking MCP** (`mcp__sequential-thinking__sequentialthinking`)
+   - For complex problems requiring step-by-step analysis
+   - Multi-step debugging scenarios
+   - Architecture decisions requiring trade-off analysis
+   - Tasks with unclear scope or requirements
+
+2. **Context7 MCP** (`mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`)
+   - For library documentation lookup instead of WebFetch
+   - Always resolve library ID first, then fetch docs
+   - Prefer for Elixir/Phoenix documentation needs
+
+3. **Filesystem MCP** (`mcp__filestystem__*`)
+   - Enhanced file operations over built-in Read/Write tools
+   - Use for complex file searches and directory operations
+   - Prefer for multi-file operations
+
+4. **Task Tool** 
+   - For complex searches requiring multiple iterations
+   - When uncertain about finding matches in first attempts
+   - For keyword-based searches across codebases
+
+5. **Built-in Tools**
+   - Use when MCP alternatives aren't available
+   - For simple, direct operations
+
+### MCP Usage Guidelines
+
+**Sequential Thinking MCP:**
+- Always use for problems requiring more than 3 steps
+- Use when initial approach might need revision
+- Essential for unfamiliar problem domains
+
+**Context7 MCP:**
+- Must resolve library ID before fetching docs
+- Specify topic parameter to focus documentation
+- Use when built-in Claude knowledge might be outdated
+
+**Filesystem MCP:**
+- Prefer for any file operations when available
+- Use concurrent operations for efficiency
+- Essential for directory tree analysis
+
+---
+
+## Reasoning Patterns
+
+### Step-by-Step Approach
+
+Before implementing any solution:
+
+1. **Explain Approach**: Always describe your planned approach step-by-step
+2. **Critique Plan**: Identify potential gaps or weaknesses in initial plan
+3. **Break Down Complexity**: Decompose complex tasks into diagnostic steps
+4. **Multiple Solutions**: Propose alternative approaches when appropriate
+
+### Problem-Solving Behavior
+
+**For Complex Tasks:**
+- Use Sequential Thinking MCP to work through reasoning
+- Generate diagnostic reports when debugging
+- Question assumptions and validate understanding
+- Adjust approach based on new information
+
+**For Code Implementation:**
+- Explain reasoning before writing code
+- Consider edge cases and error scenarios
+- Validate approach against BSSN principles
+- Propose simpler alternatives if applicable
+
+---
+
+## Task Management
+
+### TodoWrite Usage Guidelines
+
+**When to Use TodoWrite:**
+- Multi-step workflows (3+ distinct actions)
+- Complex tasks requiring systematic tracking
+- When user provides multiple requirements
+- For maintaining progress visibility
+
+**Task Management Behavior:**
+- Mark tasks `in_progress` immediately when starting
+- Only have ONE task `in_progress` at a time
+- Mark tasks `completed` immediately upon finishing
+- Update task status in real-time as you work
+- Break complex tasks into specific, actionable items
+
+**Task States:**
+- `pending`: Not yet started
+- `in_progress`: Currently working (limit to ONE)
+- `completed`: Finished successfully
+- `cancelled`: No longer needed
+
+---
+
 ## Communication Style
 
 ### Response Formatting Guidelines
@@ -82,6 +184,13 @@ Follow the BSSN philosophy: Build the **simplest** system that meets the needs *
 - Provide exact error messages
 - Include version numbers when relevant
 - Give concrete examples over abstract descriptions
+
+#### Be Collaborative
+- Treat interactions like junior developer code reviews
+- Be explicitly open to correction and guidance
+- Propose multiple solution approaches when appropriate
+- Ask clarifying questions rather than making assumptions
+- Acknowledge when human context exceeds your understanding
 
 #### Output Structure
 
@@ -127,8 +236,9 @@ Apply the **Best Simple System for Now (BSSN)** philosophy to all Elixir code:
    - Prefer minimal working implementations when multiple options exist
 3. **Idiomatic Code**: Follow Elixir community conventions and patterns
 4. **Error Handling**: Use pattern matching and the "let it crash" philosophy appropriately
-5. **Testing**: Write ExUnit tests for business logic
-6. **Static Analysis**: Ensure code passes Credo checks
+5. **Explicit Error Handling**: Always generate code with explicit error handling by default
+6. **Testing**: Write ExUnit tests for business logic
+7. **Static Analysis**: Ensure code passes Credo checks
 
 #### Tool Usage Behavior
 
@@ -163,10 +273,11 @@ Adhere to the conventions outlined in [The Elixir Style Guide](https://github.co
 #### Comments & Documentation
 - Write clear and concise comments
 - Use standard annotations like `TODO:`, `FIXME:`, `OPTIMIZE:`
-- Provide `@moduledoc` for modules and `@doc` for public functions
+- Always include `@moduledoc` for modules and `@doc` for public functions
 - Use Markdown for formatting within documentation
 - Write comprehensive documentation examples using `iex>` prompts
 - Avoid unnecessary comments - explain why, not what
+- Keep functions under 50 lines when possible for clarity
 
 #### Typespecs
 - Use `@typedoc` to document custom types defined with `@type`
@@ -272,7 +383,9 @@ When requirements are unclear:
 - When given GitHub URLs, extract information using `gh` commands
 
 **Claude Code Tool Usage:**
+- Follow MCP tool hierarchy: MCP tools > Task tool > built-in tools
+- Use concurrent tool calls when gathering related information
 - Use Read tool before making assumptions about file contents
 - Use Grep/Glob tools to understand codebase structure before suggesting changes
-- Use concurrent tool calls when gathering related information
 - Prefer Task tool for complex searches that might require multiple iterations
+- Use TodoWrite for multi-step tasks requiring progress tracking
