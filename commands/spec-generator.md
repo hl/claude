@@ -1,4 +1,4 @@
-# Claude Code Specification Generator
+# Specification Generator
 
 Analyze existing code in the path specified by $ARGUMENTS and generate comprehensive technical specifications that can be used to recreate or understand the implementation. When $ARGUMENTS contains a directory path, perform recursive analysis of all subdirectories and files within that path. The specifications will be placed in the `specs/` folder following a structured hierarchy.
 
@@ -64,12 +64,14 @@ Create detailed specifications following this structure:
 [Describe the main functions and capabilities]
 - **Function 1:** What it does, inputs, outputs
 - **Function 2:** What it does, inputs, outputs
+- Include flowcharts for complex business processes and decision logic
 
 ## 4. Data Model / Structure
 [Document all data structures, schemas, and their relationships]
 - Include example data for each structure
 - Show field types and constraints
 - Document relationships between entities
+- Include entity relationship diagrams using MermaidJS for complex data models
 
 ## 5. Business Rules & Validations
 [Critical business logic and constraints]
@@ -126,6 +128,46 @@ For complex topics that warrant separate documentation:
 [Scalability and optimization notes]
 ```
 
+#### Visual Documentation Integration
+
+Enhance specifications with MermaidJS diagrams where they clarify complex relationships or flows:
+
+**Required Diagram Types:**
+- **System Architecture**: Overall module relationships and data flow
+- **Core Business Processes**: Key workflows and decision points
+- **Data Models**: Entity relationships and schema structure
+
+**Optional Diagram Types (when they add clarity):**
+- **API Interaction Sequences**: For complex multi-step processes
+- **State Transitions**: For stateful components or user workflows
+- **Deployment Flows**: For operations and infrastructure sections
+
+**MermaidJS Integration Guidelines:**
+```markdown
+## System Architecture
+
+```mermaid
+graph TD
+    A[Web Request] --> B[Router]
+    B --> C[Controller]
+    C --> D[Business Logic]
+    D --> E[Data Layer]
+    E --> F[Database]
+    
+    C --> G[External API]
+    D --> H[Cache Layer]
+    
+    style D fill:#e1f5fe
+    style E fill:#f3e5f5
+```
+
+**Diagram Standards:**
+- Keep diagrams focused on a single concept or flow
+- Use consistent styling and naming conventions
+- Include diagram titles and brief explanations
+- Limit complexity to 15-20 nodes maximum per diagram
+- Use colors sparingly to highlight key components
+
 ### 3. Quality Standards
 
 Ensure specifications meet these criteria:
@@ -154,6 +196,13 @@ Ensure specifications meet these criteria:
 - **Dependency Mapping**: Create clear dependency graphs showing relationships between components
 - **Terminology Consistency**: Maintain a glossary of domain terms used across all specifications
 - **Version Synchronization**: Ensure all cross-references remain valid when code evolves
+
+#### Visual Documentation with MermaidJS
+- **Flow Charts**: Use for data processing pipelines, business logic flows, and decision trees
+- **Architecture Diagrams**: Document module relationships, dependency graphs, and system boundaries
+- **Entity Relationships**: Show data model connections and database schema relationships
+- **Sequence Diagrams**: Illustrate API interactions, authentication flows, and multi-step processes
+- **State Diagrams**: Document workflow states, user journey flows, and system state transitions
 
 #### Usability
 - **Specifications should be implementation-ready** - a developer should be able to recreate the system from the specs
@@ -386,6 +435,73 @@ This function authenticates users. Pass in email and password.
 - Realistic usage examples
 - Authentication and authorization requirements
 
+#### MermaidJS Diagram Examples
+
+**Data Flow Diagram:**
+```mermaid
+flowchart LR
+    A[User Input] --> B{Validation}
+    B -->|Valid| C[Transform Data]
+    B -->|Invalid| D[Error Response]
+    C --> E[Business Rules]
+    E --> F[Database Update]
+    F --> G[Success Response]
+    
+    style B fill:#fff2cc
+    style D fill:#ffcdd2
+    style G fill:#c8e6c9
+```
+
+**Entity Relationship Diagram:**
+```mermaid
+erDiagram
+    User ||--o{ Order : places
+    Order ||--|{ LineItem : contains
+    Product ||--o{ LineItem : "ordered in"
+    User {
+        uuid id PK
+        string email
+        string name
+        datetime created_at
+    }
+    Order {
+        uuid id PK
+        uuid user_id FK
+        decimal total
+        string status
+    }
+```
+
+**Authentication Sequence:**
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant C as Client
+    participant A as Auth Service
+    participant D as Database
+    
+    U->>C: Login Request
+    C->>A: Validate Credentials
+    A->>D: Query User
+    D-->>A: User Data
+    A->>A: Generate JWT
+    A-->>C: Token Response
+    C-->>U: Login Success
+```
+
+**State Machine Diagram:**
+```mermaid
+stateDiagram-v2
+    [*] --> Draft
+    Draft --> Submitted: submit()
+    Submitted --> Approved: approve()
+    Submitted --> Rejected: reject()
+    Approved --> Published: publish()
+    Rejected --> Draft: edit()
+    Published --> Archived: archive()
+    Archived --> [*]
+```
+
 #### Quality Validation Checklist
 
 **Completeness Checklist:**
@@ -397,6 +513,7 @@ This function authenticates users. Pass in email and password.
 - [ ] Security considerations addressed
 - [ ] Performance characteristics noted
 - [ ] Testing strategies outlined
+- [ ] Key system flows visualized with appropriate diagrams
 
 **Clarity Checklist:**
 - [ ] Technical language appropriate for target audience
@@ -404,6 +521,7 @@ This function authenticates users. Pass in email and password.
 - [ ] Code snippets follow established guidelines
 - [ ] Terminology used consistently throughout
 - [ ] Cross-references are accurate and helpful
+- [ ] Diagrams enhance understanding without adding complexity
 
 **Usability Checklist:**
 - [ ] Specifications are implementation-ready
@@ -411,5 +529,6 @@ This function authenticates users. Pass in email and password.
 - [ ] Assumptions and constraints clearly stated
 - [ ] Troubleshooting guidance provided
 - [ ] Migration and upgrade paths documented
+- [ ] Diagrams are properly integrated with text explanations
 
 Remember: The goal is to create specifications detailed enough that a competent developer could implement the system from scratch using only these documents, while also serving as comprehensive documentation for the existing codebase.
