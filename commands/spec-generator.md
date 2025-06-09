@@ -1,14 +1,22 @@
 # Specification Generator
 
-Analyze existing code in the path specified by $ARGUMENTS and generate comprehensive technical specifications that can be used to recreate or understand the implementation. When $ARGUMENTS contains a directory path, perform recursive analysis of all subdirectories and files within that path. The specifications will be placed in the `specs/` folder following a structured hierarchy.
+Generate comprehensive technical specifications based on the provided $ARGUMENTS. This command supports two modes:
+
+1. **Code Analysis Mode**: When $ARGUMENTS contains a file or directory path, perform recursive analysis of existing code to document the implementation
+2. **Description Mode**: When $ARGUMENTS contains a feature description, generate implementation-ready specifications from requirements
+
+The specifications will be placed in the `specs/` folder following a structured hierarchy.
 
 ## Instructions for Claude Code Agent
 
-When executing this command, perform the following analysis and documentation:
+When executing this command, first determine the mode based on $ARGUMENTS:
 
-### 1. Code Analysis Phase
+- **If $ARGUMENTS is a file/directory path**: Execute Code Analysis Mode
+- **If $ARGUMENTS is a feature description**: Execute Description Mode
 
-First, examine the code structure in the provided path (recursively analyzing all subdirectories):
+### Mode 1: Code Analysis Phase
+
+When analyzing existing code, examine the code structure in the provided path (recursively analyzing all subdirectories):
 
 #### Core Structure Analysis
 - **Identify the main feature/module** from the code organization
@@ -43,7 +51,34 @@ First, examine the code structure in the provided path (recursively analyzing al
 - [ ] External integrations documented
 - [ ] Configuration patterns identified
 
-### 2. Specification Generation
+### Mode 2: Description Analysis Phase
+
+When generating specifications from a feature description, perform the following requirements analysis:
+
+#### Requirements Analysis
+- **Parse the feature description** to identify core functionality and scope
+- **Extract key entities and concepts** mentioned in the description
+- **Identify implied business rules** and constraints
+- **Determine data requirements** and relationships
+- **Assess integration needs** with external systems
+- **Identify security and compliance requirements**
+
+#### Technology Context Assessment
+- **Evaluate tech stack compatibility** with existing project patterns
+- **Identify framework requirements** based on feature complexity
+- **Assess database and storage needs** from the description
+- **Determine API and integration patterns** required
+- **Identify testing and deployment considerations**
+
+#### Description Phase Checklist
+- [ ] Core feature requirements extracted and documented
+- [ ] Key entities and relationships identified
+- [ ] Business rules and constraints documented
+- [ ] Technical architecture requirements determined
+- [ ] Integration and dependency needs assessed
+- [ ] Security and compliance requirements identified
+
+### 3. Specification Generation
 
 Create detailed specifications following this structure:
 
@@ -168,7 +203,7 @@ graph TD
 - Limit complexity to 15-20 nodes maximum per diagram
 - Use colors sparingly to highlight key components
 
-### 3. Quality Standards
+### 4. Quality Standards
 
 Ensure specifications meet these criteria:
 
@@ -216,7 +251,7 @@ Ensure specifications meet these criteria:
 - **Include table of contents for long documents**
 - **Cross-reference related specifications**
 
-### 4. Analysis Focus Areas
+### 5. Analysis Focus Areas
 
 Pay special attention to:
 
@@ -316,7 +351,7 @@ Pay special attention to:
 - **Resource usage patterns**
 - **Scaling considerations**
 
-### 5. Example Analysis Process
+### 6. Example Analysis Process
 
 #### Prioritization Strategy
 
@@ -367,7 +402,7 @@ For large codebases, use this framework to determine analysis depth:
 - [ ] Operational requirements understood
 - [ ] Technical decisions and their rationale captured
 
-### 6. Deliverables
+### 7. Deliverables
 
 - **Main specification file** at `specs/<feature>.md`
 - **Sub-specification files** at `specs/<feature>/<topic>.md` for complex components
@@ -375,7 +410,51 @@ For large codebases, use this framework to determine analysis depth:
 - **Cross-references should be accurate** and helpful
 - **Examples should be realistic** and demonstrate actual usage
 
-### 6. Specification Examples & Guidelines
+### 8. Description Mode Guidelines
+
+When using Description Mode, provide clear, detailed feature descriptions that include:
+
+#### Effective Feature Descriptions Should Include:
+
+**Core Functionality**
+- Clear statement of what the feature does
+- Primary user goals and use cases
+- Key workflows and user interactions
+- Success criteria and acceptance requirements
+
+**Business Context**
+- Why this feature is needed
+- Business value and impact
+- User personas or roles involved
+- Integration with existing features
+
+**Technical Requirements**
+- Data that needs to be stored or processed
+- External systems or APIs to integrate with
+- Performance or scalability requirements
+- Security and compliance considerations
+
+**Example Description Formats:**
+
+**Good Description Example:**
+```
+"Implement a user notification system that allows administrators to send targeted messages to specific user groups. Users should receive notifications via email and in-app alerts. The system needs to support scheduled delivery, message templates, and delivery tracking. Notifications should be stored for 30 days and support basic analytics (open rates, click-through rates). Integration with existing user management and email service is required."
+```
+
+**Poor Description Example:**
+```
+"Add notifications to the app"
+```
+
+#### Description Best Practices:
+- Be specific about user interactions and workflows
+- Include data requirements and relationships
+- Mention integration points with existing systems
+- Specify any compliance or security requirements
+- Include performance expectations when relevant
+- Describe the scope boundaries (what's included/excluded)
+
+### 9. Specification Examples & Guidelines
 
 #### Good vs. Poor Specification Content
 
