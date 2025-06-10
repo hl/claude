@@ -7,13 +7,6 @@ Generate comprehensive technical specifications based on the provided $ARGUMENTS
 
 The specifications will be placed in the `specs/` folder following a structured hierarchy.
 
-## Instructions for Claude Code Agent
-
-When executing this command, first determine the mode based on $ARGUMENTS:
-
-- **If $ARGUMENTS is a file/directory path**: Execute Code Analysis Mode
-- **If $ARGUMENTS is a feature description**: Execute Description Mode
-
 ### Mode 1: Code Analysis Phase
 
 When analyzing existing code, examine the code structure in the provided path (recursively analyzing all subdirectories):
