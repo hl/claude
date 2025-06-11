@@ -1,6 +1,6 @@
 # Personal Development Guidelines for Claude Code
 
-This document contains my personal development guidelines and preferences for working with Claude Code. These rules ensure consistent, high-quality development practices across all projects.
+This document contains my personal development guidelines and preferences for working with Claude Code. These rules override default behavior and ensure consistent practices across all projects.
 
 ---
 
@@ -8,384 +8,125 @@ This document contains my personal development guidelines and preferences for wo
 
 ### Best Simple System for Now (BSSN)
 
-Follow the BSSN philosophy: Build the **simplest** system that meets the needs **right now**, written to an **appropriate standard**. Avoid both over-engineering and corner-cutting.
+Build the **simplest** system that meets the needs **right now**, written to an **appropriate standard**. Avoid both over-engineering and corner-cutting.
 
 #### Core Principles
 
-1. **Design "for Now"**
-   - Focus on what is actually needed RIGHT NOW, not anticipated future needs
-   - Resist the urge to build generic solutions or "rules engines"
-   - See what is really there, not the patterns your brain wants to see
-   - Trust that you can evolve the code when needs actually change
-
-2. **Keep it Simple**
-   - No speculative interfaces or abstractions
-   - No overly broad data types where specific ones will do
-   - No generic functionality where specific code is clearer
-   - Remove anything that isn't serving a current, concrete need
-   - Flexibility comes from simplicity, not from anticipation
-
-3. **Write it Best**
-   - Don't cut corners - use the appropriate quality standard for the context
-   - Core business functionality deserves higher quality than experimental features
-   - Apply practices like TDD where they add value
-   - Use consistent domain language
-   - Write code that is "joyful" to work with
-
-#### Implementation Guidelines
-
-**When writing new code:**
-- Start by solving ONLY the immediate problem
-- If there are 9 types, write 9 specific handlers - don't reach for a generic framework
-- Choose simple, obvious solutions over clever abstractions
-- Make code highly opinionated and deliberately narrow
-
-**When evaluating solutions:**
-- Consider the total cost: adoption, learning, dependencies, quirks, future removal
-- A few lines of custom code may be better than a complex library
-- Home-grown isn't always the answer, but "seeing what's really there" is
-
-**When evolving code:**
-- Change in response to actual new demands, not predictions
-- Evolve toward a new "Best Simple System" for the new "Now"
-- Each change should leave the system as simple as possible
-- Delete code that no longer serves current needs
+1. **Design "for Now"** - Focus on what is actually needed RIGHT NOW, not anticipated future needs
+2. **Keep it Simple** - No speculative interfaces, abstractions, or generic functionality where specific code is clearer
+3. **Write it Best** - Use appropriate quality standards for the context; don't cut corners on core functionality
 
 #### Red Flags to Avoid
 - "We might need this later"
-- "Let's make this configurable"
+- "Let's make this configurable" 
 - "What if we have 10,000 users?" (when you have 12)
 - Interfaces with single implementations
-- Abstraction layers "for flexibility"
 - Design patterns applied without clear current benefit
 
 ---
 
-## MCP Server Usage
+## Tool Preferences
 
 ### Tool Hierarchy
+When multiple tools can accomplish the same task, use this order:
 
-When multiple tools can accomplish the same task, use this preference order:
+1. **Sequential Thinking MCP** - Complex problems requiring step-by-step analysis
+2. **Context7 MCP** - Library documentation lookup; always resolve library ID first
+3. **Filesystem MCP** - Enhanced file operations over built-in tools
+4. **Task Tool** - Complex searches requiring multiple iterations
+5. **Built-in Tools** - Simple, direct operations
 
-1. **Sequential Thinking MCP** (`mcp__sequential-thinking__sequentialthinking`)
-   - For complex problems requiring step-by-step analysis
-   - Multi-step debugging scenarios
-   - Architecture decisions requiring trade-off analysis
-   - Tasks with unclear scope or requirements
-
-2. **Context7 MCP** (`mcp__context7__resolve-library-id`, `mcp__context7__get-library-docs`)
-   - For library documentation lookup instead of WebFetch
-   - Always resolve library ID first, then fetch docs
-   - Prefer for Elixir/Phoenix documentation needs
-
-3. **Filesystem MCP** (`mcp__filestystem__*`)
-   - Enhanced file operations over built-in Read/Write tools
-   - Use for complex file searches and directory operations
-   - Prefer for multi-file operations
-
-4. **Task Tool** 
-   - For complex searches requiring multiple iterations
-   - When uncertain about finding matches in first attempts
-   - For keyword-based searches across codebases
-
-5. **Built-in Tools**
-   - Use when MCP alternatives aren't available
-   - For simple, direct operations
-
-### MCP Usage Guidelines
-
-**Sequential Thinking MCP:**
-- Always use for problems requiring more than 3 steps
-- Use when initial approach might need revision
-- Essential for unfamiliar problem domains
-
-**Context7 MCP:**
-- Must resolve library ID before fetching docs
-- Specify topic parameter to focus documentation
-- Use when built-in Claude knowledge might be outdated
-
-**Filesystem MCP:**
-- Prefer for any file operations when available
-- Use concurrent operations for efficiency
-- Essential for directory tree analysis
-
----
-
-## Reasoning Patterns
-
-### Step-by-Step Approach
-
-Before implementing any solution:
-
-1. **Explain Approach**: Always describe your planned approach step-by-step
-2. **Critique Plan**: Identify potential gaps or weaknesses in initial plan
-3. **Break Down Complexity**: Decompose complex tasks into diagnostic steps
-4. **Multiple Solutions**: Propose alternative approaches when appropriate
-
-### Problem-Solving Behavior
-
-**For Complex Tasks:**
-- Use Sequential Thinking MCP to work through reasoning
-- Generate diagnostic reports when debugging
-- Question assumptions and validate understanding
-- Adjust approach based on new information
-
-**For Code Implementation:**
-- Explain reasoning before writing code
-- Consider edge cases and error scenarios
-- Validate approach against BSSN principles
-- Propose simpler alternatives if applicable
+### Tool Usage Guidelines
+- Use Sequential Thinking MCP for problems requiring 3+ steps or unfamiliar domains  
+- Use concurrent tool calls when gathering related information
+- Use Read tool before making assumptions about file contents
+- Prefer Task tool for keyword-based searches across codebases
 
 ---
 
 ## Task Management
 
-### TodoWrite Usage Guidelines
+### TodoWrite Usage
+**Use for:** Multi-step workflows (3+ actions), complex tasks requiring tracking, multiple user requirements
 
-**When to Use TodoWrite:**
-- Multi-step workflows (3+ distinct actions)
-- Complex tasks requiring systematic tracking
-- When user provides multiple requirements
-- For maintaining progress visibility
-
-**Task Management Behavior:**
+**Behavior:**
 - Mark tasks `in_progress` immediately when starting
-- Only have ONE task `in_progress` at a time
-- Mark tasks `completed` immediately upon finishing
-- Update task status in real-time as you work
+- Only ONE task `in_progress` at a time
+- Mark `completed` immediately upon finishing
 - Break complex tasks into specific, actionable items
-
-**Task States:**
-- `pending`: Not yet started
-- `in_progress`: Currently working (limit to ONE)
-- `completed`: Finished successfully
-- `cancelled`: No longer needed
 
 ---
 
-## Communication Style
+## Communication & Reasoning
 
-### Response Formatting Guidelines
+### Response Style
+- **Be Direct**: Accurate information, acknowledge limitations, correct mistakes promptly
+- **Be Concise**: Clear language, avoid repetition, skip filler phrases, get to the point
+- **Be Collaborative**: Treat interactions like junior developer code reviews, propose multiple approaches, ask clarifying questions
 
-#### Be Direct and Honest
-- Provide accurate, truthful information
-- Acknowledge limitations or uncertainties
-- Correct mistakes promptly
-- Avoid sugarcoating technical realities
-
-#### Be Concise
-- Use clear, direct language
-- Avoid unnecessary repetition
-- Skip filler phrases like "certainly" or "of course"
-- Get to the point quickly
-
-#### Be Precise
-- Use specific technical terms correctly
-- Provide exact error messages
-- Include version numbers when relevant
-- Give concrete examples over abstract descriptions
-
-#### Be Collaborative
-- Treat interactions like junior developer code reviews
-- Be explicitly open to correction and guidance
-- Propose multiple solution approaches when appropriate
-- Ask clarifying questions rather than making assumptions
-- Acknowledge when human context exceeds your understanding
-
-#### Output Structure
-
-**Code Responses:**
-```elixir
-# Brief comment explaining the approach
-defmodule Example do
-  # Implementation with inline comments for complex parts
-end
-```
-
-**Explanations:**
-1. **Problem**: State what we're solving
-2. **Solution**: Explain the approach
-3. **Implementation**: Show the code
-4. **Trade-offs**: Discuss alternatives if relevant
-
-**Error Handling:**
-- Quote the exact error message
-- Identify the root cause
-- Provide the fix
-- Explain why it works
+### Problem-Solving Approach
+1. **Explain Approach** - Describe planned approach step-by-step
+2. **Use Sequential Thinking** - For complex tasks requiring reasoning
+3. **Validate Against BSSN** - Choose simplest approach that solves current problem
+4. **Propose Alternatives** - When multiple valid approaches exist
 
 ---
 
 ## Elixir Development
 
-### Elixir Development Behavior
+### BSSN Application to Elixir
+- Start with simplest solution for current problem
+- Avoid abstractions unless clearly justified by current needs
+- Choose most direct implementation when multiple approaches exist
+- Reject speculative flexibility or "future-proofing"
 
-Apply the **Best Simple System for Now (BSSN)** philosophy to all Elixir code:
-- Always start with the simplest solution that solves the current problem
-- Avoid suggesting abstractions unless clearly justified by current needs
-- When multiple approaches exist, choose the most direct implementation
-- Reject requests for speculative flexibility or "future-proofing"
+### Code Style & Quality Requirements
+1. **Style Guide** - Strictly follow [The Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide/blob/master/README.md)
+2. **Documentation First** - Always consult official Elixir/Phoenix documentation
+3. **Code Validation** - Verify module/function existence before suggesting code
+4. **Explicit Error Handling** - Always generate code with explicit error handling by default
+5. **Codebase First** - Use Read tool to examine existing patterns before writing new code
 
-#### Code Quality Requirements
+### Testing Preferences
+- **DataCase Usage**: Begin tests with `use MyApp.DataCase, async: true`
+- **Factory Usage**: ALWAYS use factories for test data, NEVER `Repo.insert` directly
+- **Factory Organization**: New factories in `test/support/factories/`, not main factory file
+- **Scoped Data**: Always test proper data isolation if application has tenant-like scoping
+- **Test Execution**: Must run specific test after creation/update to verify correctness
 
-1. **Documentation First**: Always consult official Elixir/Phoenix documentation
-2. **Code Validation**: Before suggesting code, verify module/function existence:
-   - **Internal modules** (start with app name): Check current codebase
-   - **External modules**: Check official documentation (HexDocs)
-   - Verify correct function arity and argument order
-   - Prefer minimal working implementations when multiple options exist
-3. **Idiomatic Code**: Follow Elixir community conventions and patterns
-4. **Error Handling**: Use pattern matching and the "let it crash" philosophy appropriately
-5. **Explicit Error Handling**: Always generate code with explicit error handling by default
-6. **Testing**: Write ExUnit tests for business logic
-7. **Static Analysis**: Ensure code passes Credo checks
-
-#### Tool Usage Behavior
-
-**When working with existing codebases:**
+### Tool Usage for Elixir
 - Always use Read tool to examine existing patterns before writing new code
-- Use Grep/Glob tools to understand current file organization
-- Never assume module names or function signatures - verify with documentation or codebase
-- Check existing similar implementations before creating new ones
-
-**When suggesting code changes:**
+- Use Grep/Glob tools to understand current file organization  
+- Never assume module names or function signatures - verify with codebase
 - Prefer editing existing files over creating new ones
-- Follow the exact patterns and conventions found in the current codebase
-- Use the same library choices and architectural patterns already present
-
-### Elixir Code Style
-
-Adhere to the conventions outlined in [The Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide/blob/master/README.md):
-
-#### Formatting
-- Primarily rely on the built-in Elixir code formatter (`mix format`)
-- Limit lines to 98 characters unless configured otherwise in `.formatter.exs`
-- Use spaces around binary operators, after commas, colons, and semicolons
-- Do not use spaces around paired brackets (`[]`, `{}`, `()`) or after unary operators
-- Use blank lines between function definitions but not immediately after `defmodule`
-- Format multiline lists, maps, structs, `case`, and `cond` clauses with each element/clause on its own line
-- Place comments on the line *above* the code they refer to, with a single space after the `#`
-
-#### Naming
-- Strictly follow the official [Elixir Naming Conventions](https://hexdocs.pm/elixir/naming-conventions.html)
-- Use `snake_case` for variables/functions/atoms, `CamelCase` for modules/structs
-
-#### Comments & Documentation
-- Write clear and concise comments
-- Use standard annotations like `TODO:`, `FIXME:`, `OPTIMIZE:`
-- Always include `@moduledoc` for modules and `@doc` for public functions
-- Use Markdown for formatting within documentation
-- Write comprehensive documentation examples using `iex>` prompts
-- Avoid unnecessary comments - explain why, not what
-- Keep functions under 50 lines when possible for clarity
-
-#### Typespecs
-- Use `@typedoc` to document custom types defined with `@type`
-- Use `@spec` to define function specifications
-
-#### Modules
-- Use `alias` to shorten module names, but avoid ambiguity or conflicts
-- Module aliases should be listed one per line
-- Use `require` specifically when macros from another module are needed
-- Use `import` sparingly, preferring fully qualified function calls
-- Generally, define one module per file
-
-#### Collections
-- Use the shorthand syntax for keyword lists: `[key: value]`
-- Use the shorthand map syntax `%{key: value}` when all keys are atoms
-
-#### Testing (ExUnit)
-- In assertions, place the expression being tested on the left side: `assert actual == expected`
-- For pattern matching assertions: `assert {:ok, value} = function_call()`
-
-### Elixir ExUnit Testing Conventions
-
-#### General Test Structure & Setup
-1. **DataCase Usage**: Always begin tests with `use MyApp.DataCase, async: true`
-2. **File Naming and Location**: Test file paths MUST mirror source file paths
-   - Replace `lib/` with `test/` and append `_test.exs`
-   - Example: `lib/my_app/some_module.ex` → `test/my_app/some_module_test.exs`
-
-#### Data Generation & Factories
-3. **Factory Usage**:
-   - ALWAYS use factories (e.g., `insert(:my_factory, attr: value)`) for creating test data
-   - NEVER use `Repo.insert` directly
-   - If the required factory is unknown, ask for clarification
-
-4. **Factory Definitions**:
-   - New factories SHOULD be created in new files within `test/support/factories/`
-   - Do NOT add factory definitions directly to the main `test/support/factory.ex` file
-
-5. **Factory Attributes**:
-   - When associating models, pass the full model struct, NOT the `_id`
-   - NEVER generate `id` or `_id` fields with random UUIDs/integers if auto-generated
-
-#### Tenant Isolation (If Applicable)
-6. **Scoped Data Checks**: If the application has data isolation (e.g., by `tenant_id`), ALWAYS write tests to verify proper scoping
-
-#### Mocking (Using Mox or Similar)
-7. **When to Mock**: Mocking should generally be a last resort. Prefer testing with real implementations where feasible
-8. **Data Generation**: NEVER use mocks for generating test data for your application's database entities
-9. **General Procedure for Using Mocks**:
-   a. **Define Behaviour**: Create an Elixir behaviour for the module/functionality you intend to mock
-   b. **Implement Behaviour**: Ensure the actual module implements this behaviour
-   c. **Define Mocks**: Add mock definitions in appropriate test setup locations
-   d. **Utilize Mocks**: Use the defined mocks within your test cases
-   e. **Verify Mocks**: If using Mox, call `setup :verify_on_exit!` at the top of test files
-
-#### LiveView Tests (If Applicable)
-10. **Imports**: LiveView tests MUST include `import Phoenix.LiveViewTest`
-11. **Setup Block**: Utilize a `setup` block to create and log in users, and enable feature flags
-12. **Cross-Context Access**: If a LiveView URL includes identifiers that scope data, ALWAYS write tests to check proper access control
-
-#### Test Execution
-13. **Running Tests**: Before executing `mix test`, ensure you are in the root directory where `mix.exs` is located
-14. **Verification**: After creating or updating a test, MUST run that specific test to verify correctness
 
 ---
 
-## Code Analysis & Documentation
+## Code Analysis & Decision Making
 
-### Decision-Making Process
-
-When facing implementation choices:
-
-#### 1. Codebase First
-- Examine existing code patterns before suggesting solutions
-- Use Read tool to understand current architecture decisions
-- Follow established conventions rather than introducing new patterns
-
-#### 2. Documentation Verification
-- Always verify function signatures and module existence before suggesting code
-- Check official Elixir/Phoenix docs when unsure about API usage
-- Never guess at function names or parameters
-
-#### 3. BSSN Application
-- When multiple valid approaches exist, choose the simplest
-- Avoid suggesting configurable or generic solutions unless specifically requested
-- Push back on requirements that seem speculative or over-engineered
-
-#### Ambiguity Resolution
-When requirements are unclear:
-- Ask specific questions about current needs rather than building flexible solutions
-- Suggest concrete examples to clarify intent
-- Propose the minimal solution that solves the stated problem
+### Decision Framework
+1. **Codebase First** - Examine existing patterns before suggesting solutions
+2. **Documentation Verification** - Verify function signatures and module existence
+3. **BSSN Application** - Choose simplest approach among valid options
+4. **Ambiguity Resolution** - Ask specific questions about current needs rather than building flexible solutions
 
 ---
 
 ## Project Management
 
-### Tool Preferences
-
-**GitHub Operations:**
+### GitHub Operations
 - Always use `gh` CLI instead of web URLs for GitHub tasks
 - Use `gh` for issues, pull requests, checks, and releases
-- When given GitHub URLs, extract information using `gh` commands
 
-**Claude Code Tool Usage:**
+### Workflow Preferences  
 - Follow MCP tool hierarchy: MCP tools > Task tool > built-in tools
 - Use concurrent tool calls when gathering related information
-- Use Read tool before making assumptions about file contents
-- Use Grep/Glob tools to understand codebase structure before suggesting changes
-- Prefer Task tool for complex searches that might require multiple iterations
 - Use TodoWrite for multi-step tasks requiring progress tracking
+
+---
+
+# Important Reminders
+- Do what has been asked; nothing more, nothing less
+- NEVER create files unless absolutely necessary for achieving the goal
+- ALWAYS prefer editing existing files over creating new ones
+- NEVER proactively create documentation files unless explicitly requested
