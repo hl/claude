@@ -130,3 +130,9 @@ When multiple tools can accomplish the same task, use this order:
 - NEVER create files unless absolutely necessary for achieving the goal
 - ALWAYS prefer editing existing files over creating new ones
 - NEVER proactively create documentation files unless explicitly requested
+
+## Language Preferences
+- Use British English instead of American English in code
+
+## Code Quality Guidelines
+- Do not underscore variables with a prefix if they are not used before investigating the source of the issue

@@ -5,7 +5,7 @@ Create a properly formatted conventional commit following established project st
 1. **Pre-commit Quality Checks**
    - For Elixir projects: Run `mix format <file>` on all modified Elixir files (.ex, .exs)
    - Run `mix compile --warnings-as-errors` to ensure no compilation warnings
-   - Run `mix credo --strict` if Credo is available in the project
+   - Run `mix credo --strict --format=json` if Credo is available in the project
    - Run `mix dialyzer` if Dialyzer is available in the project
    - Run project tests before committing; abort if tests fail
 
