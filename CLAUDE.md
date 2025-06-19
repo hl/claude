@@ -111,6 +111,11 @@ When multiple tools can accomplish the same task, use this order:
 - Never assume module names or function signatures - verify with codebase
 - Prefer editing existing files over creating new ones
 
+### File Search Strategy
+
+- When searching requires syntax-aware or structural matching, default to `ast-grep --lang elixir -p '<pattern>'` (or set `--lang` appropriately)
+- Avoid falling back to text-only tools like `rg` or `grep` unless explicitly requested for a plain-text search
+
 ---
 
 ## Code Analysis & Decision Making
@@ -158,3 +163,10 @@ When multiple tools can accomplish the same task, use this order:
 
 - When asked to search for files, respect the .gitignore if present or until instructed otherwise
 
+## Tool Usage
+
+- Do not use tidewave for editing files, use filesystem
+
+## Legacy Fallback Code
+
+- Do not create any legacy fallback code unless specifically instructed
