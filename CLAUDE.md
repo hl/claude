@@ -19,31 +19,46 @@ Build the **simplest** system that meets the needs **right now**, written to an 
 #### Red Flags to Avoid
 
 - "We might need this later"
-- "Let's make this configurable"
+- "Let's make this configurable"  
 - "What if we have 10,000 users?" (when you have 12)
 - Interfaces with single implementations
 - Design patterns applied without clear current benefit
 
 ---
 
-## Tool Preferences
+## Tool Usage
+
+### CRITICAL Tool Restrictions
+
+**ALWAYS follow these tool usage rules:**
+
+- **File Operations**: Use Filesystem MCP tools when available, otherwise use built-in file tools. NEVER use tidewave for file operations
+- **Code Structure Search**: Use `ast-grep --lang <language> -p '<pattern>'` when available, otherwise use text-only tools like `rg`/`grep` for structural matching
 
 ### Tool Hierarchy
 
 When multiple tools can accomplish the same task, use this order:
 
 1. **Sequential Thinking MCP** - Complex problems requiring step-by-step analysis
-2. **Context7 MCP** - Library documentation lookup; always resolve library ID first
-3. **Filesystem MCP** - Enhanced file operations over built-in tools
+2. **Context7 MCP** - Library documentation lookup (always resolve library ID first)
+3. **Filesystem MCP** - ALL file operations (read, write, edit, search)
 4. **Task Tool** - Complex searches requiring multiple iterations
-5. **Built-in Tools** - Simple, direct operations
+5. **Built-in Tools** - Simple, direct operations when MCP alternatives don't exist
 
-### Tool Usage Guidelines
+### Search Strategy
 
-- Use Sequential Thinking MCP for problems requiring 3+ steps or unfamiliar domains  
+- **Code structure/syntax searches**: `ast-grep --lang <language> -p '<pattern>'` when available
+- **Plain text content searches**: `rg` for non-structural content or when ast-grep unavailable
+- **Complex multi-step searches**: Task tool
+- **File pattern matching**: Filesystem MCP glob when available
+- **Command line tools**: Use `fd` instead of `find` when available
+
+### Usage Guidelines
+
+- Use Sequential Thinking MCP for problems requiring 3+ steps or unfamiliar domains
 - Use concurrent tool calls when gathering related information
 - Use Read tool before making assumptions about file contents
-- Prefer Task tool for keyword-based searches across codebases
+- Respect .gitignore when searching files unless instructed otherwise
 
 ---
 
@@ -54,7 +69,6 @@ When multiple tools can accomplish the same task, use this order:
 **Use for:** Multi-step workflows (3+ actions), complex tasks requiring tracking, multiple user requirements
 
 **Behavior:**
-
 - Mark tasks `in_progress` immediately when starting
 - Only ONE task `in_progress` at a time
 - Mark `completed` immediately upon finishing
@@ -104,69 +118,26 @@ When multiple tools can accomplish the same task, use this order:
 - **Scoped Data**: Always test proper data isolation if application has tenant-like scoping
 - **Test Execution**: Must run specific test after creation/update to verify correctness
 
-### Tool Usage for Elixir
-
-- Always use Read tool to examine existing patterns before writing new code
-- Use Grep/Glob tools to understand current file organization  
-- Never assume module names or function signatures - verify with codebase
-- Prefer editing existing files over creating new ones
-
-### File Search Strategy
-
-- When searching requires syntax-aware or structural matching, default to `ast-grep --lang elixir -p '<pattern>'` (or set `--lang` appropriately)
-- Avoid falling back to text-only tools like `rg` or `grep` unless explicitly requested for a plain-text search
-
 ---
 
-## Code Analysis & Decision Making
+## Development Rules
 
-### Decision Framework
-
-1. **Codebase First** - Examine existing patterns before suggesting solutions
-2. **Documentation Verification** - Verify function signatures and module existence
-3. **BSSN Application** - Choose simplest approach among valid options
-4. **Ambiguity Resolution** - Ask specific questions about current needs rather than building flexible solutions
-
----
-
-## Project Management
-
-### GitHub Operations
-
-- Always use `gh` CLI instead of web URLs for GitHub tasks
-- Use `gh` for issues, pull requests, checks, and releases
-
-### Workflow Preferences  
-
-- Follow MCP tool hierarchy: MCP tools > Task tool > built-in tools
-- Use concurrent tool calls when gathering related information
-- Use TodoWrite for multi-step tasks requiring progress tracking
-
----
-
-# Important Reminders
+### File Management
 
 - Do what has been asked; nothing more, nothing less
 - NEVER create files unless absolutely necessary for achieving the goal
 - ALWAYS prefer editing existing files over creating new ones
 - NEVER proactively create documentation files unless explicitly requested
 
-## Language Preferences
+### Code Quality
 
 - Use British English instead of American English in code
-
-## Code Quality Guidelines
-
 - Do not underscore variables with a prefix if they are not used before investigating the source of the issue
-
-## File Search Guidelines
-
-- When asked to search for files, respect the .gitignore if present or until instructed otherwise
-
-## Tool Usage
-
-- Do not use tidewave for editing files, use filesystem
-
-## Legacy Fallback Code
-
 - Do not create any legacy fallback code unless specifically instructed
+- Examine existing patterns before suggesting solutions
+- Verify function signatures and module existence
+
+### Project Management
+
+- Always use `gh` CLI instead of web URLs for GitHub tasks
+- Use `gh` for issues, pull requests, checks, and releases
