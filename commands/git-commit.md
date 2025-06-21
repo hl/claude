@@ -3,11 +3,13 @@
 Create a properly formatted conventional commit following established project standards.
 
 1. **Pre-commit Quality Checks**
+   - **ALL CHECKS MUST PASS (GREEN) BEFORE CREATING COMMIT**
    - For Elixir projects: Run `mix format <file>` on all modified Elixir files (.ex, .exs)
    - Run `mix compile --warnings-as-errors` to ensure no compilation warnings
    - Run `mix credo --strict --format=json` if Credo is available in the project
    - Run `mix dialyzer` if Dialyzer is available in the project
    - Run project tests before committing; abort if tests fail
+   - **Note**: Quality checks can be delegated to subagents and run in parallel for efficiency
 
 2. **Analyze Changes**
    - Review git status and git diff to understand what changed
