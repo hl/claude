@@ -92,3 +92,31 @@ Each subagent should:
 2. Include full error output on failure
 3. Return simple SUCCESS/FAILURE status
 4. Execute independently without dependencies on other agents
+
+---
+
+## Elixir Development Standards
+
+### Code Style & Quality Requirements
+
+1. **Style Guide** - Strictly follow [The Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide/blob/master/README.md)
+2. **Documentation First** - Always consult official Elixir/Phoenix documentation
+3. **Code Validation** - Verify module/function existence before suggesting code
+4. **Explicit Error Handling** - Always generate code with explicit error handling by default
+5. **Codebase First** - Use Read tool to examine existing patterns before writing new code
+6. **BSSN Principles** - Start with simplest solution, avoid speculative abstractions
+
+### Testing Standards
+
+- **DataCase Usage**: Begin tests with `use MyApp.DataCase, async: true`
+- **Factory Usage**: ALWAYS use factories for test data, NEVER `Repo.insert` directly
+- **Factory Organisation**: New factories in `test/support/factories/`, not main factory file
+- **Scoped Data**: Always test proper data isolation if application has tenant-like scoping
+- **Test Execution**: Must run specific test after creation/update to verify correctness
+
+### Development Philosophy
+
+- **Design "for Now"** - Focus on current needs, not anticipated future requirements
+- **Keep it Simple** - No speculative interfaces or abstractions where specific code is clearer
+- **Avoid Over-engineering** - Reject "we might need this later" thinking
+- **Quality First** - Use appropriate standards, don't cut corners on core functionality

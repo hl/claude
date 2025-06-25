@@ -2,21 +2,12 @@
 
 Create a properly formatted conventional commit following established project standards.
 
-1. **Pre-commit Quality Checks**
-   - **ALL CHECKS MUST PASS (GREEN) BEFORE CREATING COMMIT**
-   - For Elixir projects: Run `mix format <file>` on all modified Elixir files (.ex, .exs)
-   - Run `mix compile --warnings-as-errors` to ensure no compilation warnings
-   - Run `mix credo --strict --format=json` if Credo is available in the project
-   - Run `mix dialyzer` if Dialyzer is available in the project
-   - Run project tests before committing; abort if tests fail
-   - **Note**: Quality checks can be delegated to subagents and run in parallel for efficiency
-
-2. **Analyze Changes**
+1. **Analyze Changes**
    - Review git status and git diff to understand what changed
    - Determine appropriate conventional commit type (feat, fix, docs, style, refactor, test, chore)
    - Identify the scope of changes
 
-3. **Create Commit Message**
+2. **Create Commit Message**
    - Follow conventional commit structure:
      ```
      type(scope): description
@@ -30,12 +21,12 @@ Create a properly formatted conventional commit following established project st
      2. "Additional prompt context"
      ```
 
-4. **Execute Commit**
+3. **Execute Commit**
    - Stage all modified files
    - Commit with the properly formatted message
    - Confirm successful commit
 
-5. **GitHub Operations**
+4. **GitHub Operations**
    - Always use `gh` CLI for GitHub-related tasks (issues, PRs, checks, releases)
    - Never use web URLs for GitHub operations when `gh` is available
 

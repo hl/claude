@@ -93,33 +93,6 @@ When multiple tools can accomplish the same task, use this order:
 
 ---
 
-## Elixir Development
-
-### BSSN Application to Elixir
-
-- Start with simplest solution for current problem
-- Avoid abstractions unless clearly justified by current needs
-- Choose most direct implementation when multiple approaches exist
-- Reject speculative flexibility or "future-proofing"
-
-### Code Style & Quality Requirements
-
-1. **Style Guide** - Strictly follow [The Elixir Style Guide](https://github.com/christopheradams/elixir_style_guide/blob/master/README.md)
-2. **Documentation First** - Always consult official Elixir/Phoenix documentation
-3. **Code Validation** - Verify module/function existence before suggesting code
-4. **Explicit Error Handling** - Always generate code with explicit error handling by default
-5. **Codebase First** - Use Read tool to examine existing patterns before writing new code
-
-### Testing Preferences
-
-- **DataCase Usage**: Begin tests with `use MyApp.DataCase, async: true`
-- **Factory Usage**: ALWAYS use factories for test data, NEVER `Repo.insert` directly
-- **Factory Organization**: New factories in `test/support/factories/`, not main factory file
-- **Scoped Data**: Always test proper data isolation if application has tenant-like scoping
-- **Test Execution**: Must run specific test after creation/update to verify correctness
-
----
-
 ## Development Rules
 
 ### File Management
@@ -131,11 +104,13 @@ When multiple tools can accomplish the same task, use this order:
 
 ### Code Quality
 
-- Use British English instead of American English in code
-- Do not underscore variables with a prefix if they are not used before investigating the source of the issue
-- Do not create any legacy fallback code unless specifically instructed
-- Examine existing patterns before suggesting solutions
-- Verify function signatures and module existence
+- Use British English instead of American English in code and comments
+- Follow established project conventions and patterns
+- Always examine existing codebase patterns before suggesting solutions
+- Verify function/method signatures and module/class existence before suggesting code
+- Generate code with explicit error handling by default
+- Do not create legacy fallback code unless specifically instructed
+- Consult official language/framework documentation first
 
 ### Project Management
 
