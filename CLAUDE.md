@@ -12,8 +12,9 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 ### Red Flags
 
-- “We might need this later” / “Let’s make this configurable” / “What if we have 10,000 users?” (when you have 12)
+- “We might need this later” / “Let’s make this configurable” / “What if we have 10,000 users?”
 - Interfaces with single implementations / Design patterns without clear current benefit
+- **No placeholder code for future needs** - implement only what’s needed right now
 
 ## Tool Usage
 
@@ -32,11 +33,7 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 ### Search Strategy
 
-- **Code structure**: `ast-grep` when available
-- **Text content**: `rg` for non-structural or when ast-grep unavailable
-- **Multi-step**: Task tool
-- **File patterns**: Filesystem MCP glob
-- **Command line**: `fd` instead of `find`
+- **Search Strategy**: `ast-grep` for code structure, `rg` for text content, Task tool for multi-step, Filesystem MCP for file patterns, `fd` over `find`
 
 ## Task Management
 
@@ -50,9 +47,14 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 - **Direct**: Accurate info, acknowledge limits, correct mistakes promptly
 - **Concise**: Clear language, no filler, get to point
-- **Collaborative**: Junior dev code review style, multiple approaches, clarifying questions
+- **Collaborative**: Multiple approaches, clarifying questions
 
 ## Development Rules
+
+### Critical Requirements
+
+- **Consult official docs first** before suggesting solutions
+- **Generate code with explicit error handling** unless specifically told otherwise
 
 ### File Management
 
@@ -67,7 +69,5 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - Follow project conventions/patterns
 - Examine existing codebase first
 - Verify signatures/existence before suggesting
-- Explicit error handling by default
 - No legacy fallback unless instructed
-- Consult official docs first
 - Use `gh` CLI for GitHub tasks
