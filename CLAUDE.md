@@ -1,118 +1,73 @@
-# Personal Development Guidelines for Claude Code
+# Claude Development Guidelines
 
-This document contains my personal development guidelines and preferences for working with Claude Code. These rules override default behavior and ensure consistent practices across all projects.
+## Core Philosophy: BSSN (Best Simple System for Now)
 
----
+Build the **simplest** system that meets needs **right now** to **appropriate standard**. Avoid over-engineering and corner-cutting.
 
-## Core Philosophy
+### Principles
 
-### Best Simple System for Now (BSSN)
+1. **Design “for Now”** - Focus on actual current needs
+1. **Keep it Simple** - No speculative abstractions where specific code is clearer
+1. **Write it Best** - Use appropriate quality standards
 
-Build the **simplest** system that meets the needs **right now**, written to an **appropriate standard**. Avoid both over-engineering and corner-cutting.
+### Red Flags
 
-#### Core Principles
-
-1. **Design "for Now"** - Focus on what is actually needed RIGHT NOW, not anticipated future needs
-2. **Keep it Simple** - No speculative interfaces, abstractions, or generic functionality where specific code is clearer
-3. **Write it Best** - Use appropriate quality standards for the context; don't cut corners on core functionality
-
-#### Red Flags to Avoid
-
-- "We might need this later"
-- "Let's make this configurable"  
-- "What if we have 10,000 users?" (when you have 12)
-- Interfaces with single implementations
-- Design patterns applied without clear current benefit
-
----
+- “We might need this later” / “Let’s make this configurable” / “What if we have 10,000 users?” (when you have 12)
+- Interfaces with single implementations / Design patterns without clear current benefit
 
 ## Tool Usage
 
-### CRITICAL Tool Restrictions
+### CRITICAL Rules
 
-**ALWAYS follow these tool usage rules:**
-
-- **File Operations**: Use Filesystem MCP tools when available, otherwise use built-in file tools. NEVER use tidewave for file operations
-- **Code Structure Search**: Use `ast-grep --lang <language> -p '<pattern>'` when available, otherwise use text-only tools like `rg`/`grep` for structural matching
+- **File Operations**: Filesystem MCP tools when available, otherwise built-in. NEVER tidewave
+- **Code Structure Search**: `ast-grep --lang <language> -p '<pattern>'` when available, otherwise `rg`/`grep`
 
 ### Tool Hierarchy
 
-When multiple tools can accomplish the same task, use this order:
-
-1. **Sequential Thinking MCP** - Complex problems requiring step-by-step analysis
-2. **Context7 MCP** - Library documentation lookup (always resolve library ID first)
-3. **Filesystem MCP** - ALL file operations (read, write, edit, search)
-4. **Task Tool** - Complex searches requiring multiple iterations
-5. **Built-in Tools** - Simple, direct operations when MCP alternatives don't exist
+1. Sequential Thinking MCP - Complex multi-step problems
+1. Context7 MCP - Library docs (resolve library ID first)
+1. Filesystem MCP - ALL file operations
+1. Task Tool - Complex multi-iteration searches
+1. Built-in Tools - When MCP unavailable
 
 ### Search Strategy
 
-- **Code structure/syntax searches**: `ast-grep --lang <language> -p '<pattern>'` when available
-- **Plain text content searches**: `rg` for non-structural content or when ast-grep unavailable
-- **Complex multi-step searches**: Task tool
-- **File pattern matching**: Filesystem MCP glob when available
-- **Command line tools**: Use `fd` instead of `find` when available
-
-### Usage Guidelines
-
-- Use Sequential Thinking MCP for problems requiring 3+ steps or unfamiliar domains
-- Use concurrent tool calls when gathering related information
-- Use Read tool before making assumptions about file contents
-- Respect .gitignore when searching files unless instructed otherwise
-
----
+- **Code structure**: `ast-grep` when available
+- **Text content**: `rg` for non-structural or when ast-grep unavailable
+- **Multi-step**: Task tool
+- **File patterns**: Filesystem MCP glob
+- **Command line**: `fd` instead of `find`
 
 ## Task Management
 
-### TodoWrite Usage
+**TodoWrite for:** 3+ step workflows, complex tracking, multiple requirements
 
-**Use for:** Multi-step workflows (3+ actions), complex tasks requiring tracking, multiple user requirements
+- Mark `in_progress` when starting (only ONE at a time)
+- Mark `completed` immediately when finished
+- Break into specific, actionable items
 
-**Behavior:**
-- Mark tasks `in_progress` immediately when starting
-- Only ONE task `in_progress` at a time
-- Mark `completed` immediately upon finishing
-- Break complex tasks into specific, actionable items
+## Communication
 
----
-
-## Communication & Reasoning
-
-### Response Style
-
-- **Be Direct**: Accurate information, acknowledge limitations, correct mistakes promptly
-- **Be Concise**: Clear language, avoid repetition, skip filler phrases, get to the point
-- **Be Collaborative**: Treat interactions like junior developer code reviews, propose multiple approaches, ask clarifying questions
-
-### Problem-Solving Approach
-
-1. **Explain Approach** - Describe planned approach step-by-step
-2. **Use Sequential Thinking** - For complex tasks requiring reasoning
-3. **Validate Against BSSN** - Choose simplest approach that solves current problem
-4. **Propose Alternatives** - When multiple valid approaches exist
-
----
+- **Direct**: Accurate info, acknowledge limits, correct mistakes promptly
+- **Concise**: Clear language, no filler, get to point
+- **Collaborative**: Junior dev code review style, multiple approaches, clarifying questions
 
 ## Development Rules
 
 ### File Management
 
-- Do what has been asked; nothing more, nothing less
-- NEVER create files unless absolutely necessary for achieving the goal
-- ALWAYS prefer editing existing files over creating new ones
-- NEVER proactively create documentation files unless explicitly requested
+- Do what’s asked; nothing more/less
+- NEVER create files unless absolutely necessary
+- ALWAYS prefer editing existing over creating new
+- NEVER proactively create docs unless requested
 
 ### Code Quality
 
-- Use British English instead of American English in code and comments
-- Follow established project conventions and patterns
-- Always examine existing codebase patterns before suggesting solutions
-- Verify function/method signatures and module/class existence before suggesting code
-- Generate code with explicit error handling by default
-- Do not create legacy fallback code unless specifically instructed
-- Consult official language/framework documentation first
-
-### Project Management
-
-- Always use `gh` CLI instead of web URLs for GitHub tasks
-- Use `gh` for issues, pull requests, checks, and releases
+- British English in code/comments
+- Follow project conventions/patterns
+- Examine existing codebase first
+- Verify signatures/existence before suggesting
+- Explicit error handling by default
+- No legacy fallback unless instructed
+- Consult official docs first
+- Use `gh` CLI for GitHub tasks
