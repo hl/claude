@@ -3,3 +3,4 @@ statsig/
 todos/
 *.local.json
 ide/
+shell-snapshots/

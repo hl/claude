@@ -6,15 +6,15 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 ### Principles
 
-1. **Design “for Now”** - Focus on actual current needs
+1. **Design "for Now"** - Focus on actual current needs
 1. **Keep it Simple** - No speculative abstractions where specific code is clearer
 1. **Write it Best** - Use appropriate quality standards
 
 ### Red Flags
 
-- “We might need this later” / “Let’s make this configurable” / “What if we have 10,000 users?”
+- "We might need this later" / "Let's make this configurable" / "What if we have 10,000 users?"
 - Interfaces with single implementations / Design patterns without clear current benefit
-- **No placeholder code for future needs** - implement only what’s needed right now
+- **No placeholder code for future needs** - implement only what's needed right now
 
 ## Tool Usage
 
@@ -22,6 +22,7 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 - **File Operations**: Filesystem MCP tools when available, otherwise built-in. NEVER tidewave
 - **Code Structure Search**: `ast-grep --lang <language> -p '<pattern>'` when available, otherwise `rg`/`grep`
+- **File Finding**: Always use `fd` instead of `find`
 
 ### Tool Hierarchy
 
@@ -58,7 +59,7 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 
 ### File Management
 
-- Do what’s asked; nothing more/less
+- Do what's asked; nothing more/less
 - NEVER create files unless absolutely necessary
 - ALWAYS prefer editing existing over creating new
 - NEVER proactively create docs unless requested
@@ -71,3 +72,16 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - Verify signatures/existence before suggesting
 - No legacy fallback unless instructed
 - Use `gh` CLI for GitHub tasks
+
+### Quality Checks
+
+**Elixir Projects:**
+
+- `mix format --check-formatted && mix compile --warnings-as-errors && mix credo --strict && mix dialyzer`
+- ALL checks must pass (abort on first failure)
+
+**Rust Projects:**
+
+- `cargo fmt --check && cargo check --workspace --all-targets && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace`
+- ALL checks must pass (abort on first failure)
+
