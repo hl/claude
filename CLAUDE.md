@@ -25,6 +25,7 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - Cite the specific file/function that informed your approach
 - Confirm function exists by showing its signature before using it
 - Use `gh` CLI for GitHub tasks
+- NEVER create placeholder/dead code for future use
 
 ### File Management
 - Do what's asked; nothing more/less
@@ -32,16 +33,4 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - ALWAYS prefer editing existing over creating new - state which file you're editing and why
 - NEVER proactively create docs unless requested
 
-### Quality Checks 
-Run immediately after any code change. Stop at first failure and fix before continuing.
-
-**Elixir:**
-```bash
-mix format --check-formatted && mix compile --warnings-as-errors && mix credo --strict && mix dialyzer
-```
-
-**Rust:**
-```bash
-cargo fmt --check && cargo check --workspace --all-targets && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
-```
 
