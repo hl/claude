@@ -2,8 +2,22 @@
 
 Run comprehensive quality checks for Rust projects. Stops at first failure.
 
+Run each command separately using subagents:
+
 ```bash
-cargo fmt --check && cargo check --workspace --all-targets && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace
+cargo fmt --check
+```
+
+```bash
+cargo check --workspace --all-targets
+```
+
+```bash
+cargo clippy --workspace --all-targets -- -D warnings
+```
+
+```bash
+cargo test --workspace
 ```
 
 ## What this does:

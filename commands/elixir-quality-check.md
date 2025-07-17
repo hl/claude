@@ -2,8 +2,22 @@
 
 Run comprehensive quality checks for Elixir projects. Stops at first failure.
 
+Run each command separately using subagents:
+
 ```bash
-mix format --check-formatted && mix compile --warnings-as-errors && mix credo --strict && mix dialyzer
+mix format --check-formatted
+```
+
+```bash
+mix compile --warnings-as-errors
+```
+
+```bash
+mix credo --strict
+```
+
+```bash
+mix dialyzer
 ```
 
 ## What this does:
