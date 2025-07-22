@@ -7,13 +7,24 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 **Principles:** Focus on actual current needs, keep it simple, write it best
 **Red Flags:** "We might need this later", interfaces with single implementations, placeholder code for future needs
 
+## Communication Style
+- Skip affirmations and preamble - provide direct information only
+- Use file:line references for code locations
+- Document assumptions when requirements unclear
+
 ## Tool Usage
 
 **Primary Tools:**
 - Zen MCP server for advanced workflows
+- `rg` for content search, `fd` for file finding
 - `ast-grep --lang <language> -p '<pattern>'` for code structure
-- `rg` for text content, `fd` for file finding
-- TodoWrite for 3+ step workflows
+- TodoWrite for multi-step tasks
+
+## Workflow Essentials
+- Read README/config files before starting
+- Use `rg` to find existing patterns before implementing
+- Run tests/linting after changes if available
+- TodoWrite for 3+ step tasks: discover → implement → verify
 
 ## Development Rules
 
@@ -32,5 +43,3 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - NEVER create files unless absolutely necessary - justify if you must
 - ALWAYS prefer editing existing over creating new - state which file you're editing and why
 - NEVER proactively create docs unless requested
-
-
