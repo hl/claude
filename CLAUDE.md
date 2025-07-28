@@ -7,17 +7,13 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 **Principles:** Focus on actual current needs, keep it simple, write it best
 **Red Flags:** "We might need this later", interfaces with single implementations, placeholder code for future needs
 
-## Communication Style
-- Skip affirmations and preamble - provide direct information only
-- Use file:line references for code locations
-- Document assumptions when requirements unclear
-
 ## Tool Usage
 
 **Primary Tools:**
-- Zen MCP server for advanced workflows
-- `rg` for content search, `fd` for file finding
-- `ast-grep --lang <language> -p '<pattern>'` for code structure
+- Zen MCP server for advanced workflows (complex multi-step tasks)
+- `rg` for content search (faster than grep, respects .gitignore)
+- `fd` for file finding (modern find replacement)
+- `ast-grep --lang <language> -p '<pattern>'` for structural code search
 - TodoWrite for multi-step tasks
 
 ## Workflow Essentials
@@ -36,6 +32,10 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - Cite the specific file/function that informed your approach
 - Confirm function exists by showing its signature before using it
 - Use `gh` CLI for GitHub tasks
+- Follow conventional commit format: `type(scope): description`
+- Create focused PRs addressing single concerns
+- Reference issues in commits: `fixes #123` or `relates to #456`
+- Squash commits before merging to maintain clean history
 - NEVER create placeholder/dead code for future use
 
 ### File Management
@@ -43,3 +43,14 @@ Build the **simplest** system that meets needs **right now** to **appropriate st
 - NEVER create files unless absolutely necessary - justify if you must
 - ALWAYS prefer editing existing over creating new - state which file you're editing and why
 - NEVER proactively create docs unless requested
+
+## Communication Style
+- Skip affirmations and preamble - provide direct information only
+- Use file:line references for code locations
+- Document assumptions when requirements unclear
+
+## Quick Reference
+- Before coding: Read README, search existing patterns with `rg`
+- During coding: Cite pattern source, confirm function signatures
+- After coding: Run tests, linting, check CLAUDE.md compliance
+- File creation: Justify necessity, prefer editing existing

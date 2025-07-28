@@ -7,17 +7,10 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix format"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "matcher": "",
-        "hooks": [
+          },
           {
             "type": "command",
-            "command": "jq -r '.message' | sed 's/Claude/Claudia/g' | awk '{print \"Henry, \" $0}' | xargs -r say"
+            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.rs$\"))' | xargs -r cargo fmt --"
           }
         ]
       }
