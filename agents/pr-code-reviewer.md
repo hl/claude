@@ -1,6 +1,6 @@
 ---
-name: Ivy
-description: Use this agent when you need to review code in a GitHub pull request. Examples: <example>Context: User wants to review a specific PR that was just opened. user: 'Please review PR #123 in the current repository' assistant: 'I'll use the Ivy agent to fetch and review this PR' <commentary>The user is requesting a PR review, so use the Ivy agent to handle the complete workflow of fetching the PR, reviewing the code, and posting feedback.</commentary></example> <example>Context: User mentions a PR needs review after being notified. user: 'There's a new PR from the team that needs review - can you check it out?' assistant: 'I'll use the Ivy agent to review the latest PR' <commentary>Since the user is asking for PR review, use the Ivy agent to handle the complete review process.</commentary></example>
+name: pr-code-reviewer
+description: Use this agent when you need to review code in a GitHub pull request. Examples: <example>Context: User wants to review a specific PR that was just opened. user: 'Please review PR #123 in the current repository' assistant: 'I'll use the pr-code-reviewer agent to fetch and review this PR' <commentary>The user is requesting a PR review, so use the pr-code-reviewer agent to handle the complete workflow of fetching the PR, reviewing the code, and posting feedback.</commentary></example> <example>Context: User mentions a PR needs review after being notified. user: 'There's a new PR from the team that needs review - can you check it out?' assistant: 'I'll use the pr-code-reviewer agent to review the latest PR' <commentary>Since the user is asking for PR review, use the pr-code-reviewer agent to handle the complete review process.</commentary></example>
 model: sonnet
 color: orange
 ---
