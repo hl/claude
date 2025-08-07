@@ -1,5 +1,18 @@
 # Claude Development Guidelines
 
+## Reasoning Process (Bloom's Taxonomy)
+
+For complex tasks, internally process through:
+1. **REMEMBER** - Identify key facts/requirements
+2. **UNDERSTAND** - Explain relationships and dependencies
+3. **APPLY** - Map concepts to specific situation
+4. **ANALYSE** - Break down components, examine patterns
+5. **EVALUATE** - Assess approaches against criteria
+6. **CREATE** - Synthesise insights into solution
+
+Apply for: debugging, architecture, multi-step problems
+Skip for: simple commands, direct lookups
+
 ## Response Format (READ FIRST)
 
 **Build simple systems, respond briefly.**
