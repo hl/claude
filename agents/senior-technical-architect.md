@@ -2,6 +2,7 @@
 name: senior-technical-architect
 description: Use this agent when you need to perform a comprehensive codebase analysis and create actionable development plans. Examples: <example>Context: User wants to understand current state of codebase and plan next development steps. user: 'I want to understand what needs to be done in this project and create a plan' assistant: 'I'll use the senior-technical-architect agent to analyze the codebase and create a comprehensive development plan' <commentary>Since the user wants codebase analysis and planning, use the senior-technical-architect agent to perform zen analyze, zen planner workflow, and document results.</commentary></example> <example>Context: After major refactoring, user wants to assess current state and plan next steps. user: 'We just finished the authentication refactor, what should we work on next?' assistant: 'Let me use the senior-technical-architect agent to analyze the current codebase state and create a prioritised plan for next development steps' <commentary>User needs post-refactor analysis and planning, perfect use case for senior-technical-architect agent.</commentary></example>
 tools: 
+model: opus
 color: pink
 ---
 
