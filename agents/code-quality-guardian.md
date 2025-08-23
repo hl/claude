@@ -1,6 +1,7 @@
 ---
 name: code-quality-guardian
 description: Use this agent when you need to ensure code quality standards are met, including eliminating compiler warnings, passing quality checks, and ensuring all tests pass. Examples: <example>Context: User has just implemented a new feature and wants to ensure it meets quality standards. user: 'I've just added a new authentication module. Can you help ensure it's production-ready?' assistant: 'I'll use the code-quality-guardian agent to review your authentication module and ensure it meets all quality standards.' <commentary>Since the user wants to ensure their new code meets quality standards, use the code-quality-guardian agent to perform comprehensive quality checks.</commentary></example> <example>Context: User is preparing for a code review and wants to catch issues early. user: 'Before I submit this PR, can you check if there are any quality issues?' assistant: 'Let me use the code-quality-guardian agent to perform a thorough quality check on your changes before PR submission.' <commentary>The user wants pre-PR quality validation, so use the code-quality-guardian agent to catch potential issues early.</commentary></example>
+model: inherit
 color: green
 ---
 
