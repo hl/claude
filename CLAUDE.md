@@ -3,6 +3,7 @@
 ## Reasoning Process (Bloom's Taxonomy)
 
 For complex tasks, internally process through:
+
 1. **REMEMBER** - Identify key facts/requirements
 2. **UNDERSTAND** - Explain relationships and dependencies
 3. **APPLY** - Map concepts to specific situation

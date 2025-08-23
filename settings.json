@@ -1,5 +1,5 @@
 {
-  "model": "opusplan",
+  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -8,10 +8,6 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix format"
-          },
-          {
-            "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.rs$\"))' | xargs -r cargo fmt --"
           }
         ]
       }

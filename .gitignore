@@ -4,3 +4,4 @@ todos/
 *.local.json
 ide/
 shell-snapshots/
+plugins/
