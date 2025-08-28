@@ -40,13 +40,13 @@ Build **simplest** system for **current needs** to **appropriate standard**.
 
 - `rg` for content search
 - `fd` for file finding  
-- `ast-grep --lang <language> -p '<pattern>'` for structural search
+- `ast-grep` for structural search
 - TodoWrite for 3+ step tasks
 - `gh` CLI for GitHub tasks
 
 **Before:** Search patterns with `rg`
 **During:** Follow cited patterns  
-**After:** Run tests/linting, check compliance
+**After:** Run validation checks, check compliance
 
 **TodoWrite pattern:** discover → implement → verify
 
