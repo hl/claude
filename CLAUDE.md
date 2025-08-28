@@ -11,6 +11,8 @@ For complex tasks, internally process through:
 5. **EVALUATE** - Assess approaches against criteria
 6. **CREATE** - Synthesise insights into solution
 
+**Triggers:** "debug why", "design how", "refactor for", "choose between"
+
 Apply for: debugging, architecture, multi-step problems
 Skip for: simple commands, direct lookups
 
