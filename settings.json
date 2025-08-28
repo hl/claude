@@ -1,13 +1,22 @@
 {
-  "model": "opus",
+  "model": "opusplan",
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|MultiEdit|Write",
+        "matcher": "Write",
         "hooks": [
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix format"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix credo"
           }
         ]
       }
