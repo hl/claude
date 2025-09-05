@@ -16,6 +16,9 @@ You will thoroughly analyse the provided argument/prompt by:
 - Detecting potential challenges and edge cases
 - Understanding the broader context and end goals
 - Mapping out affected components and systems
+ - Defining scope and non-goals
+ - Documenting assumptions and constraints
+ - Stating measurable success criteria
 
 ### 2. Task Decomposition
 Based on your analysis, you will:
@@ -24,6 +27,9 @@ Based on your analysis, you will:
 - Define clear success criteria for each task
 - Identify dependencies between tasks
 - Include specific implementation details
+ - Phrase each task with a measurable verb (see Bloom’s Verb Guide)
+ - Include a time estimate (≤ 120 minutes) and optional owner
+ - Add timeboxed “Spike” tasks when unknowns exist (60–90 minutes) with explicit deliverables
 
 ### 3. Priority Matrix Creation
 You will prioritise tasks using an impact/effort matrix:
@@ -31,6 +37,10 @@ You will prioritise tasks using an impact/effort matrix:
 - **High Impact, High Effort**: Strategic tasks - schedule carefully
 - **Low Impact, Low Effort**: Fill-in tasks - do when convenient
 - **Low Impact, High Effort**: Consider deferring or eliminating
+
+Bloom alignment guidance:
+- Quick Wins commonly map to Apply/Analyze verbs.
+- Strategic tasks often involve Evaluate/Create verbs.
 
 ### 4. TODO.md Structure
 
@@ -42,17 +52,34 @@ Create a TODO.md file with this exact format:
 ## Analysis Summary
 [Brief overview of the requirement and key findings]
 
+## Scope & Constraints
+- In-scope: [...]
+- Out-of-scope: [...]
+- Constraints/assumptions: [...]
+
+## Non-Goals
+- What will not be addressed and why.
+
+## Risks & Mitigations
+- Risk: [...] — Mitigation: [...]
+
+## Rollback Plan
+- How to revert changes if needed.
+
 ## Priority Matrix
 
 ### 🎯 Quick Wins (High Impact, Low Effort)
-- [ ] Task description
-  - **File**: `path/to/file.ext:line_number`
+- [ ] Verb-led task title
+  - **File**: `path/to/file.ext[:line_or_symbol]`
   - **Details**: Specific implementation instructions
-  - **Quality Checks**: `npm test`, `npm run lint`
-  - **Completion**: Run checks, mark done with [x], commit with message
+  - **Acceptance**: Inputs and expected observable outcomes
+  - **QA**: Commands (e.g., `npm test path`, `npm run lint`)
+  - **Artifacts**: Files/PRs/logs produced
+  - **Estimate**: N minutes; **Owner**: name/role (optional)
+  - **Commit**: `type(scope): summary`
 
 ### 🚀 Strategic Tasks (High Impact, High Effort)
-[Same format as above]
+[Same format as above; include Risks, Rollback specifics]
 
 ### 📦 Fill-in Tasks (Low Impact, Low Effort)
 [Same format as above]
@@ -60,9 +87,26 @@ Create a TODO.md file with this exact format:
 ### 🔄 Consider Later (Low Impact, High Effort)
 [Same format as above]
 
+### 🧪 Spikes (Timeboxed Research)
+- [ ] Spike: concise learning goal (60–90 minutes)
+  - **Questions**: Key unknowns to answer
+  - **Approach**: How you’ll investigate
+  - **Artifacts**: Notes, decision doc, code sandbox link
+  - **Acceptance**: Answers to questions + clear recommendation
+  - **Estimate**: N minutes; **Owner**: name/role (optional)
+
 ## Task Dependencies
 - Task A must complete before Task B
 - Task C and D can be done in parallel
+
+## Dependency Map
+[Optional diagram of task dependencies]
+```mermaid
+flowchart TD
+  A[Task A] --> B[Task B]
+  A --> C[Task C]
+  C --> D[Task D]
+```
 
 ## Quality Assurance Protocol
 1. After completing each task:
@@ -83,9 +127,12 @@ Create a TODO.md file with this exact format:
 For EVERY task item, you MUST include:
 - **Exact file paths** with line numbers where changes are needed
 - **Specific implementation details** that an LLM can execute without ambiguity
+- **Acceptance checks** that define how to verify success (inputs/outputs)
 - **Quality check commands** relevant to the task (e.g., `npm test src/auth`, `rg 'TODO'`, `npm run lint:fix`)
-- **Verification steps** to confirm successful completion
+- **Artifacts** produced (files changed, PR links, logs, screenshots)
+- **Time estimate** (≤ 120 minutes) and optional **owner**
 - **Commit message template** following conventional commits
+- A measurable verb aligned with the intended Bloom level
 
 ### 6. Implementation Instructions
 
@@ -114,6 +161,7 @@ After implementation:
 - Include enough context for an LLM to implement without additional clarification
 - Maintain consistent formatting for easy parsing
 - Order tasks by priority and dependency
+ - Use measurable, Bloom-aligned verbs for task titles
 
 ## Quality Standards
 
@@ -122,5 +170,16 @@ After implementation:
 - Implementation details must be unambiguous
 - Quality checks must be automated and specific
 - Commit messages must follow conventional format
+ - Each task title must start with a measurable verb aligned to the intended Bloom level
+ - Strategic tasks must include Risks, Rollback, and Acceptance checks
+
+## Bloom’s Verb Guide
+
+- Remember: list, define, identify, recall
+- Understand: explain, summarize, classify, describe
+- Apply: implement, use, execute, integrate
+- Analyze: differentiate, trace, decompose, map
+- Evaluate: test, validate, critique, benchmark
+- Create: design, compose, refactor, synthesize
 
 Your goal is to create a TODO.md that serves as a complete blueprint for implementation, where any competent developer or LLM can pick up a task and execute it successfully without needing additional context or clarification.
