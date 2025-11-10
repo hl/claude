@@ -1,57 +1,69 @@
-# Claude Development Guidelines
+# Personal LLM Collaboration Guide
 
-## Reasoning Process (Bloom's Taxonomy)
+Purpose: Machine-readable instructions for the agent working in this repo.
+Scope: Repo-wide unless overridden by nested `AGENTS.md` files.
+Precedence: Direct user/developer prompts override this file.
 
-For complex tasks, internally process through:
+## Core Principles
 
-1. **REMEMBER** - Identify key facts/requirements
-2. **UNDERSTAND** - Explain relationships and dependencies
-3. **APPLY** - Map concepts to specific situation
-4. **ANALYSE** - Break down components, examine patterns
-5. **EVALUATE** - Assess approaches against criteria
-6. **CREATE** - Synthesise insights into solution
+- Personal rule: No placeholder code
+  - Do not add stubs, TODO/FIXME, or NotImplementedError-style placeholders
+  - Implement functions fully; avoid hardcoded dummy values
+  - If requirements are unclear, ask before adding code
+- Ask before destructive or irreversible actions
+  - Examples: deleting/moving many files, `git reset`/history changes, schema/data migrations, dependency installs, network access, long-running tasks (> ~2 min), writing outside the workspace
+- Minimal diffs and tight scope
+  - Change only what's necessary; don't refactor unrelated code
+  - Keep naming/style consistent with the existing codebase
+- Zero assumptions; verify requirements
+  - Do not proceed on inferred context—ask for clarification until the requirement is explicit.
+  - When clarification is delayed, create or extend tests/tooling that prove the behaviour before delivering changes.
 
-**Triggers:** "debug why", "design how", "refactor for", "choose between", "plan for"
+## Communication Protocol
 
-Apply for: debugging, architecture, multi-step problems
-Skip for: simple commands, direct lookups
+- When uncertain or there are multiple approaches
+  - List options with trade-offs, recommend one, and pause for confirmation unless clearly trivial
+- When context is missing
+  - Stop and request the needed details; only continue once questions are answered or verification code/tests are in place.
 
-## Response Format (READ FIRST)
+## Output Preferences
 
-**Build simple systems, respond briefly.**
+- Be concise; prefer short bullet lists
+- Show exact file paths, commands, and identifiers in backticks
+- Before editing, state intent and scope; after editing, summarise what changed and why
+- Do not dump large file contents; reference paths unless I ask
+- Avoid heavy formatting unless requested
 
-- Skip affirmations and preamble - provide direct information only
-- Minimal text - stick to essential information  
-- File:line references for code locations
-- State assumptions if unclear
+## Validation Preferences
 
-## Critical Requirements
+- Propose validation steps up front
+  - Start with targeted checks (unit tests for changed modules), then broader suites
+  - If local validation isn't possible, provide exact commands for me to run
+- Do not install dependencies or use the network without explicit approval
 
-- Read docs/README before starting
-- British English in code/comments
-- Cite source file/function and confirm signature before using
-- Explicit error handling in all code
+## Codex-Specific Conventions
 
-## Core Philosophy: BSSN
+- Use `update_plan` for multi-step work; maintain exactly one `in_progress` step
+- Provide a brief preamble before grouped tool calls; keep it to one or two sentences
+- Use `apply_patch` for edits; keep patches small and focused; don't mix unrelated changes
+- Prefer `rg` for searching and read files in <= 250-line chunks
+- Respect sandbox/approval settings; ask when elevated privileges or destructive actions are needed
 
-Build **simplest** system for **current needs** to **appropriate standard**.
+## Tool Preferences (Advisory)
 
-**Red Flags:** "We might need this later", single-implementation interfaces, future placeholders
+- Capability-first: specify the desired capability, then a preferred tool, then a fallback.
+- Non-binding: treat tool names as preferences, not requirements; do not block work if unavailable.
+- Detect before use: check tool availability; do not install or use network without explicit approval.
+- Search capability: prefer `rg`; if unavailable, use `grep -R` with equivalent flags.
+- Patch/diff capability: prefer `apply_patch`; if unavailable, output a unified diff in the expected patch format.
+- Planning capability: prefer `update_plan`; if unavailable, include a concise inline step list with exactly one active step.
+- Output limits: keep file reads to <= 250 lines per chunk; if tools vary, approximate this behaviour.
+- Last reviewed: 2025-09-10.
 
-## Tools & Workflow
+## Commits (only when I ask)
 
-- `rg` for content search
-- `fd` for file finding  
-- `ast-grep` for structural search
-- TodoWrite for 3+ step tasks
-- `gh` CLI for GitHub tasks
-
-**Before:** Search patterns with `rg`
-**During:** Follow cited patterns  
-**After:** Run validation checks, check compliance
-
-**TodoWrite pattern:** discover → implement → verify
-
-## Git
-
-Conventional commits, reference issues, focused PRs, squash before merge
+- Do not commit or push unless I explicitly request it
+- If I ask you to craft a commit
+  - Use Conventional Commits style
+  - For multi-line messages, write to a file and use `git commit -F <file>`
+  - Include a concise rationale and link issue/PR numbers when provided
