@@ -1,5 +1,4 @@
 {
-  "model": "opusplan",
   "hooks": {
     "PostToolUse": [
       {
@@ -26,6 +25,7 @@
     "type": "command",
     "command": "input=$(cat); printf '%s@%s:%s %s' \"$(whoami)\" \"$(hostname -s)\" \"$(echo \"$input\" | jq -r '.workspace.current_dir' | sed \"s|$HOME|~|\")\""
   },
+  "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
   }
