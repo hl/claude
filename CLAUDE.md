@@ -1,8 +1,8 @@
 # Personal LLM Collaboration Guide
 
-Purpose: Machine-readable instructions for the agent working in this repo.
-Scope: Repo-wide unless overridden by nested `AGENTS.md` files.
-Precedence: Direct user/developer prompts override this file.
+Purpose: Machine-readable instructions for Claude Code.
+Scope: Global defaults for all projects (from `~/.claude/CLAUDE.md`).
+Precedence: Direct prompts > project `CLAUDE.md` > this file.
 
 ## Core Principles
 
@@ -11,10 +11,7 @@ Precedence: Direct user/developer prompts override this file.
   - Implement functions fully; avoid hardcoded dummy values
   - If requirements are unclear, ask before adding code
 - Ask before destructive or irreversible actions
-  - Examples: deleting/moving many files, `git reset`/history changes, schema/data migrations, dependency installs, network access, long-running tasks (> ~2 min), writing outside the workspace
-- Minimal diffs and tight scope
-  - Change only what's necessary; don't refactor unrelated code
-  - Keep naming/style consistent with the existing codebase
+  - Examples: deleting/moving many files, `git reset`/history changes, schema/data migrations, dependency installs, network access, writing outside the workspace
 - Zero assumptions; verify requirements
   - Do not proceed on inferred context—ask for clarification until the requirement is explicit.
   - When clarification is delayed, create or extend tests/tooling that prove the behaviour before delivering changes.
@@ -26,16 +23,15 @@ Precedence: Direct user/developer prompts override this file.
 - When context is missing
   - Stop and request the needed details; only continue once questions are answered or verification code/tests are in place.
 
-## Output Preferences
+## Planning
 
-- Be concise; prefer short bullet lists
-- Show exact file paths, commands, and identifiers in backticks
-- Before editing, state intent and scope; after editing, summarise what changed and why
-- Do not dump large file contents; reference paths unless I ask
-- Avoid heavy formatting unless requested
+- For complex/multi-step changes: enter plan mode, outline approach, wait for approval
+- For simple/focused changes: proceed directly
+- When in doubt about scope, ask
 
-## Validation Preferences
+## Testing & Validation
 
+- Run existing tests before and after changes when a test suite exists
 - Propose validation steps up front
   - Start with targeted checks (unit tests for changed modules), then broader suites
   - If local validation isn't possible, provide exact commands for me to run
@@ -43,7 +39,6 @@ Precedence: Direct user/developer prompts override this file.
 
 ## Commits (only when I ask)
 
-- Do not commit or push unless I explicitly request it
 - If I ask you to craft a commit
   - Use Conventional Commits style
   - For multi-line messages, write to a file and use `git commit -F <file>`
