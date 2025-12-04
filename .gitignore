@@ -1,6 +1,7 @@
 projects/
 statsig/
 todos/
+plans/
 *.local.json
 ide/
 shell-snapshots/

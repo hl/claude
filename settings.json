@@ -19,11 +19,40 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bd prime"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
     "type": "command",
     "command": "input=$(cat); printf '%s@%s:%s %s' \"$(whoami)\" \"$(hostname -s)\" \"$(echo \"$input\" | jq -r '.workspace.current_dir' | sed \"s|$HOME|~|\")\""
+  },
+  "enabledPlugins": {
+    "document-skills@anthropic-agent-skills": true,
+    "code-review@claude-code-plugins": true,
+    "feature-dev@claude-code-plugins": true,
+    "frontend-design@claude-code-plugins": true,
+    "pr-review-toolkit@claude-code-plugins": true
   },
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
