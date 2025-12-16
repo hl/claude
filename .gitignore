@@ -9,3 +9,4 @@ plugins/
 /file-history
 history.jsonl
 /debug
+stats-cache.json
