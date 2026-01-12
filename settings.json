@@ -20,28 +20,6 @@
           }
         ]
       }
-    ],
-    "PreCompact": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bd prime"
-          }
-        ]
-      }
     ]
   },
   "statusLine": {
@@ -62,7 +40,9 @@
   "alwaysThinkingEnabled": true,
   "allowedCommands": [
     "elixir /tmp/*.exs",
-    "elixir /tmp/**/*.exs"
+    "elixir /tmp/**/*.exs",
+    "cat /tmp/*",
+    "cat /tmp/**/*"
   ],
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
