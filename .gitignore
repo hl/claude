@@ -10,3 +10,6 @@ plugins/
 history.jsonl
 /debug
 stats-cache.json
+cache/
+paste-cache/
+telemetry/
