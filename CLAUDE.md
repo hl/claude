@@ -44,6 +44,8 @@ The human provides specifications; the agent executes against them.
   - When tests fail or builds break, diagnose before proceeding
   - When specs contradict each other, surface the conflict immediately
   - Don't silently skip broken steps—report and propose a path forward
+- **Use Write tool for file creation**
+  - Never use cat/heredoc in Bash for creating files—use the Write tool instead
 
 ## Risk Boundaries
 
