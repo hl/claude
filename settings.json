@@ -10,15 +10,6 @@
             "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix format \"{}\""
           }
         ]
-      },
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix credo \"{}\""
-          }
-        ]
       }
     ]
   },
