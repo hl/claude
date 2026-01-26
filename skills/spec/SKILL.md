@@ -12,8 +12,6 @@ This skill guides spec-driven development using plan mode for design and autonom
 **Plan Mode (Phase 1)**: Design and get approval
 
 - When this skill is invoked, first perform the pre-workflow check, then call EnterPlanMode to begin the design phase
-- Design is written to the plan file (specified by the plan mode system prompt, typically `.claude/plan.md`)
-- If no plan file is specified, create `.claude/plans/[feature-name].md`
 - Capture "what" (problem, decision, tradeoffs) before "how" (detailed design)
 - Use subagents to review and iterate
 - Exit plan mode via ExitPlanMode when design is ready
@@ -40,7 +38,6 @@ This skill guides spec-driven development using plan mode for design and autonom
 - Use TaskCreate/TaskUpdate/TaskList to track all work
 - Follow TDD when test infrastructure exists; otherwise implement directly
 - Commit after each completed task with working code
-- Use Conventional Commits format: `type(scope): description`
 - Respect risk boundaries: ask before data deletion, destructive git operations, or external network calls not required for the task
 - Use the Write tool for file creation (never cat/heredoc in Bash)
 
@@ -171,19 +168,7 @@ For each task:
 
 **Projects Without Test Infrastructure**: If the pre-workflow check found no test infrastructure, skip steps 2-3 and 6. Implement directly and verify manually. Do not introduce test infrastructure unless the user requests it.
 
-Commit messages should follow Conventional Commits format:
-
-```
-type(scope): brief description
-
-- Reference to design decision or spec section
-- What changed and why
-- Any notable implementation details
-
-Related to: [task identifier or spec section]
-```
-
-Types: feat, fix, refactor, test, docs, chore
+Commit messages should reference design decisions, spec sections, or task identifiers where relevant.
 
 **Failure Handling**: If tests fail during implementation:
 
