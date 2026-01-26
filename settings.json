@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix format"
+            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix format \"{}\""
           }
         ]
       },
@@ -16,7 +16,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -r mix credo"
+            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix credo \"{}\""
           }
         ]
       }
