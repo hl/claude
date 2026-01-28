@@ -23,12 +23,15 @@
     "pr-review-toolkit@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
-  "allowedCommands": [
-    "elixir /tmp/*.exs",
-    "elixir /tmp/**/*.exs",
-    "cat /tmp/*",
-    "cat /tmp/**/*"
-  ],
+  "permissions": {
+    "allow": [
+      "Bash(elixir /tmp/*.exs)",
+      "Bash(elixir /tmp/**/*.exs)",
+      "Bash(cat /tmp/*)",
+      "Bash(cat /tmp/**/*)",
+      "Bash(say *)"
+    ]
+  },
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
   }
