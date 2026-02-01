@@ -95,7 +95,28 @@ Write the design in the plan file, structured as "what" then "how":
 
 Iterate based on review feedback for a maximum of 3 cycles. If fundamental issues remain, use AskUserQuestion to resolve.
 
-**Exit Plan Mode**: Once the design is complete and reviewed, use ExitPlanMode to get user approval before proceeding to implementation.
+**Plan Review (Codex)**: After the design review subagent completes, launch a general-purpose subagent (via Task tool with `subagent_type: "general-purpose"`) to get an external review using the Codex MCP server. The subagent should:
+
+1. Read the complete design from the plan file
+2. Use the `mcp__codex__codex` tool to submit the design for review with a prompt like:
+
+   ```
+   Review this design plan and provide critical feedback:
+
+   [design content]
+
+   Focus on: architectural concerns, potential issues, better alternatives, and best practices alignment. Be specific and actionable.
+   ```
+
+3. Return Codex's feedback, highlighting:
+   - Architectural concerns or anti-patterns
+   - Suggested improvements to the approach
+   - Potential issues with dependencies, performance, or maintainability
+   - Whether the design follows best practices for the technology stack
+
+If Codex identifies significant issues, iterate on the design (this counts toward the 3-cycle maximum). Minor suggestions can be noted for consideration during implementation.
+
+**Exit Plan Mode**: Once the design is complete and reviewed (by both the internal subagent and Codex), use ExitPlanMode to get user approval before proceeding to implementation.
 
 ### Phase 2: Task Creation and Preparation — Post-Approval
 
@@ -369,6 +390,7 @@ Alternative: Config file (JSON/YAML)
 Use the Task tool to launch subagents for:
 
 - **Design Review** (`general-purpose`): Required during Phase 1 to critically evaluate the design
+- **Plan Review via Codex** (`general-purpose`): Required during Phase 1 after design review; subagent uses `mcp__codex__codex` tool to get external architectural feedback
 - **Task Preparation** (`Explore`): For complex tasks before execution to analyze files and draft test cases
 - **Code Review** (`pr-review-toolkit:code-reviewer`): Non-trivial changes before committing; if plugin unavailable, use `general-purpose` with explicit review prompt
 - **Specification Writing** (`general-purpose`): Required for final documentation in Phase 4
