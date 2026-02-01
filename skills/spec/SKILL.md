@@ -118,7 +118,16 @@ Focus areas: architectural concerns, potential issues, better alternatives, best
 IMPORTANT: Extract and return the `sessionId` from the response's `_meta` field. This is required proof that the MCP was called and enables follow-up queries via `mcp__codex__codex-reply`.
 ```
 
-**Verification**: If the subagent returns without a valid Codex `sessionId`, the review did not happen. Re-launch the subagent with explicit instructions to call `mcp__codex__codex` and return the `sessionId` from `_meta`.
+**Verification**: If the subagent returns without a valid Codex `sessionId`:
+1. First attempt: Re-launch the subagent with explicit instructions to call `mcp__codex__codex` and return the `sessionId` from `_meta`
+2. Second attempt failed: Report the failure to the user via AskUserQuestion with context about what went wrong (MCP unavailable, timeout, malformed response, etc.)
+
+Do NOT retry indefinitely. Two attempts maximum, then escalate.
+
+**Error Handling**: If the Codex MCP call fails (tool not available, timeout, error response):
+- The subagent should return immediately with the error details
+- Do not wait indefinitely for a response that won't come
+- Report: "Codex MCP review failed: [error]. Proceeding requires user decision."
 
 If Codex identifies significant issues, iterate on the design (counts toward the 3-cycle maximum). Minor suggestions can be noted for implementation.
 
@@ -418,7 +427,7 @@ Do not use subagents for:
 Before proceeding to the next phase:
 
 - Design review subagent finds no critical issues (minor issues acceptable after 3 iterations)
-- Codex MCP review completed with valid `sessionId` captured (required proof of external review)
+- Codex MCP review completed with valid `sessionId` captured, OR user explicitly approved skipping due to MCP failure
 - All tests pass (if test infrastructure exists)
 - Code follows project conventions and passes code review
 - Documentation is updated and accurate
