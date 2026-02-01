@@ -93,9 +93,9 @@ Write the design in the plan file, structured as "what" then "how":
 - Is the testing approach comprehensive?
 - Are there simpler ways to achieve the same goal?
 
-Iterate based on review feedback for a maximum of 3 cycles. If fundamental issues remain, use AskUserQuestion to resolve.
+Iterate based on review feedback for a maximum of 3 cycles. If fundamental issues remain, use AskUserQuestion to resolve. Complete all internal iterations before proceeding to Codex review.
 
-**Plan Review (Codex)** — REQUIRED: After the design review subagent completes, you MUST launch a general-purpose subagent to get an external review from the Codex MCP server. This step cannot be skipped. The subagent must:
+**Plan Review (Codex)** — REQUIRED, SINGLE PASS: After internal design review converges, launch a general-purpose subagent for external review via Codex MCP. This is a **final check**, not an iteration loop. The subagent must:
 
 1. Read the complete design from the plan file
 2. Call the `mcp__codex__codex` tool to submit the design for review
@@ -103,7 +103,7 @@ Iterate based on review feedback for a maximum of 3 cycles. If fundamental issue
 4. Return to the parent agent with:
    - The **`sessionId`** (required — this proves the MCP was called)
    - Codex's feedback summary
-   - Any critical issues that require design iteration
+   - Classification: critical (blocking) vs advisory (note for implementation)
 
 Example prompt for the subagent:
 
@@ -116,11 +116,15 @@ Submit this design for review:
 Focus areas: architectural concerns, potential issues, better alternatives, best practices alignment.
 
 IMPORTANT: Extract and return the `sessionId` from the response's `_meta` field. This is required proof that the MCP was called and enables follow-up queries via `mcp__codex__codex-reply`.
+
+Classify each piece of feedback as:
+- CRITICAL: Blocking issue that must be addressed before implementation
+- ADVISORY: Good suggestion to consider during implementation
 ```
 
 **Verification**: If the subagent returns without a valid Codex `sessionId`:
-1. First attempt: Re-launch the subagent with explicit instructions to call `mcp__codex__codex` and return the `sessionId` from `_meta`
-2. Second attempt failed: Report the failure to the user via AskUserQuestion with context about what went wrong (MCP unavailable, timeout, malformed response, etc.)
+1. First attempt: Re-launch with explicit instructions to call `mcp__codex__codex` and return the `sessionId`
+2. Second attempt failed: Escalate to user via AskUserQuestion
 
 Do NOT retry indefinitely. Two attempts maximum, then escalate.
 
@@ -129,7 +133,11 @@ Do NOT retry indefinitely. Two attempts maximum, then escalate.
 - Do not wait indefinitely for a response that won't come
 - Report: "Codex MCP review failed: [error]. Proceeding requires user decision."
 
-If Codex identifies significant issues, iterate on the design (counts toward the 3-cycle maximum). Minor suggestions can be noted for implementation.
+**Handling Codex Feedback** (no ping-pong):
+- **CRITICAL issues**: Address in the design, then proceed. Do NOT re-run internal design review or Codex. If the critical issue fundamentally changes the design, escalate to user.
+- **ADVISORY feedback**: Note in the plan for consideration during implementation. Do not iterate.
+
+Codex review runs exactly once. After addressing any critical feedback, proceed to Exit Plan Mode.
 
 **Exit Plan Mode**: Once the design is complete and reviewed by both subagents, include the Codex `sessionId` in your ExitPlanMode summary. This serves as:
 - Proof that external review occurred
