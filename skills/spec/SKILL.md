@@ -99,9 +99,9 @@ Iterate based on review feedback for a maximum of 3 cycles. If fundamental issue
 
 1. Read the complete design from the plan file
 2. Call the `mcp__codex__codex` tool to submit the design for review
-3. **Capture the response ID** returned by Codex (format: `codex-[id]` or similar)
+3. **Capture the `sessionId`** from the response's `_meta` field (this is the Codex session identifier)
 4. Return to the parent agent with:
-   - The **response ID** (required — this proves the MCP was called)
+   - The **`sessionId`** (required — this proves the MCP was called)
    - Codex's feedback summary
    - Any critical issues that require design iteration
 
@@ -115,16 +115,16 @@ Submit this design for review:
 
 Focus areas: architectural concerns, potential issues, better alternatives, best practices alignment.
 
-IMPORTANT: Return the exact response ID from Codex along with the feedback. The response ID is required proof that the MCP was called.
+IMPORTANT: Extract and return the `sessionId` from the response's `_meta` field. This is required proof that the MCP was called and enables follow-up queries via `mcp__codex__codex-reply`.
 ```
 
-**Verification**: If the subagent returns without a valid Codex response ID, the review did not happen. Re-launch the subagent with explicit instructions to call `mcp__codex__codex` and return the response ID.
+**Verification**: If the subagent returns without a valid Codex `sessionId`, the review did not happen. Re-launch the subagent with explicit instructions to call `mcp__codex__codex` and return the `sessionId` from `_meta`.
 
 If Codex identifies significant issues, iterate on the design (counts toward the 3-cycle maximum). Minor suggestions can be noted for implementation.
 
-**Exit Plan Mode**: Once the design is complete and reviewed by both subagents, include the Codex response ID in your ExitPlanMode summary. This serves as:
+**Exit Plan Mode**: Once the design is complete and reviewed by both subagents, include the Codex `sessionId` in your ExitPlanMode summary. This serves as:
 - Proof that external review occurred
-- A reference for follow-up queries if needed during implementation
+- A reference for follow-up queries via `mcp__codex__codex-reply` if needed during implementation
 
 Use ExitPlanMode to get user approval before proceeding to implementation.
 
@@ -400,7 +400,7 @@ Alternative: Config file (JSON/YAML)
 Use the Task tool to launch subagents for:
 
 - **Design Review** (`general-purpose`): Required during Phase 1 to critically evaluate the design
-- **Plan Review via Codex** (`general-purpose`): REQUIRED during Phase 1 after design review; subagent MUST call `mcp__codex__codex` and return the response ID as proof of execution
+- **Plan Review via Codex** (`general-purpose`): REQUIRED during Phase 1 after design review; subagent MUST call `mcp__codex__codex` and return the `sessionId` as proof of execution
 - **Task Preparation** (`Explore`): For complex tasks before execution to analyze files and draft test cases
 - **Code Review** (`pr-review-toolkit:code-reviewer`): Non-trivial changes before committing; if plugin unavailable, use `general-purpose` with explicit review prompt
 - **Specification Writing** (`general-purpose`): Required for final documentation in Phase 4
@@ -418,7 +418,7 @@ Do not use subagents for:
 Before proceeding to the next phase:
 
 - Design review subagent finds no critical issues (minor issues acceptable after 3 iterations)
-- Codex MCP review completed with valid response ID captured (required proof of external review)
+- Codex MCP review completed with valid `sessionId` captured (required proof of external review)
 - All tests pass (if test infrastructure exists)
 - Code follows project conventions and passes code review
 - Documentation is updated and accurate
