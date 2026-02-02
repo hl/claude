@@ -273,7 +273,12 @@ Analyze the complete design and break down all work into concrete tasks upfront:
 - Include documentation update tasks
 - Be specific about file locations and what needs to change
 
-Note: The specification (Phase 4) is handled separately after all implementation tasks complete — do not create a task for it.
+**Specification Task**: Always create a final task for the spec as part of Phase 2 task creation:
+- Subject: "Write specification for [feature]" or "Update specification for [feature]"
+- Description: Reference the Skip Threshold criteria (Phase 4) — if criteria are met, the task can be completed with a note explaining why spec was skipped; otherwise, write/update the spec
+- This task should be the last in the dependency chain (blocked by all implementation tasks)
+
+During pre-workflow check, you identified whether an existing spec exists. Use this to determine create vs. update.
 
 **Create all tasks upfront** using TaskCreate before beginning any implementation. This provides complete visibility, proper dependency ordering, clear progress tracking, and ability to resume if interrupted.
 
@@ -419,15 +424,17 @@ Uses short-lived access tokens with refresh tokens for security.
   - If changes are broken: discard with `git checkout`
 - Resume by completing the current task or starting the next pending one
 
-**Completion Verification**: Before proceeding to Phase 4:
+**Completion Verification**: Before starting the specification task:
 
-- Run TaskList and verify all tasks are marked `completed`
-- If any tasks remain `pending` or `in_progress`, complete them first
-- Do not proceed to specification writing until all tasks are done
+- Run TaskList and verify all implementation tasks are marked `completed`
+- The spec task should be the only remaining `pending` task
+- If any implementation tasks remain incomplete, finish them first
 
 ### Phase 4: Technical Specification — Final Deliverable
 
-**Skip Threshold**: Skip this phase entirely if ALL of the following are true:
+This phase is executed as the final task created in Phase 2. Mark it `in_progress` when starting, `completed` when done.
+
+**Skip Threshold**: If ALL of the following are true, mark the spec task `completed` with a note explaining why no spec was written:
 
 - Fewer than 50 lines changed total
 - Only 1-2 files affected
@@ -435,7 +442,7 @@ Uses short-lived access tokens with refresh tokens for security.
 - No architectural decisions made
 - No design tradeoffs worth documenting
 
-For changes that meet this threshold, the commit messages serve as sufficient documentation.
+For changes meeting this threshold, commit messages serve as sufficient documentation. Example task completion note: "Skipped: <50 lines, 2 files, no new APIs or architectural decisions."
 
 **When to Write a Spec**: Proceed with specification if ANY of these apply:
 
