@@ -41,7 +41,76 @@ This skill guides spec-driven development using plan mode for design and autonom
 - Respect risk boundaries: ask before data deletion, destructive git operations, or external network calls not required for the task
 - Use the Write tool for file creation (never cat/heredoc in Bash)
 
-**Review Cycle Definition**: A review cycle is a complete subagent review round where feedback is returned and addressed. Minor inline fixes (typos, formatting) made during implementation don't count as cycles. Only full subagent invocations that return substantive feedback count toward the 3-cycle limit.
+**Review Cycle Definition**: A review cycle is a complete subagent review round where feedback is returned and addressed. Minor inline fixes (typos, formatting) made during implementation don't count as cycles. Only full subagent invocations that return substantive feedback count toward cycle limits.
+
+- **Design review**: Maximum cycles determined by feature complexity (see below)
+- **Code review**: Maximum cycles determined by task complexity (see below)
+
+## Automatic Complexity Classification
+
+Complexity is classified automatically based on objective criteria. Do not ask the user — assess and proceed.
+
+### Feature Complexity (for Phase 1 design review depth)
+
+Assess after pre-workflow check, based on estimated scope:
+
+| Complexity | Criteria | Design Review Depth |
+|------------|----------|---------------------|
+| **Trivial** | Single file, <30 lines, no new interfaces | Skip Phase 1 entirely |
+| **Simple** | 1-3 files, <100 lines, follows existing patterns | 1 design review cycle max, skip Codex |
+| **Medium** | 3-6 files, 100-300 lines, minor new patterns | 2 design review cycles max, Codex review |
+| **Complex** | 6+ files OR >300 lines OR new architecture | Full 3 cycles, Codex review |
+
+Use the highest complexity that matches any criterion (e.g., 2 files but new architecture = Complex).
+
+### Task Complexity (for Phase 3 code review depth)
+
+Assess per task after implementation, based on actual changes:
+
+| Complexity | Criteria | Code Review Depth |
+|------------|----------|-------------------|
+| **Trivial** | Single file, <20 lines, no new functions | Skip code review |
+| **Simple** | 1-2 files, <50 lines, clear pattern application | 1 cycle max, self-verify on issues |
+| **Complex** | 3+ files OR >50 lines OR new patterns/APIs | Full 2-cycle loop |
+
+### Batch Review for Simple Tasks
+
+When multiple consecutive Simple or Trivial tasks exist, batch them into a single review:
+
+- Batch size: 2-4 tasks per review call
+- Only batch tasks that are independent (no dependencies between them)
+- Review prompt should list all tasks and their changes
+- If any task in the batch has critical issues, address that task individually
+
+This reduces review calls from N to ceil(N/3) for simple task sequences.
+
+### Model Selection
+
+Use the `model` parameter when launching Task agents. Follow the "Opus plans, Sonnet builds, Haiku fetches" principle.
+
+| Model | Use Cases |
+|-------|-----------|
+| **opus** | Design review (Phase 1), architectural decisions, complex problem-solving requiring long-horizon reasoning |
+| **sonnet** | Code review (Phase 3), implementation guidance, general-purpose analysis — the workhorse for building |
+| **haiku** | Exploration, pre-flight checks, short focused queries, parallel subtask execution |
+
+**Opus** (planning & architecture):
+- Design review subagents in Phase 1
+- Evaluating architectural tradeoffs
+- Novel problems without established patterns
+
+**Sonnet** (building & validation):
+- Code review subagents in Phase 3
+- Implementation-focused analysis
+- Default when task doesn't clearly fit Opus or Haiku
+
+**Haiku** (retrieval & short tasks):
+- Explore agents for codebase navigation
+- Pre-flight checks ("what test framework?", "find files matching X")
+- Summarization of long outputs
+- Note: Haiku loses context in longer sessions — keep tasks short and focused
+
+**Scaling down for Simple features**: For Simple feature complexity (1-3 files, <100 lines), use Sonnet instead of Opus for design review since the architectural reasoning is straightforward.
 
 ## Using AskUserQuestion
 
@@ -129,7 +198,16 @@ Write the design in the plan file, structured as "what" then "how":
 - **Testing approach**: What needs testing? What types of tests are appropriate? (Reference pre-workflow test assessment)
 - **Documentation updates**: What README files, guides, or module docs need updating?
 
-**Design Review**: Launch a subagent (`subagent_type: "general-purpose"`) to critically evaluate the design.
+**Design Review**: Review depth and model are determined by feature complexity (see "Automatic Complexity Classification"):
+
+| Feature Complexity | Review Cycles | Model | Codex |
+|--------------------|---------------|-------|-------|
+| Trivial | Skip | — | No |
+| Simple | 1 max | sonnet | No |
+| Medium | 2 max | opus | Yes |
+| Complex | 3 max | opus | Yes |
+
+For features requiring design review, launch a subagent (`subagent_type: "general-purpose"`, `model: <per table above>`) to critically evaluate the design.
 
 Example prompt:
 
@@ -144,9 +222,9 @@ Review this design critically. Look for:
 [paste design content]
 ```
 
-Iterate based on review feedback for a maximum of 3 cycles. If fundamental issues remain, use AskUserQuestion to resolve. Complete all internal iterations before proceeding to Codex review.
+Iterate based on review feedback up to the cycle limit for the feature's complexity. If fundamental issues remain at the limit, use AskUserQuestion to resolve. Complete all internal iterations before proceeding to Codex review (if applicable).
 
-**Plan Review (Codex)** — After internal design review converges, call `mcp__codex__codex` **directly** (never via subagent) to get external review. This is a single-pass final check, not an iteration loop.
+**Plan Review (Codex)** — For Medium and Complex features only: after internal design review converges, call `mcp__codex__codex` **directly** (never via subagent) to get external review. This is a single-pass final check, not an iteration loop. Skip for Trivial and Simple features.
 
 Steps:
 
@@ -172,10 +250,10 @@ If user chooses retry and it fails again, proceed without external review (don't
 
 **Handling Codex Feedback** (no ping-pong):
 
-- **CRITICAL issues**: Address in the design, then proceed. Do NOT re-run internal design review or Codex. If the critical issue fundamentally changes the design, escalate to user.
+- **CRITICAL issues**: Address in the design with a targeted fix. After fixing, perform a self-review: verify the fix doesn't introduce new architectural problems or contradict earlier design decisions. If the fix is localized and sound, proceed. If the fix fundamentally changes the design (affects multiple sections, alters core approach, or introduces new tradeoffs), escalate to user before proceeding.
 - **ADVISORY feedback**: Note in the plan for consideration during implementation. Do not iterate.
 
-Codex review runs exactly once. After addressing any critical feedback, proceed to Exit Plan Mode.
+Codex review runs exactly once — do NOT re-run Codex or restart internal design review. The self-review after fixing critical issues is a quick sanity check, not a full review cycle. After addressing any critical feedback, proceed to Exit Plan Mode.
 
 **Handling Conflicting Reviews**: When internal design review and Codex review give contradictory feedback:
 
@@ -183,7 +261,7 @@ Codex review runs exactly once. After addressing any critical feedback, proceed 
 2. If both are equally valid, choose one with explicit reasoning documented in the plan
 3. If the conflict is fundamental (mutually exclusive approaches), use AskUserQuestion
 
-**Exit Plan Mode**: Use ExitPlanMode to get user approval before proceeding to implementation. If the user rejects the plan, incorporate their feedback and iterate on the design (this counts toward the 3-cycle limit).
+**Exit Plan Mode**: Use ExitPlanMode to get user approval before proceeding to implementation. If the user rejects the plan, incorporate their feedback and iterate on the design. User rejections do not count toward the 3-cycle limit — that limit applies only to automated subagent review cycles. However, after 3 user rejections without convergence, use AskUserQuestion to clarify requirements rather than continuing to iterate.
 
 ### Phase 2: Task Creation and Preparation — Post-Approval
 
@@ -208,7 +286,7 @@ Note: The specification (Phase 4) is handled separately after all implementation
 
 **Subagent Task Preparation**: After all tasks are created, launch subagents for complex tasks:
 
-- Use `subagent_type: "Explore"` (see Subagent Strategy for fallback)
+- Use `subagent_type: "Explore"`, `model: haiku` (see Subagent Strategy for fallback)
 - Launch subagents in parallel for independent tasks to reduce overhead
 - For dependent tasks, prepare them sequentially in dependency order
 - Each subagent should analyze files to create/modify, identify code to understand, draft test cases, plan implementation approach, and identify potential issues
@@ -237,12 +315,75 @@ For each task:
 5. **Refactor**: Clean up code while keeping tests green
 6. **Run full test suite**: Ensure no regressions
 7. **Update documentation**: Modify relevant README files, guides, or inline docs
-8. **Code review**: For non-trivial changes, launch a subagent (`subagent_type: "pr-review-toolkit:code-reviewer"`) to check for quality issues, edge cases, or improvements (see Subagent Strategy for fallback). Skip for trivial changes.
-9. **Address review feedback**: Make any necessary changes, then re-run tests if changes were substantive
-10. **Commit**: Create atomic commit with descriptive message
-11. **Mark task completed**: Use TaskUpdate to set status to `completed`
+8. **Code review loop**: Assess task complexity based on actual changes, then apply appropriate review depth (see "Code Review Loop" below). Trivial tasks skip review; Simple tasks get 1 cycle + self-verify; Complex tasks get full 2-cycle loop.
+9. **Commit**: Create atomic commit with descriptive message
+10. **Mark task completed**: Use TaskUpdate to set status to `completed`
 
 **Projects Without Test Infrastructure**: If the pre-workflow check found no test infrastructure, skip steps 2-3 and 6. Implement directly and verify manually. Do not introduce test infrastructure unless the user requests it.
+
+**Code Review Loop**: Review depth is determined by task complexity (see "Automatic Complexity Classification"). Assess complexity after implementation based on actual changes made.
+
+**By task complexity** (all code reviews use `model: sonnet`):
+
+| Complexity | Review Behavior |
+|------------|-----------------|
+| **Trivial** | Skip code review entirely |
+| **Simple** | 1 subagent cycle max; if critical issues found, fix then self-verify (no second subagent call) |
+| **Complex** | Full 2-cycle loop with subagent re-review |
+
+**Simple task flow** (1 cycle + self-verify):
+```
+Review → Classify → Fix critical issues → Self-verify checklist → Commit
+```
+
+**Complex task flow** (up to 2 cycles):
+```
+Review → Classify → Fix critical issues → Re-run tests → Re-review (subagent)
+         ↓                                                    ↓
+         No critical issues? → Commit                        Cycle 2? → Commit or escalate
+```
+
+**Self-Verification Checklist** (for Simple tasks after fixing cycle 1 issues):
+- [ ] Each critical issue from review has been addressed
+- [ ] Fixes don't introduce new control flow or data handling
+- [ ] Fixes follow the same pattern as surrounding code
+- [ ] Tests still pass (if applicable)
+
+If self-verification reveals concerns, escalate to AskUserQuestion rather than launching another subagent.
+
+**For Complex tasks**, each cycle:
+1. Launch subagent (`subagent_type: "pr-review-toolkit:code-reviewer"`, `model: sonnet`) — see Subagent Strategy for fallback
+2. Classify feedback as **CRITICAL** (blocking) or **ADVISORY** (note for future)
+3. If no critical issues: exit loop, proceed to commit
+4. If critical issues exist and cycle < 2: fix issues, re-run tests if fixes were substantive, then re-review
+5. If critical issues exist and cycle = 2: exit loop and escalate (see below)
+
+**Feedback Classification**:
+- **CRITICAL**: Security vulnerabilities, logic errors, broken functionality, missing error handling for likely failure modes, violations of project conventions that would cause issues
+- **ADVISORY**: Style preferences, minor optimizations, suggestions for future improvement, edge cases that are unlikely in practice
+
+**Substantive Fix Definition**: A fix is "substantive" (requiring test re-run) if it:
+- Changes control flow (conditionals, loops, early returns)
+- Modifies data transformations or calculations
+- Alters function signatures or return values
+- Adds, removes, or reorders operations
+
+A fix is non-substantive (no test re-run needed) if it only:
+- Renames variables or functions (with no behavioral change)
+- Reformats code or adjusts whitespace
+- Updates comments or documentation strings
+- Reorders imports or declarations
+
+When uncertain, re-run tests — the cost of a redundant test run is lower than missing a regression.
+
+**Escalation at Cycle Limit**: If critical issues remain after 2 cycles:
+1. Document the unresolved issues in the task
+2. Use AskUserQuestion with options: (a) proceed with known issues documented, (b) take a different approach, (c) get user guidance on specific issues
+3. If user approves proceeding, add a comment in the code noting the known limitation
+
+**Regression Detection**: If cycle 2 introduces new critical issues that weren't present in cycle 1, this signals the fix approach is flawed. Escalate immediately rather than continuing to iterate.
+
+**Skip Conditions**: Code review is skipped automatically for Trivial tasks (see "Automatic Complexity Classification"). The classification criteria (single file, <20 lines, no new functions) supersede subjective judgment.
 
 Commit messages should reference design decisions or task context where relevant. Example:
 
@@ -382,7 +523,7 @@ Related to: [original feature request or ticket]
 
 When Phase 4 involves updating an existing specification (identified during pre-workflow check):
 
-1. Launch a subagent (`subagent_type: "Explore"`) to review the existing spec and current implementation to identify differences (see Subagent Strategy for fallback)
+1. Launch a subagent (`subagent_type: "Explore"`, `model: haiku`) to review the existing spec and current implementation to identify differences (see Subagent Strategy for fallback)
 2. Update the existing spec to reflect changes (do not create a new spec)
 3. Preserve the history by adding update notes with dates in the "Change History" section
 4. Update the "Last updated" field and status if applicable
@@ -423,12 +564,12 @@ Process:
 
 Use the Task tool to launch subagents for:
 
-| Purpose | Subagent Type | Fallback |
-|---------|---------------|----------|
-| Design Review | `general-purpose` | N/A (always available) |
-| Task Preparation | `Explore` | `general-purpose` with prompt: "Explore the codebase to analyze files to create/modify, identify relevant code patterns, and draft an implementation approach." |
-| Code Review | `pr-review-toolkit:code-reviewer` | `general-purpose` with prompt: "Review this code for quality issues, edge cases, adherence to project conventions, and potential improvements." |
-| Specification Writing | `general-purpose` | N/A (always available) |
+| Purpose | Subagent Type | Model | Fallback |
+|---------|---------------|-------|----------|
+| Design Review | `general-purpose` | `opus` (or `sonnet` for Simple features) | N/A (always available) |
+| Task Preparation | `Explore` | `haiku` | `general-purpose` with prompt: "Explore the codebase to analyze files to create/modify, identify relevant code patterns, and draft an implementation approach." |
+| Code Review | `pr-review-toolkit:code-reviewer` | `sonnet` | `general-purpose` with prompt: "Review this code for quality issues, edge cases, adherence to project conventions, and potential improvements." |
+| Specification Writing | `general-purpose` | `sonnet` | N/A (always available) |
 
 **Direct calls (never via subagent)**:
 
@@ -458,7 +599,7 @@ Do not use subagents for:
 **Phase 3 → Phase 4**:
 - All tasks marked `completed`
 - All tests pass (if tests were written)
-- Code follows project conventions and passes code review
+- Code review loop completed: no critical issues, or user approved proceeding with documented limitations
 - Documentation is updated
 
 **Phase 4 completion**:
