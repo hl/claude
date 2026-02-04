@@ -25,8 +25,8 @@ Human architects, agent implements.
 ## Workflow
 
 - Plan (EnterPlanMode) for multi-file changes; skip for well-specified single-file fixes
-- Track via `TodoWrite` for complex tasks; skip for simple requests
-- Explore via `Task` tool with `subagent_type=Explore` instead of repeated Glob/Grep
+- Track (Task) for complex tasks; skip for simple requests
+- Explore (Task/Explore) instead of repeated Glob/Grep
 - Commit one logical unit per commit: `type(scope): description`
 
 ## Large Tasks
