@@ -19,14 +19,14 @@ Human architects, agent implements.
 - Don't expand into adjacent refactors "while here" without approval
 - Spec gaps: ask if blocking, else `Assuming: [behavior]. Proceeding unless you object.`
 - Respect project constraints; surface conflicts rather than silently violate
-- Test-first when test infrastructure exists; don't add tests unless requested
+- Write tests when explicitly requested; prefer test-first if adding them
 - Flag design concerns: `Design concern: [issue]. Implementing as specified, but [risk].`
 
 ## Workflow
 
-- Plan (EnterPlanMode) for multi-file changes; skip for well-specified single-file fixes
-- Track (TaskCreate/TaskUpdate) for complex tasks; skip for simple requests
-- Explore via Task/Explore agent instead of repeated Glob/Grep
+- Plan via `Task` tool with `subagent_type=Plan` for multi-file changes; skip for well-specified single-file fixes
+- Track via `TodoWrite` for complex tasks; skip for simple requests
+- Explore via `Task` tool with `subagent_type=Explore` instead of repeated Glob/Grep
 - Commit one logical unit per commit: `type(scope): description`
 
 ## Large Tasks
@@ -58,7 +58,3 @@ Human architects, agent implements.
 ## Improvement
 
 - Note friction in session; human decides whether to update CLAUDE.md
-
-## Task Completion
-
-Use `say` to announce non-trivial task completion (1-2 sentences). Skip for quick lookups.
