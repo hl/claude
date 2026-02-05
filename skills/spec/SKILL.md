@@ -18,7 +18,7 @@ Assess automatically — do not ask user. Use highest matching criterion.
 | Trivial | 1 file, <30 lines, no new interfaces | Skip Phase 1 |
 | Simple | 1-3 files, <100 lines, existing patterns | 1 cycle (sonnet), no Codex |
 | Medium | 3-6 files, 100-300 lines, minor new patterns | 2 cycles (opus), Codex |
-| Complex | 6+ files OR >300 lines OR new architecture | 3 cycles (opus), Codex |
+| Complex | 6+ files OR >300 lines OR new architecture | 3 cycles (opus), Codex, or Agent Team |
 
 **Task Complexity** (determines Phase 3 depth):
 
@@ -93,8 +93,24 @@ Commit: `docs(spec): add specification for [feature-name]`
 | Task exploration | `Explore` | haiku |
 | Code review | `pr-review-toolkit:code-reviewer` | sonnet |
 | Spec writing | `general-purpose` | sonnet |
+| Design review (Complex) | Agent team | opus (alternative to sequential) |
+| Parallel impl (Complex) | Agent team | sonnet per teammate |
 
-Never delegate: MCP calls, parallel implementation.
+Never delegate: MCP calls.
+
+## Agent Teams (Complex Only)
+
+Use when: Complex classification AND 3+ independent modules with clear file boundaries. Teams use 3-5x tokens — only use when parallelism provides clear benefit.
+
+**How teams work**: Lead spawns teammates, each with own context. Teammates message each other directly and coordinate via shared task list. Lead synthesizes results.
+
+**Phase 1 alternative** — Design review team:
+Spawn teammates with distinct perspectives (architecture, API/interface, devil's advocate). Teammates debate and challenge each other's findings. Lead synthesizes. One team iteration replaces 2-3 sequential subagent cycles.
+
+**Phase 3 alternative** — Parallel implementation:
+When tasks map to independent file sets (e.g., frontend/backend/tests), spawn implementation team. Each teammate owns specific files — no overlap. Use delegate mode (Shift+Tab) to restrict lead to coordination only. Lead coordinates merging and resolves cross-cutting concerns.
+
+**When NOT to use**: Same-file edits, sequential dependencies, Simple/Medium complexity.
 
 ## Quality Gates
 
