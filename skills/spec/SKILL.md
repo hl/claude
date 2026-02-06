@@ -32,7 +32,7 @@ Assess automatically — do not ask user. Use highest matching criterion.
 
 Before EnterPlanMode: search existing specs, note spec location convention, check test infrastructure, classify complexity.
 
-TDD for business logic/algorithms/APIs. Skip tests for config, docs, styling, trivial fixes.
+**TDD scope**: Business logic, algorithms, APIs. Skip tests for config, docs, styling, trivial fixes. Phase 3 references this — "write tests (if appropriate)" means: apply TDD scope.
 
 ## Phase 1: Design (Plan Mode)
 
@@ -43,20 +43,20 @@ Skip for Trivial complexity. Call EnterPlanMode, write design in plan file.
 - Part B (How): Scope, API/interface, Architecture, Data model, Error handling, Dependencies, Testing
 
 **Review process**:
-1. Launch `general-purpose` subagent (model per complexity) to critique
+1. Launch `general-purpose` subagent (see Subagent Strategy for model) to critique
 2. Iterate up to cycle limit
-3. Codex review (Medium+ only): Call `mcp__codex__codex` directly — runs once, no iteration
-4. ExitPlanMode for user approval
+3. Codex review (Medium+ only): single pass, no iteration
+4. ExitPlanMode for user approval. If user rejects, revise design and repeat from step 1.
 
-Codex failure: Ask user whether to retry once or proceed without.
+Codex unavailable or fails: Ask user whether to retry once or proceed without.
 
 ## Phase 2: Task Creation
 
-1. **Spec task first**: "Write specification for [feature]" or "Update specification for [feature]"
+1. **Spec task**: "Write specification for [feature]" (new) or "Update specification for [feature]" (extending/modifying existing spec). If feature partially overlaps an existing spec, update the existing one.
 2. **Implementation tasks**: Atomic units resulting in working code, ordered by dependencies
 3. **Set dependencies**: Spec task blocked by all implementation tasks
 
-Evaluate spec skip threshold now: if <50 lines, 1-2 files, no new APIs/architecture — mark spec task as "will skip" in description.
+**Spec skip evaluation**: If all true — <50 lines, 1-2 files, no new APIs/architecture — mark spec task description as "will skip". Phase 4 checks this flag rather than re-evaluating.
 
 ## Phase 3: Implementation
 
@@ -69,17 +69,19 @@ For each task: mark in_progress → write tests (if appropriate) → implement �
 
 At cycle limit with unresolved criticals: AskUserQuestion with options.
 
-Test failures: Fix before committing. Fundamental flaws: stash, mark pending, ask user.
+Test failures: Fix before committing.
+
+**Fundamental flaws discovered mid-implementation**: Stash current work, mark task pending. If completed tasks are affected by the flaw, note which tasks need revisiting. AskUserQuestion with options: (a) revert completed tasks and redesign, (b) fix forward from current state, (c) pause and discuss.
 
 ## Phase 4: Specification
 
 Execute spec task created in Phase 2.
 
-**Skip if** (all true): <50 lines, 1-2 files, no new APIs/interfaces, no architectural decisions. Mark completed with skip reason.
+**Skip if** spec task was marked "will skip" in Phase 2. Mark completed with skip reason.
 
 **Write spec**: Launch `general-purpose` subagent (sonnet) with feature name, key decisions, files implemented, instruction to match existing format. Location: follow existing pattern or `docs/specs/`.
 
-Minimum sections: Header (name, dates, status), Overview. Add API/Interface if public interface exists.
+Minimum sections: Header (name, date created, date updated, status), Overview. Add API/Interface if public interface exists. Set dates to current date on creation; update "date updated" on modifications.
 
 Updates: Modify in place, add to Change History. Major architectural changes: new spec, mark old as superseded.
 
@@ -109,6 +111,8 @@ Spawn teammates with distinct perspectives (architecture, API/interface, devil's
 
 **Phase 3 alternative** — Parallel implementation:
 When tasks map to independent file sets (e.g., frontend/backend/tests), spawn implementation team. Each teammate owns specific files — no overlap. Use delegate mode (Shift+Tab) to restrict lead to coordination only. Lead coordinates merging and resolves cross-cutting concerns.
+
+**Conflict resolution**: If teammates produce conflicting approaches or interface mismatches: (1) lead identifies the conflict, (2) lead decides resolution based on the approved design, (3) affected teammate revises. If the conflict reveals a design gap, pause implementation and escalate to user.
 
 **When NOT to use**: Same-file edits, sequential dependencies, Simple/Medium complexity.
 
