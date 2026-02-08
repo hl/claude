@@ -106,6 +106,22 @@ Use when: Complex classification AND 3+ independent modules with clear file boun
 
 **How teams work**: Lead spawns teammates, each with own context. Teammates message each other directly and coordinate via shared task list. Lead synthesizes results.
 
+**Preflight** — Before spawning teammates:
+
+*Phase 1 (Design review):*
+1. Explore feature requirements and existing codebase structure
+2. Identify key architectural areas: data model, API surface, error handling, testing, dependencies
+3. Map specific file sets to each review perspective
+4. Spawn teammates with explicit scope: "Review data model in [files X,Y,Z]", "Review API contracts in [files A,B,C]", etc.
+
+*Phase 3 (Parallel implementation):*
+1. Analyze Phase 2 tasks and identify file boundaries
+2. Map tasks to distinct file sets with minimal overlap
+3. Identify shared interfaces/contracts between boundaries
+4. Spawn teammates with explicit ownership: "Own [files X,Y], read-only [file Z for context], coordinate on [shared interface in file W]"
+
+Result: No duplicate exploration, clear boundaries, fewer conflicts.
+
 **Phase 1 alternative** — Design review team:
 Spawn teammates with distinct perspectives (architecture, API/interface, devil's advocate). Teammates debate and challenge each other's findings. Lead synthesizes. One team iteration replaces 2-3 sequential subagent cycles.
 
