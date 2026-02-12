@@ -33,7 +33,9 @@
     "code-review@claude-plugins-official": true,
     "commit-commands@claude-plugins-official": true,
     "pr-review-toolkit@claude-plugins-official": true,
-    "playwright-cli@playwright-cli": true
+    "playwright-cli@playwright-cli": true,
+    "plugin-dev@claude-plugins-official": true,
+    "claude-code-setup@claude-plugins-official": true
   },
   "alwaysThinkingEnabled": true,
   "feedbackSurveyState": {
