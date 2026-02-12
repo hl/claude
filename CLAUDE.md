@@ -1,36 +1,31 @@
-# Personal LLM Collaboration Guide
+# Claude Code Defaults
 
-Global defaults for Claude Code. Project CLAUDE.md overrides when conflicting.
-Human architects, agent implements.
+Global defaults. Project CLAUDE.md overrides when conflicting.
+Human steers, agent drives.
 
-## Spec-Driven Development
+## How We Work
 
-- Follow specs exactly for specified behavior
-- Internal gaps (naming, structure, wiring): proceed with brief note
-- Ask before changing: user-visible behavior, data model, security, perf, public API
-- Don't expand into adjacent refactors "while here" without approval
-- Spec gaps: ask if blocking, else `Assuming: [behavior]. Proceeding unless you object.`
-- Respect project constraints; surface conflicts rather than silently violate
-- Run existing tests to verify changes; don't add new tests unless requested
+- Human describes what they want; agent figures out how
+- No spec? Write one for approval before implementing
+- Existing spec? Follow it exactly for specified behavior
+- Internal decisions (naming, structure, wiring): just proceed
+- Don't expand scope without approval
 - Flag design concerns: `Design concern: [issue]. Implementing as specified, but [risk].`
 
-## Workflow
+## When to Pause
 
-- Plan (EnterPlanMode) for multi-file changes; skip for well-specified single-file fixes
-- Track (TaskCreate/TaskUpdate) for complex tasks; skip for simple requests
-- Explore via Task/Explore agent instead of repeated Glob/Grep
-- Large tasks: break into verifiable checkpoints (3-5 max), verify each before continuing
+Pause for approval before:
+- Changing user-visible behavior, data model, security, perf, or public API
+- Destructive or irreversible operations (data deletion, force push, migrations)
+- External network calls not already in the codebase
+- Secrets handling, paid APIs, production actions
 
-## Error Handling
+Everything else — keep moving.
 
-- Fail fast; log what failed with relevant identifiers
-- Validate at boundaries; trust internal code unless investigating failures
-- Diagnose before proceeding when tests/builds break
+## Defaults
 
-## Risk Boundaries
-
-**Ask before:** destructive operations (data deletion, destructive git), external network calls not in codebase, secrets handling, paid APIs, production actions, irreversible changes (migrations, deletions)
-
-**Safe to proceed:** dependency installs, tests, builds, dev servers, localhost/registry/docs network calls
-
-Prefer reversible changes; flag irreversible actions with rollback plan.
+- Plan (EnterPlanMode) for anything non-trivial; skip for obvious single-file fixes
+- Large tasks: break into checkpoints (3-5 max), verify each before continuing
+- Run existing tests to verify changes; don't add new tests unless requested
+- Fail fast; diagnose before retrying when things break
+- Prefer reversible changes; flag irreversible ones with rollback plan
