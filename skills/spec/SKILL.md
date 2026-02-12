@@ -1,11 +1,13 @@
 ---
 name: spec
-description: Guides spec-driven development through design (plan mode), task creation, implementation, and technical specification writing. Use when implementing features with full documentation and review cycles.
+description: Guides feature development through design (plan mode), task creation, implementation, and technical documentation. Use when implementing features with full documentation and review cycles.
 ---
 
-# Spec-Driven Development Workflow
+# Feature Development Workflow
 
-Design in plan mode, implement with task tracking, deliver a technical specification.
+Design in plan mode, implement with task tracking, deliver technical documentation.
+
+Defers to project instructions for testing policy, quality gates, and approval thresholds. Defaults below apply when the project doesn't specify.
 
 ## Complexity Classification
 
@@ -30,9 +32,7 @@ Assess automatically — do not ask user. Use highest matching criterion.
 
 ## Pre-Workflow
 
-Before EnterPlanMode: search existing specs, note spec location convention, check test infrastructure, classify complexity.
-
-**TDD scope**: Business logic, algorithms, APIs. Skip tests for config, docs, styling, trivial fixes. Phase 3 references this — "write tests (if appropriate)" means: apply TDD scope.
+Before EnterPlanMode: search existing specs, note spec location convention, check test infrastructure, check project quality gates, classify complexity.
 
 ## Phase 1: Design (Plan Mode)
 
@@ -52,15 +52,19 @@ Codex unavailable or fails: Ask user whether to retry once or proceed without.
 
 ## Phase 2: Task Creation
 
-1. **Spec task**: "Write specification for [feature]" (new) or "Update specification for [feature]" (extending/modifying existing spec). If feature partially overlaps an existing spec, update the existing one.
+1. **Documentation task**: "Write documentation for [feature]" (new) or "Update documentation for [feature]" (extending/modifying existing). If feature partially overlaps an existing doc, update the existing one.
 2. **Implementation tasks**: Atomic units resulting in working code, ordered by dependencies
-3. **Set dependencies**: Spec task blocked by all implementation tasks
+3. **Set dependencies**: Documentation task blocked by all implementation tasks
 
-**Spec skip evaluation**: If all true — <50 lines, 1-2 files, no new APIs/architecture — mark spec task description as "will skip". Phase 4 checks this flag rather than re-evaluating.
+**Documentation skip evaluation**: If all true — <50 lines, 1-2 files, no new APIs/architecture — mark documentation task description as "will skip". Phase 4 checks this flag rather than re-evaluating.
 
 ## Phase 3: Implementation
 
-For each task: mark in_progress → write tests (if appropriate) → implement → refactor while green → code review (per task complexity) → commit → mark completed.
+For each task: mark in_progress → write tests (per project testing policy) → implement → refactor while green → run project quality gates → code review (per task complexity) → commit → mark completed.
+
+**Testing**: Follow project testing policy. Default if project doesn't specify: TDD for business logic, algorithms, APIs; skip tests for config, docs, styling, trivial fixes.
+
+**Project quality gates**: Run whatever the project defines (e.g., linting, type checking, compilation, test suite). Fix failures before proceeding.
 
 **Code review**:
 - Trivial: Skip
@@ -73,17 +77,17 @@ Test failures: Fix before committing.
 
 **Fundamental flaws discovered mid-implementation**: Stash current work, mark task pending. If completed tasks are affected by the flaw, note which tasks need revisiting. AskUserQuestion with options: (a) revert completed tasks and redesign, (b) fix forward from current state, (c) pause and discuss.
 
-## Phase 4: Specification
+## Phase 4: Documentation
 
-Execute spec task created in Phase 2.
+Execute documentation task created in Phase 2.
 
-**Skip if** spec task was marked "will skip" in Phase 2. Mark completed with skip reason.
+**Skip if** documentation task was marked "will skip" in Phase 2. Mark completed with skip reason.
 
-**Write spec**: Launch `general-purpose` subagent (sonnet) with feature name, key decisions, files implemented, instruction to match existing format. Location: follow existing pattern or `docs/specs/`.
+**Write documentation**: Launch `general-purpose` subagent (sonnet) with feature name, key decisions, files implemented, instruction to match existing format. Location: follow existing pattern or `docs/specs/`.
 
 Minimum sections: Header (name, date created, date updated, status), Overview. Add API/Interface if public interface exists. Set dates to current date on creation; update "date updated" on modifications.
 
-Updates: Modify in place, add to Change History. Major architectural changes: new spec, mark old as superseded.
+Updates: Modify in place, add to Change History. Major architectural changes: new doc, mark old as superseded.
 
 Commit: `docs(spec): add specification for [feature-name]`
 
@@ -94,7 +98,7 @@ Commit: `docs(spec): add specification for [feature-name]`
 | Design review | `general-purpose` | opus (sonnet for Simple) |
 | Task exploration | `Explore` | haiku |
 | Code review | `pr-review-toolkit:code-reviewer` | sonnet |
-| Spec writing | `general-purpose` | sonnet |
+| Documentation writing | `general-purpose` | sonnet |
 | Design review (Complex) | Agent team | opus (alternative to sequential) |
 | Parallel impl (Complex) | Agent team | sonnet per teammate |
 
@@ -135,9 +139,9 @@ When tasks map to independent file sets (e.g., frontend/backend/tests), spawn im
 ## Quality Gates
 
 - **Phase 1 → 2**: No critical design issues, Codex complete (or skipped), user approved
-- **Phase 2 → 3**: All tasks created, spec task has correct dependencies
-- **Phase 3 → 4**: All implementation tasks completed, tests pass
-- **Phase 4 done**: Spec accurate (or skip documented), all tasks completed
+- **Phase 2 → 3**: All tasks created, documentation task has correct dependencies
+- **Phase 3 → 4**: All implementation tasks completed, project quality gates pass
+- **Phase 4 done**: Documentation accurate (or skip documented), all tasks completed
 
 ## Usage
 
