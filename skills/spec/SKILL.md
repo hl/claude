@@ -5,24 +5,22 @@ description: Guides feature development through design (plan mode), task creatio
 
 # Feature Development Workflow
 
-Design in plan mode, implement with task tracking, deliver technical documentation.
-
-Defers to project instructions for testing policy, quality gates, and approval thresholds. Defaults below apply when the project doesn't specify.
+Project instructions override these defaults — testing policy, CI requirements, and phase behavior.
 
 ## Complexity Classification
 
-Assess automatically — do not ask user. Use highest matching criterion.
+Assess automatically — do not ask user. Use the highest matching level.
 
 **Feature Complexity** (determines Phase 1 depth):
 
 | Level | Criteria | Design Review |
 |-------|----------|---------------|
 | Trivial | 1 file, <30 lines, no new interfaces | Skip Phase 1 |
-| Simple | 1-3 files, <100 lines, existing patterns | 1 cycle (sonnet), no Codex |
+| Simple | 1-3 files, <100 lines, existing patterns | 1 cycle (opus), no Codex |
 | Medium | 3-6 files, 100-300 lines, minor new patterns | 2 cycles (opus), Codex |
-| Complex | 6+ files OR >300 lines OR new architecture | 3 cycles (opus), Codex, or Agent Team |
+| Complex | 6+ files OR >300 lines OR new architecture | 3 cycles (opus), Codex |
 
-**Task Complexity** (determines Phase 3 depth):
+**Task Complexity** (determines Phase 3 code review depth):
 
 | Level | Criteria | Code Review |
 |-------|----------|-------------|
@@ -32,116 +30,165 @@ Assess automatically — do not ask user. Use highest matching criterion.
 
 ## Pre-Workflow
 
-Before EnterPlanMode: search existing specs, note spec location convention, check test infrastructure, check project quality gates, classify complexity.
+Before Phase 1:
+1. Discover project CI checks
+2. Classify feature complexity
+3. Scan the original prompt for a GitHub issue reference
+4. Check GitHub availability — all three must be true: `gh auth status` succeeds, `git remote get-url origin` returns a URL, and that URL is a GitHub host
+
+Store the issue reference (or none) and GitHub status (available/unavailable) — they will be written into the plan file so they survive a context clear.
 
 ## Phase 1: Design (Plan Mode)
 
 Skip for Trivial complexity. Call EnterPlanMode, write design in plan file.
 
-**Design structure**:
-- Part A (What): Context, Decision, Consequences, Alternatives
-- Part B (How): Scope, API/interface, Architecture, Data model, Error handling, Dependencies, Testing
+**Plan file structure** — in this order:
+
+**Metadata** (first line, written from Pre-Workflow findings):
+```
+Issue: <URL or none> | GitHub: <available|unavailable>
+```
+
+**Part A — Decision** (user-facing; keep tight):
+- Context: why this is being built
+- Decision: what we're doing, in one paragraph
+- Consequences: what changes, what gets harder
+- Alternatives: what was considered and rejected
+
+**Part B — Implementation Notes** (agent-facing; written after Part A):
+- Scope: files and boundaries
+- API/interface: signatures, contracts
+- Architecture: component structure and interactions
+- Data model: shapes and types
+- Error handling: failure modes and responses
+- Dependencies: external or internal
+- Testing: what to cover and how
+
+**Part C — Deferred** (append during implementation):
+- Items out of scope for this cycle. Each entry: what and why. May be empty; must not be omitted.
 
 **Review process**:
-1. Launch `general-purpose` subagent (see Subagent Strategy for model) to critique
-2. Iterate up to cycle limit
-3. Codex review (Medium+ only): single pass, no iteration
-4. ExitPlanMode for user approval. If user rejects, revise design and repeat from step 1.
+1. Launch `general-purpose` subagent (opus) to critique
+2. Iterate up to the cycle limit from the Complexity table
+3. Codex review (Medium+ only): call `mcp__codex__codex` with the plan file content as the prompt, single pass, no iteration. Only skip if the tool returns an error — proceed without in that case.
+4. ExitPlanMode for user approval. If user rejects, revise and repeat from step 1.
 
-Codex unavailable or fails: Ask user whether to retry once or proceed without.
+## GitHub Issue Sync
+
+Run after user approves the plan, before Phase 2. Use `gh` CLI (never delegate MCP calls). Use the issue reference detected in Pre-Workflow.
+
+**If GitHub unavailable**: skip this step. The plan file is the record. Continue to Phase 2.
+
+**If issue found**: Add the approved plan as a new comment:
+```
+gh issue comment <number> --body "<plan-markdown>"
+```
+
+**If no issue found**:
+1. Create a new issue — title from feature name, body from the feature description in the prompt:
+   ```
+   gh issue create --title "<feature name>" --body "<feature description>"
+   ```
+2. Add the approved plan as a comment to the new issue.
+
+**Plan comment format**: Markdown with a `## Design Plan` header followed by the full plan file content.
+
+Store the issue URL — include it in commit messages and PR descriptions throughout Phases 3–5.
 
 ## Phase 2: Task Creation
 
-1. **Documentation task**: "Write documentation for [feature]" (new) or "Update documentation for [feature]" (extending/modifying existing). If feature partially overlaps an existing doc, update the existing one.
-2. **Implementation tasks**: Atomic units resulting in working code, ordered by dependencies
-3. **Set dependencies**: Documentation task blocked by all implementation tasks
+1. **Documentation task**: "Write documentation for [feature]" (new) or "Update documentation for [feature]" (extending or modifying existing).
+2. **Implementation tasks**: Atomic units ordered by dependencies.
+3. **Set dependencies**: Documentation task blocked by all implementation tasks.
 
-**Documentation skip evaluation**: If all true — <50 lines, 1-2 files, no new APIs/architecture — mark documentation task description as "will skip". Phase 4 checks this flag rather than re-evaluating.
+**Documentation skip**: If all true — <50 lines, 1-2 files, no new APIs/architecture — mark documentation task as "will skip". Phase 4 checks this flag.
 
 ## Phase 3: Implementation
 
-For each task: mark in_progress → write tests (per project testing policy) → implement → refactor while green → run project quality gates → code review (per task complexity) → commit → mark completed.
+For each task: mark in_progress → write tests → implement → refactor while green → run CI checks → code review → commit → mark completed.
 
-**Testing**: Follow project testing policy. Default if project doesn't specify: TDD for business logic, algorithms, APIs; skip tests for config, docs, styling, trivial fixes.
+**Testing**: Follow project testing policy. Default: TDD for business logic, algorithms, APIs; skip for config, docs, styling, trivial fixes.
 
-**Project quality gates**: Run whatever the project defines (e.g., linting, type checking, compilation, test suite). Fix failures before proceeding.
+**CI checks**: Run whatever the project defines (linting, type checking, compilation, test suite). Fix failures before proceeding.
 
 **Code review**:
 - Trivial: Skip
 - Simple: 1 cycle with `pr-review-toolkit:code-reviewer` (sonnet) → self-verify → commit
 - Complex: Up to 2 cycles; CRITICAL issues (security, logic, broken functionality) must be fixed; ADVISORY issues (style, minor optimizations) are optional
 
-At cycle limit with unresolved criticals: AskUserQuestion with options.
+At cycle limit with unresolved criticals: AskUserQuestion with options: (a) fix and do another cycle, (b) document and proceed, (c) pause and discuss.
 
 Test failures: Fix before committing.
 
-**Fundamental flaws discovered mid-implementation**: Stash current work, mark task pending. If completed tasks are affected by the flaw, note which tasks need revisiting. AskUserQuestion with options: (a) revert completed tasks and redesign, (b) fix forward from current state, (c) pause and discuss.
+**Tracking deferrals**: Whenever an ADVISORY issue is skipped, a trade-off is accepted, or out-of-scope work is discovered, append it to Part C of the plan file immediately. Do not rely on memory.
+
+**Fundamental flaws mid-implementation**: Stash current work, mark task pending. AskUserQuestion with options: (a) revert completed tasks and redesign, (b) fix forward, (c) pause and discuss.
 
 ## Phase 4: Documentation
 
-Execute documentation task created in Phase 2.
+Execute the documentation task from Phase 2.
 
-**Skip if** documentation task was marked "will skip" in Phase 2. Mark completed with skip reason.
+**Skip if** marked "will skip". Mark completed with skip reason.
 
-**Write documentation**: Launch `general-purpose` subagent (sonnet) with feature name, key decisions, files implemented, instruction to match existing format. Location: follow existing pattern or `docs/specs/`.
+**Write documentation**: Launch `general-purpose` subagent (sonnet) with feature name, key decisions, files implemented, and the spec template below. Location: `docs/specs/<feature-name>.md` unless the project has an established pattern.
 
-Minimum sections: Header (name, date created, date updated, status), Overview. Add API/Interface if public interface exists. Set dates to current date on creation; update "date updated" on modifications.
+Updates: modify in place. Major architectural changes: new doc, link from old one.
 
-Updates: Modify in place, add to Change History. Major architectural changes: new doc, mark old as superseded.
+**Spec template**:
 
-Commit: `docs(spec): add specification for [feature-name]`
+```markdown
+# [Feature Name]
+
+[1-2 sentence description of what this component does and why it exists. Link to related specs if relevant.]
+
+## Overview
+
+[What it does, how it fits in. Include a mermaid diagram for non-trivial flows.]
+
+## [Section per major concept]
+
+[Use tables for structured data (fields, operations, complexity). Use code blocks for data structures and examples. Call out invariants inline: **Invariant**: ...]
+
+## Related Specifications
+
+- [`other-spec.md`](other-spec.md) — [one-line description]
+```
+
+Sections to include where applicable: data structures/types, key operations, algorithms/protocols, error handling, performance characteristics, configuration. Omit sections with nothing to say.
+
+Commit: `docs(spec): add specification for [feature-name]` or `docs(spec): update specification for [feature-name]`.
+
+## Phase 5: Deferred Triage
+
+Read Part C of the plan file. Collect all deferred items from Phase 1 and any appended during Phase 3.
+
+**If no deferred items**: workflow complete.
+
+**If deferred items exist**:
+- GitHub available: create one issue per item (do not batch):
+  ```
+  gh issue create --title "<item title>" --body "<what it is, why deferred, link to parent issue>"
+  ```
+  Then post a comment on the parent issue listing all new follow-up issues with one-line summaries.
+- GitHub unavailable: append to `deferred.md` in the same directory as specs (create if absent) with feature name, date, and one entry per item.
 
 ## Subagent Strategy
 
 | Purpose | Type | Model |
 |---------|------|-------|
-| Design review | `general-purpose` | opus (sonnet for Simple) |
-| Task exploration | `Explore` | haiku |
+| Design review | `general-purpose` | opus |
 | Code review | `pr-review-toolkit:code-reviewer` | sonnet |
 | Documentation writing | `general-purpose` | sonnet |
-| Design review (Complex) | Agent team | opus (alternative to sequential) |
-| Parallel impl (Complex) | Agent team | sonnet per teammate |
 
 Never delegate: MCP calls.
 
-## Agent Teams (Complex Only)
+## Phase Checklist
 
-Use when: Complex classification AND 3+ independent modules with clear file boundaries. Teams use 3-5x tokens — only use when parallelism provides clear benefit.
-
-**How teams work**: Lead spawns teammates, each with own context. Teammates message each other directly and coordinate via shared task list. Lead synthesizes results.
-
-**Preflight** — Before spawning teammates:
-
-*Phase 1 (Design review):*
-1. Explore feature requirements and existing codebase structure
-2. Identify key architectural areas: data model, API surface, error handling, testing, dependencies
-3. Map specific file sets to each review perspective
-4. Spawn teammates with explicit scope: "Review data model in [files X,Y,Z]", "Review API contracts in [files A,B,C]", etc.
-
-*Phase 3 (Parallel implementation):*
-1. Analyze Phase 2 tasks and identify file boundaries
-2. Map tasks to distinct file sets with minimal overlap
-3. Identify shared interfaces/contracts between boundaries
-4. Spawn teammates with explicit ownership: "Own [files X,Y], read-only [file Z for context], coordinate on [shared interface in file W]"
-
-Result: No duplicate exploration, clear boundaries, fewer conflicts.
-
-**Phase 1 alternative** — Design review team:
-Spawn teammates with distinct perspectives (architecture, API/interface, devil's advocate). Teammates debate and challenge each other's findings. Lead synthesizes. One team iteration replaces 2-3 sequential subagent cycles.
-
-**Phase 3 alternative** — Parallel implementation:
-When tasks map to independent file sets (e.g., frontend/backend/tests), spawn implementation team. Each teammate owns specific files — no overlap. Use delegate mode (Shift+Tab) to restrict lead to coordination only. Lead coordinates merging and resolves cross-cutting concerns.
-
-**Conflict resolution**: If teammates produce conflicting approaches or interface mismatches: (1) lead identifies the conflict, (2) lead decides resolution based on the approved design, (3) affected teammate revises. If the conflict reveals a design gap, pause implementation and escalate to user.
-
-**When NOT to use**: Same-file edits, sequential dependencies, Simple/Medium complexity.
-
-## Quality Gates
-
-- **Phase 1 → 2**: No critical design issues, Codex complete (or skipped), user approved
+- **Phase 1 → 2**: No critical design issues, Codex complete (or skipped), user approved, GitHub Issue Sync complete (or skipped — GitHub unavailable)
 - **Phase 2 → 3**: All tasks created, documentation task has correct dependencies
-- **Phase 3 → 4**: All implementation tasks completed, project quality gates pass
-- **Phase 4 done**: Documentation accurate (or skip documented), all tasks completed
+- **Phase 3 → 4**: All implementation tasks completed, CI checks pass
+- **Phase 4 → 5**: Documentation committed (or skip documented)
+- **Phase 5 done**: Deferred items posted to GitHub issues or appended to `deferred.md` alongside specs (or list is empty)
 
 ## Usage
 
