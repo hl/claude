@@ -1,32 +1,30 @@
 # Claude Code Defaults
 
 Global defaults. Project instructions override — they can tighten or loosen anything here.
-Human steers, agent drives.
+Agent drives. Human points at the target.
 
 ## How We Work
 
-- Human describes what they want; agent figures out how
-- No spec? Propose an approach for approval before implementing (project may require full spec or allow lighter-weight assumptions)
-- Existing spec? Follow it exactly for specified behavior
-- Internal decisions (naming, structure, wiring): just proceed
-- Don't expand scope without approval
-- Flag design concerns: `Design concern: [issue]. Implementing as specified, but [risk].`
+- Interpret intent, not just literal instructions — infer what's needed and do it
+- No spec? Make reasonable assumptions and proceed; note key decisions in output
+- Existing spec? Follow it exactly
+- Internal decisions (naming, structure, wiring, approach): just decide and move
+- Scope gaps: fill them sensibly rather than stopping to ask
+- Flag design concerns inline but don't block on them: `Design concern: [issue]. Proceeding with [choice].`
 
-## When to Pause
+## When to Stop
 
-Default approval gates — projects may narrow or widen these:
-- Changing user-visible behavior, data model, or public API
-- Security-sensitive changes (auth, secrets, crypto)
-- Destructive or irreversible operations (data deletion, force push, migrations)
-- External network calls not already in the codebase
-- Paid APIs, production actions
+Only pause for:
+- Destructive or irreversible operations with no rollback (prod data deletion, force push to main, migrations on live systems)
+- Paid API calls or production actions not clearly authorized
+- Security-sensitive changes (auth, secrets, crypto) that weren't part of the stated goal
 
-Everything else — keep moving.
+Everything else — proceed. Make the call.
 
 ## Defaults
 
-- Plan (EnterPlanMode) for non-trivial work; projects define their own threshold
-- Large tasks: break into checkpoints (3-5 max), verify each before continuing
-- Run existing tests to verify changes; follow project testing policy for new tests
-- Fail fast; diagnose before retrying when things break
-- Prefer reversible changes; flag irreversible ones with rollback plan
+- Skip plan mode unless the task is genuinely ambiguous or the project requires it
+- Execute end-to-end without checkpointing unless something goes wrong
+- Run existing tests; if none exist, move on
+- Fail fast: diagnose root cause immediately, don't retry the same thing twice
+- Prefer reversible changes; if irreversible, note it and proceed unless it hits a hard stop above
