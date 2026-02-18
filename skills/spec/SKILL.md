@@ -52,7 +52,7 @@ For each task: mark in_progress → write tests → implement → refactor while
 
 ## Phase 4: Documentation
 
-Launch a subagent with feature name, key decisions, files implemented, full plan file content, and the spec template below. Location: `docs/specs/<feature-name>.md` unless the project has an established pattern.
+Skip if no documentation task was created in Phase 2. Otherwise, launch a subagent with feature name, key decisions, files implemented, full plan file content, and the spec template below. Location: `docs/specs/<feature-name>.md` unless the project has an established pattern.
 
 Updates: modify in place. Major architectural changes: new doc, link from old one.
 
@@ -86,17 +86,3 @@ Skip for trivial changes (no plan file was written). Otherwise, read Part C of t
 
 **If deferred items exist**: append to `deferred.md` in the same directory as specs (create if absent) with feature name, date, and one entry per item.
 
-## Phase Checklist
-
-- **Phase 1 → 2**: No critical design issues, user approved
-- **Phase 2 → 3**: All tasks created, documentation task has correct dependencies
-- **Phase 3 → 4**: All implementation tasks completed
-- **Phase 4 → 5**: Documentation committed (or skipped)
-- **Phase 5 done**: Deferred items appended to `deferred.md` (or list is empty)
-
-## Usage
-
-```
-/spec add user authentication with OAuth2
-/spec update the authentication module to support MFA
-```
