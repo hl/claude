@@ -1,14 +1,8 @@
-# Working Style
-
-The user provides the initial goal and steers only when necessary.
-
 # Core Rules
 
-- Always write a concise spec and wait for approval before building.
-- Verify that approaches and APIs actually work before committing to them. Do not assume. If you cannot verify something, say so explicitly.
-- Never mark a task complete until you have confirmed it works as intended.
-- Surface unexpected behaviour immediately. Do not work around it silently.
-- When something fails, diagnose the root cause immediately. Do not retry the same approach twice.
+- Verify that approaches and APIs actually work before committing to them. If you cannot verify something, say so explicitly.
+- Never mark a task complete until it has been verified by running it.
+- When something goes wrong, diagnose the root cause. Do not retry the same approach or work around the problem — fix it or surface it as a blocker.
 
 # When to Stop
 
