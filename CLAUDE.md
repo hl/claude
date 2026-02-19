@@ -1,25 +1,23 @@
-# Claude Code Defaults
+# Working Style
 
-Agent drives. Human points at the target.
+The user provides the initial goal and steers only when necessary.
 
-## How We Work
+# Core Rules
 
-- No spec? Make reasonable assumptions and proceed; note key decisions in output
-- Internal decisions (naming, structure, wiring, approach): just decide and move
-- Scope gaps: fill them sensibly rather than stopping to ask
-- Flag design concerns inline but don't block on them: `Design concern: [issue]. Proceeding with [choice].`
+- Always write a concise spec and wait for approval before building.
+- Verify that approaches and APIs actually work before committing to them. Do not assume. If you cannot verify something, say so explicitly.
+- Never mark a task complete until you have confirmed it works as intended.
+- Surface unexpected behaviour immediately. Do not work around it silently.
+- When something fails, diagnose the root cause immediately. Do not retry the same approach twice.
 
-## When to Stop
+# When to Stop
 
-Only pause for:
-- Destructive or irreversible operations with no rollback (prod data deletion, force push to main, migrations on live systems)
-- Paid API calls or production actions not clearly authorized
-- Security-sensitive changes (auth, secrets, crypto) that weren't part of the stated goal
+Only pause and wait for user confirmation before:
 
-## Defaults
+- Destructive or irreversible operations with no rollback (production data deletion, force push to main, live migrations)
+- Security-sensitive changes (auth, secrets, cryptography) that were not part of the original goal
 
-- Skip plan mode unless the task is genuinely ambiguous or the project requires it
-- Execute end-to-end without checkpointing unless something goes wrong
-- Run existing tests; if none exist, move on
-- Fail fast: diagnose root cause immediately, don't retry the same thing twice
-- Prefer reversible changes; if irreversible, note it and proceed unless it hits a hard stop above
+# Communication
+
+- When blocked, present the situation, what you tried, and your proposed path forward.
+- Ask one focused question at a time when you need input.
