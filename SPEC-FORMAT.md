@@ -81,7 +81,7 @@ as Claude works through the implementation.
 ## Principles
 
 - **What, not how.** Specs describe behaviour and outcomes. Implementation details belong in the code.
-- **Testable.** Every requirement should be verifiable. If you can’t write a test for it, it’s too vague.
-- **Scoped.** A spec covers one coherent unit of work. If it’s doing two unrelated things, split it.
+- **Testable.** Every requirement should be verifiable. If you can't write a test for it, it's too vague.
+- **Scoped.** A spec covers one coherent unit of work. If it's doing two unrelated things, split it.
 - **Living.** The Decisions section gets updated during implementation. The spec remains useful documentation after the work is done.
-- **Minimal.** Don’t add sections or ceremony beyond what’s needed. The format above is a ceiling, not a floor. Small components might only need Purpose, Requirements, and Acceptance Criteria.
+- **Minimal.** Don't add sections or ceremony beyond what's needed. The format above is a ceiling, not a floor. Small components might only need Purpose, Requirements, and Acceptance Criteria.
