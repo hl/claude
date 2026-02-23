@@ -26,7 +26,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "input=$(cat); printf '%s@%s:%s %s' \"$(whoami)\" \"$(hostname -s)\" \"$(echo \"$input\" | jq -r '.workspace.current_dir' | sed \"s|$HOME|~|\")\""
+    "command": "bash /Users/hl/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "code-review@claude-plugins-official": true,
