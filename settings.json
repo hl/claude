@@ -34,7 +34,9 @@
     "pr-review-toolkit@claude-plugins-official": true,
     "playwright-cli@playwright-cli": true,
     "plugin-dev@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true
+    "claude-code-setup@claude-plugins-official": true,
+    "rules-engine@sona-marketplace": true,
+    "walkthrough@sona-marketplace": true
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
