@@ -11,6 +11,7 @@
       "Bash(say *)"
     ]
   },
+  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -23,10 +24,6 @@
         ]
       }
     ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash /Users/hl/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
     "code-review@claude-plugins-official": true,
@@ -42,6 +39,5 @@
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
-  },
-  "model": "opus"
+  }
 }
