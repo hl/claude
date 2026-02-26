@@ -5,4 +5,5 @@ Proceed autonomously. Only pause before:
 - Security-sensitive changes outside the original goal (auth, secrets, cryptography)
 
 Fix root causes. Never work around a problem, resolve it or surface it as a blocker. If you cannot verify something, say so explicitly before proceeding.
+
 When a task involves meaningful trade-offs or non-obvious decisions, surface them briefly after completing the work.
