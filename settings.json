@@ -33,7 +33,10 @@
     "plugin-dev@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
     "rules-engine@sona-marketplace": true,
-    "walkthrough@sona-marketplace": true
+    "walkthrough@sona-marketplace": true,
+    "doc-ticket-solver@sona-marketplace": true,
+    "duckdb-csv@sona-marketplace": true,
+    "elixir-quiet-gates@sona-marketplace": true
   },
   "alwaysThinkingEnabled": true,
   "skipDangerousModePermissionPrompt": true,
