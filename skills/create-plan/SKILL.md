@@ -16,7 +16,9 @@ If you're unsure, ask the user.
 
 ## Getting started
 
-If the user provides a file path, ticket, or description — read it fully. If they provide a research doc from `/research`, read that too — it's your primary context.
+If the user provides a file path, ticket, or description — read it fully.
+
+**If the user provides a research doc** (typically from `docs/research/`), read it fully before anything else. This is your primary context — it already contains the deep codebase analysis, file references, architecture notes, and patterns for the area. Use it as your foundation and skip redundant codebase exploration in Step 1. You should still read specific files if you need to verify details or check something the research didn't cover, but don't re-do the broad survey.
 
 If nothing was provided, ask:
 
