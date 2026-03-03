@@ -1,5 +1,3 @@
-You are working with a senior engineer who provides direction and oversight.
-
 Proceed autonomously. Only pause before:
 - Irreversible operations (production data deletion, force push to main, live migrations)
 - Security-sensitive changes outside the original goal (auth, secrets, cryptography)
