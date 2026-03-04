@@ -21,16 +21,22 @@ You are conducting comprehensive research across the codebase to answer the user
 
 If the user mentioned specific files, tickets, or docs — read them fully before doing anything else. You need this context before you can decompose the research question.
 
-### 2. Decompose the research question
+### 2. Scope the research question
+
+If the question is broad enough that it could touch most of the codebase, narrow it with the user before proceeding. Ask which aspects matter most or which subsystems to focus on. Unbounded research produces shallow results.
+
+### 3. Decompose the research question
 
 Break the user's query into concrete investigation areas. Think about:
 - Which modules, directories, or architectural layers are involved?
 - What are the data flows and integration points?
 - What conventions and patterns does the codebase use in this area?
 
-### 3. Spawn parallel research agents
+Focus on the first two layers of abstraction unless the user asks for more depth. Follow call chains far enough to understand the interfaces, not far enough to document every helper function.
 
-Use the Task tool with `subagent_type: "Explore"` to investigate different aspects concurrently. Spawn multiple agents in a single message for parallelism.
+### 4. Spawn parallel research agents
+
+Use the Agent tool with `subagent_type: "Explore"` to investigate different aspects concurrently. Spawn multiple agents in a single message for parallelism.
 
 Good decomposition examples:
 - One agent to find all files related to a feature area
@@ -44,7 +50,7 @@ Each agent prompt should be specific:
 - Tell it what information to extract
 - Ask for specific file:line references
 
-### 4. Synthesize findings
+### 5. Synthesize findings
 
 Wait for ALL agents to complete. Then:
 - Compile results, resolving any contradictions
@@ -52,7 +58,7 @@ Wait for ALL agents to complete. Then:
 - Include specific file paths and line numbers
 - Document the architecture, patterns, and conventions you found
 
-### 5. Write the research document
+### 6. Write the research document
 
 Save to `docs/research/YYYY-MM-DD-<topic>.md` in the project root. Create the directory if it doesn't exist.
 
@@ -62,8 +68,8 @@ Use this structure:
 # Research: <Topic>
 
 **Date**: YYYY-MM-DD
-**Commit**: <current short hash>
-**Branch**: <current branch>
+**Commit**: <current short hash, or "N/A — not a git repository">
+**Branch**: <current branch, or omit if not a git repository>
 
 ## Research Question
 
@@ -85,11 +91,6 @@ Use this structure:
 
 ...
 
-## Code References
-
-- `path/to/file.py:123` — Description of what's there
-- `another/file.ts:45-67` — Description of the code block
-
 ## Architecture Notes
 
 <Current patterns, conventions, and design found in the codebase>
@@ -99,11 +100,11 @@ Use this structure:
 <Areas that need further investigation, if any>
 ```
 
-### 6. Present findings
+### 7. Present findings
 
 Give the user a concise summary of what you found, with key file references. Ask if they have follow-up questions.
 
-If the user has follow-ups, append a new section to the same document:
+If the user has follow-ups that relate to the same area, append a new section to the same document:
 
 ```markdown
 ## Follow-up: <question> (YYYY-MM-DD)
@@ -111,10 +112,11 @@ If the user has follow-ups, append a new section to the same document:
 <Additional findings>
 ```
 
+If the follow-up is about a substantially different area of the codebase, start a new research document instead.
+
 ## Important notes
 
 - Always spawn parallel agents — don't do all the file reading in the main context.
 - The research document should be self-contained with all necessary context.
 - Include file:line references everywhere so the document is navigable.
 - Document cross-component connections — how systems interact is often more valuable than how individual files work.
-- If the project has a git repo, note the commit hash so the research can be tied to a point in time.
