@@ -11,7 +11,9 @@ You are implementing a technical specification. The spec defines what needs to b
 
 Read the spec file thoroughly. Make sure you understand every requirement and acceptance criterion. If anything is ambiguous or contradictory, stop and ask the user before proceeding. Don't guess at intent.
 
-Familiarise yourself with the parts of the codebase that the spec touches. Understand existing patterns, conventions, and architecture before writing any code. The implementation should feel like it belongs in this codebase, not like it was dropped in from outside.
+If requirements are marked **(new)** or **(changed)**, these were added or modified since the last implementation pass. Prioritise these — existing unmarked requirements may already be implemented with passing tests. Verify that unmarked requirements still pass before focusing your effort on the new and changed ones.
+
+Familiarise yourself with the parts of the codebase that the spec touches. Start with the Dependencies section for entry points, then use the Agent tool with `subagent_type: "Explore"` to find related modules, contexts, and the integration surface. Understand existing patterns, conventions, and architecture before writing any code. The implementation should feel like it belongs in this codebase, not like it was dropped in from outside.
 
 ## Handling instructions that go beyond the spec
 
@@ -24,7 +26,7 @@ When in doubt, ask. Silently expanding or contracting the spec's scope is worse 
 
 ## How to work
 
-**Tests first.** For each requirement, write the test before writing the implementation. The test should fail initially and pass once the implementation is correct. This isn't dogma — if a requirement genuinely can't be tested in isolation, note why in the spec's Decisions section and move on. But the default is always test first.
+**Tests first.** For each requirement, write the test before writing the implementation. The test should fail initially and pass once the implementation is correct. This isn't dogma — if a requirement genuinely can't be tested in isolation, note why in the spec's Decisions section. But if a requirement turns out to be untestable entirely or impossible given the codebase, that's not a Decisions note — stop and tell the user, as described in "If something goes wrong" below.
 
 **Refactoring tasks.** If the task is to change *how* something is implemented without changing its observable behaviour (restructuring modules, swapping a data structure, changing test helpers), tests-first doesn't apply in the same way — the existing tests already cover the behaviour. In that case: make the change, run the existing tests after each step, and treat the task as done when all tests still pass and no new warnings are introduced.
 
@@ -32,7 +34,7 @@ When in doubt, ask. Silently expanding or contracting the spec's scope is worse 
 
 **Verify continuously.** After each piece of work, run the relevant tests. After all pieces are done, run the full test suite. Don't wait until the end to discover that an early change broke something unrelated.
 
-**Commit atomically.** Each commit should represent one coherent, verified change. The commit message should reference the spec and describe what was done. The codebase should be in a working state after every commit. If the project has no git repository, skip commits but keep the same incremental discipline — verify each piece before moving to the next.
+**Commit atomically.** Each commit should represent one coherent, verified change. Use the format: `<what was done> (ref docs/specs/<spec-name>.md)` — e.g. `Add input validation for user registration (ref docs/specs/user-registration.md)`. The codebase should be in a working state after every commit. If the project has no git repository, skip commits but keep the same incremental discipline — verify each piece before moving to the next.
 
 **Record decisions.** When you make an architectural or design choice during implementation, add it to the Decisions section of the spec file. Future readers should understand not just what was built, but why it was built that way.
 
@@ -48,7 +50,7 @@ When in doubt, ask. Silently expanding or contracting the spec's scope is worse 
 Before wrapping up, work through this checklist:
 
 - All acceptance criteria in the spec are met.
-- The full test suite passes with no new compiler warnings introduced.
+- The full test suite passes with no new warnings introduced.
 - The spec's acceptance criteria checkboxes are ticked.
 - Every architectural or design choice made during implementation is recorded in the spec's Decisions section. If there is no Decisions section yet, add one. If no non-trivial decisions were made, note that explicitly so the omission is deliberate.
 

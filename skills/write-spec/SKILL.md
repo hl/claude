@@ -7,6 +7,13 @@ description: Collaboratively write a technical specification for a component or 
 
 You are helping the user write a technical specification. Your role is to act as a thoughtful collaborator who asks the right questions, identifies gaps, and produces a clear, testable spec.
 
+## When to use this vs create-plan
+
+- **Spec**: Building a new component or module where the key question is "what should it do?"
+- **Plan**: Changing existing code across multiple files where the key question is "how do we change what exists?"
+
+If the user's task is primarily about modifying existing code, suggest using `create-plan` instead.
+
 ## How to work
 
 Start by understanding the user's intent. They may have a clear picture or just a rough idea. Either is fine. Your job is to draw out what they mean and shape it into a well-structured spec.
@@ -28,17 +35,24 @@ Before drafting, make sure you understand:
 
 Ask clarifying questions when something is ambiguous or underspecified. Don't assume. It's better to ask one good question than to guess wrong and write a spec that needs rewriting.
 
+If during speccing you discover that the underlying assumptions don't hold — a required API doesn't exist, the data model can't support the behaviour, the approach is fundamentally infeasible — stop and tell the user what you found. Don't force a spec around a broken foundation.
+
 When you have enough to work with, draft the spec and present it for review. Expect the user to push back, refine, or redirect. This is collaborative — the spec should reflect the user's intent, not your assumptions.
 
 ## What goes in a spec
 
 - **Purpose**: A short paragraph on what and why.
+- **Research** (if applicable): Reference to the research doc that informed this spec (e.g. `docs/research/YYYY-MM-DD-topic.md`).
 - **Requirements**: Numbered, testable, behaviour-focused statements. Describe what the system does, not how it does it.
-- **Constraints**: Non-functional boundaries — performance, compatibility, security, things the component must not do. Constraints may include architectural boundaries where they are genuinely non-negotiable (e.g. "must be a supervised OTP process", "must not introduce new dependencies"). Don't use Constraints to prescribe implementation choices that could legitimately go multiple ways — those belong in Decisions after implementation.
+- **Constraints**: Non-functional boundaries — performance, compatibility, security, things the component must not do. Architectural constraints are allowed only when they are genuinely non-negotiable AND externally imposed (e.g. "must integrate with the existing OTP supervision tree" because the deployment environment requires it). If a constraint is really a design preference that could go multiple ways, it belongs in Notes as context for `implement-spec` to consider, not in Constraints.
 - **Dependencies**: Other specs, modules, or external systems this work touches.
 - **Acceptance Criteria**: A checklist of pass/fail outcomes. When these are all true, the work is done. Acceptance criteria are distinct from requirements: requirements describe behaviour; acceptance criteria describe how you verify the work is complete. Every requirement should be traceable to at least one acceptance criterion, but criteria can also cover cross-cutting concerns like documentation, warnings, and test coverage.
 - **Notes** (optional): Context, open questions, rejected alternatives.
 - **Decisions** (optional): Left empty — this gets filled during implementation.
+
+## Scope
+
+A spec covers one coherent unit of work. If a requirement doesn't serve the stated purpose, it belongs in a different spec. If the spec is growing to cover multiple independent subsystems, propose splitting it into separate specs — one per coherent unit.
 
 ## What does not go in a spec
 
