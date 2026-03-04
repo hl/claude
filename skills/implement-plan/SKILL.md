@@ -10,9 +10,10 @@ You are implementing an approved implementation plan from `docs/plans/`. Plans c
 ## Before you start
 
 1. Read the plan file completely. Check for any already-completed checkboxes (`- [x]`).
-2. Read every file mentioned in the plan — fully, no partial reads.
-3. If a research doc is referenced, read that too.
-4. Think about how the pieces fit together before writing any code.
+2. If a research doc is referenced, read that too.
+3. Read the files mentioned in the first uncompleted phase — you'll read subsequent phases' files when you reach them.
+4. Note the Out of Scope section. Do not drift into work that the plan explicitly excludes.
+5. Think about how the pieces fit together before writing any code.
 
 If no plan path is provided, ask for one. If the plan has unresolved questions or ambiguity, stop and ask the user before proceeding.
 
@@ -22,11 +23,13 @@ If no plan path is provided, ask for one. If the plan has unresolved questions o
 
 Implement each phase fully before moving to the next. Within a phase:
 
-1. Make the changes described.
-2. Run the automated verification steps listed in the plan.
-3. Fix any failures before proceeding.
-4. Check off completed items in the plan file using the Edit tool.
-5. Pause and inform the user the phase is ready for manual verification:
+1. Read all files mentioned in this phase fully, if you haven't already.
+2. Make the changes described.
+3. Run the automated verification steps listed in the plan.
+4. Fix any failures before proceeding.
+5. Commit the phase's changes with the format: `Phase N: <description> (ref docs/plans/<plan-name>.md)`.
+6. Check off completed items in the plan file using the Edit tool.
+7. Pause and inform the user the phase is ready for manual verification:
 
 ```
 Phase N complete — ready for manual verification.
@@ -42,7 +45,7 @@ Let me know when manual testing is done so I can proceed to Phase N+1.
 
 Do not check off manual verification items until the user confirms them.
 
-If instructed to execute multiple phases without pausing, skip the pause until the last phase.
+If instructed to execute multiple phases without pausing, skip the pause between phases but still run automated verification for each phase. Defer manual verification items to the final pause — list all accumulated manual items together so nothing is silently dropped.
 
 ### Adapt when reality diverges from the plan
 
@@ -62,6 +65,13 @@ How should I proceed?
 
 Don't silently deviate from the plan. The plan is the contract — changes should be deliberate.
 
+If a fix in one phase affects a later phase's plan, flag this immediately:
+
+```
+Note: the fix for this issue in Phase N means Phase M will need adjustment:
+- [What changes in the later phase]
+```
+
 ### Track progress
 
 - Use the Edit tool to check off items in the plan file as you complete them.
@@ -70,9 +80,9 @@ Don't silently deviate from the plan. The plan is the contract — changes shoul
 ## Resuming interrupted work
 
 If the plan has existing checkmarks:
-- Trust that completed work is done.
+- Run the full test suite once to verify previous work is sound before building on top of it.
 - Pick up from the first unchecked item.
-- Verify previous work only if something seems off.
+- If the test suite fails on previously-completed work, investigate before proceeding.
 
 ## What to prioritise
 
@@ -80,6 +90,7 @@ If the plan has existing checkmarks:
 - **Consistency with the codebase.** Follow existing patterns and conventions.
 - **Simplicity.** Prefer the straightforward approach.
 - **The plan's intent.** When adapting to reality, stay true to what the plan is trying to accomplish, even if specific file paths or code snippets need adjusting.
+- **Stay in scope.** If you notice an opportunity to improve something outside the plan's scope, note it for the user but don't act on it.
 
 ## When you're done
 

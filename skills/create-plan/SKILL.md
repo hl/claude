@@ -18,7 +18,7 @@ If you're unsure, ask the user.
 
 If the user provides a file path, ticket, or description — read it fully.
 
-**If the user provides a research doc** (typically from `docs/research/`), read it fully before anything else. This is your primary context — it already contains the deep codebase analysis, file references, architecture notes, and patterns for the area. Use it as your foundation and skip redundant codebase exploration in Step 1. You should still read specific files if you need to verify details or check something the research didn't cover, but don't re-do the broad survey.
+**If the user provides a research doc** (typically from `docs/research/`), read it fully before anything else. This is your primary context — it already contains the deep codebase analysis, file references, architecture notes, and patterns for the area. Use it as your foundation and skip redundant codebase exploration in Step 1. You should still read specific files referenced in the research doc if you need to verify details or check something the research didn't cover, but don't re-do the broad survey.
 
 If nothing was provided, ask:
 
@@ -38,7 +38,7 @@ Provide:
 Before asking any questions, research the relevant code:
 
 1. Read all mentioned files fully.
-2. Spawn parallel Explore agents to understand the current state:
+2. Use the Agent tool with `subagent_type: "Explore"` to spawn parallel agents that understand the current state:
    - Find all files related to the task
    - Understand the current implementation and data flow
    - Identify patterns and conventions in the area
@@ -59,13 +59,13 @@ Questions my research couldn't answer:
 - [Design preference that affects approach]
 ```
 
-Only ask questions you genuinely cannot answer through code investigation.
+Only ask questions you genuinely cannot answer through code investigation. If a question is about domain knowledge or external systems not reflected in the codebase, ask without trying to verify it in code first.
 
 ### Step 2: Research and design options
 
 After getting initial clarification:
 
-1. If the user corrects a misunderstanding — verify the correction in the code before proceeding.
+1. If the user corrects a misunderstanding about the codebase — verify the correction in the code before proceeding. If the correction is about domain knowledge or external context, take it at face value.
 2. Spawn deeper research agents if needed.
 3. Present design options:
 
@@ -105,6 +105,10 @@ Use this template:
 
 <Brief description of what we're changing and why>
 
+## Research
+
+<Reference to research doc if one was used, e.g. `docs/research/YYYY-MM-DD-topic.md`>
+
 ## Current State
 
 <What exists now, key constraints discovered>
@@ -136,19 +140,17 @@ Use this template:
 **Changes**: <Summary of what changes>
 
 \`\`\`language
-// Key code to add/modify (only include when it clarifies intent)
+// Illustrative snippet — keep to key signatures or pseudocode, not full implementations
 \`\`\`
 
 ### Verification
 
 #### Automated (run these):
 - [ ] Tests pass: `<test command>`
-- [ ] Type checking passes: `<typecheck command>`
-- [ ] Linting passes: `<lint command>`
+- [ ] Type/lint checks pass: `<check command>`
 
 #### Manual (human confirms):
-- [ ] <Observable behaviour to verify>
-- [ ] <Edge case to test>
+- [ ] <Observable behaviour that cannot be captured by an automated test>
 
 > After automated verification passes, pause for manual confirmation before proceeding to the next phase.
 
@@ -162,13 +164,12 @@ Use this template:
 
 ## Testing Strategy
 
-- <What to test>
-- <Key edge cases>
-- <Integration scenarios>
+<Cross-phase and integration testing that doesn't belong to any single phase — end-to-end scenarios, performance validation, edge cases that span multiple phases>
 
 ## References
 
 - Research doc: `docs/research/<file>.md`
+- Related specs: `docs/specs/<file>.md`
 - Related files: `path/to/key/file.ext`
 ```
 
@@ -185,7 +186,7 @@ Please review:
 - Any missing edge cases?
 ```
 
-Iterate until the user is satisfied. The plan should have **no open questions** — every decision must be resolved before finalising.
+Iterate until the user is satisfied. The plan should have **no open questions** — every decision must be resolved before finalising. If the user explicitly chooses to proceed despite an unresolved question, note it in the plan as an acknowledged risk rather than blocking.
 
 ## Guidelines
 
@@ -193,4 +194,5 @@ Iterate until the user is satisfied. The plan should have **no open questions** 
 - **Be interactive**: Don't write the full plan in one shot. Get buy-in at each step.
 - **Be thorough**: Include file:line references, measurable success criteria, both automated and manual verification.
 - **Be practical**: Focus on incremental, testable changes. Think about rollback.
+- **Manual verification items** should be things that genuinely require human judgment — visual correctness, UX feel, business logic validation. If a check can be expressed as an assertion in a test, it belongs in automated verification.
 - **No open questions in the final plan**: If something is unresolved, stop and ask. The plan must be complete and actionable.
