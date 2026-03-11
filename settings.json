@@ -26,19 +26,19 @@
     ]
   },
   "enabledPlugins": {
-    "code-review@claude-plugins-official": true,
-    "commit-commands@claude-plugins-official": true,
-    "pr-review-toolkit@claude-plugins-official": true,
     "playwright-cli@playwright-cli": true,
     "plugin-dev@claude-plugins-official": true,
     "claude-code-setup@claude-plugins-official": true,
-    "rules-engine@sona-marketplace": true,
     "walkthrough@sona-marketplace": true,
     "doc-ticket-solver@sona-marketplace": true,
     "duckdb-csv@sona-marketplace": true,
-    "elixir-quiet-gates@sona-marketplace": true
+    "rules-engine@sona-marketplace": true,
+    "rules-output-auditor@sona-marketplace": true,
+    "frontend-design@claude-plugins-official": true,
+    "code-reviewer@sona-marketplace": true
   },
   "alwaysThinkingEnabled": true,
+  "effortLevel": "high",
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
