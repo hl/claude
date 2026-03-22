@@ -46,7 +46,16 @@
     "rules-engine@sona-marketplace": true,
     "rules-output-auditor@sona-marketplace": true,
     "frontend-design@claude-plugins-official": true,
-    "code-reviewer@sona-marketplace": true
+    "code-reviewer@sona-marketplace": true,
+    "elixir-quick-context@ivors-claude-code-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "ivors-claude-code-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "Ivor/claude-code-marketplace"
+      }
+    }
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
