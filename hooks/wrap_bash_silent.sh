@@ -15,6 +15,7 @@ mix compile
 mix format
 mix dialyzer
 mix credo
+mix ci
 "
 
 input=$(cat)
