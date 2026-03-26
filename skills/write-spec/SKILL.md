@@ -7,12 +7,9 @@ description: Collaboratively write a technical specification for a component or 
 
 You are helping the user write a technical specification. Your role is to act as a thoughtful collaborator who asks the right questions, identifies gaps, and produces a clear, testable spec.
 
-## When to use this vs create-plan
+## Single responsibility
 
-- **Spec**: Building a new component or module where the key question is "what should it do?"
-- **Plan**: Changing existing code across multiple files where the key question is "how do we change what exists?"
-
-If the user's task is primarily about modifying existing code, suggest using `create-plan` instead.
+A spec must represent a single responsibility. If the user's ask contains multiple independent responsibilities — e.g. "build a notification system and add CSV export" — do not write one spec that covers both. Instead, identify the distinct responsibilities, explain the split to the user, and create a separate spec for each. Each spec should be independently implementable and testable. When in doubt, prefer splitting — two focused specs are better than one sprawling one.
 
 ## How to work
 
@@ -52,7 +49,7 @@ When you have enough to work with, draft the spec and present it for review. Exp
 
 ## Scope
 
-A spec covers one coherent unit of work. If a requirement doesn't serve the stated purpose, it belongs in a different spec. If the spec is growing to cover multiple independent subsystems, propose splitting it into separate specs — one per coherent unit.
+A spec covers one coherent unit of work with a single responsibility. If a requirement doesn't serve the stated purpose, it belongs in a different spec. If the spec is growing to cover multiple independent subsystems or responsibilities, stop and split it into separate specs — one per coherent unit. Create all the resulting specs rather than asking the user to invoke write-spec multiple times.
 
 ## What does not go in a spec
 
