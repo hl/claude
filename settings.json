@@ -59,6 +59,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
+  "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
