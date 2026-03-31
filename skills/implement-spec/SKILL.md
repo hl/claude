@@ -11,7 +11,11 @@ You are implementing a technical specification. The spec defines what needs to b
 
 Read the spec file thoroughly. Make sure you understand every requirement and acceptance criterion. If anything is ambiguous or contradictory, stop and ask the user before proceeding. Don't guess at intent.
 
-If requirements are marked **(new)** or **(changed)**, these were added or modified since the last implementation pass. Prioritise these — existing unmarked requirements may already be implemented with passing tests. Verify that unmarked requirements still pass before focusing your effort on the new and changed ones.
+Check the spec's Status field. If it is `draft`, warn the user that the spec hasn't been marked as approved and confirm they want to proceed. If the Notes section contains open questions, surface them — implementing against an incomplete spec wastes work.
+
+If requirements are marked **(new)** or **(changed)**, these were added or modified since the last implementation pass. Prioritise these — existing unmarked requirements may already be implemented with passing tests. Verify that unmarked requirements still pass before focusing your effort on the new and changed ones. If unmarked requirements are failing, fix them first — building new work on a broken foundation compounds the problem.
+
+If the spec has a Dependencies section that references other specs, check whether those specs are implemented (acceptance criteria ticked, status `done`). If a dependency spec is not yet implemented, stop and tell the user — implementing out of order will produce code that can't be integrated or tested properly.
 
 Familiarise yourself with the parts of the codebase that the spec touches. Start with the Dependencies section for entry points, then use the Agent tool with `subagent_type: "Explore"` to find related modules, contexts, and the integration surface. Understand existing patterns, conventions, and architecture before writing any code. The implementation should feel like it belongs in this codebase, not like it was dropped in from outside.
 
@@ -26,11 +30,15 @@ When in doubt, ask. Silently expanding or contracting the spec's scope is worse 
 
 ## How to work
 
+**Mark the spec as in progress.** Update the spec's Status to `implementing` before writing any code.
+
 **Tests first.** For each requirement, write the test before writing the implementation. The test should fail initially and pass once the implementation is correct. This isn't dogma — if a requirement genuinely can't be tested in isolation, note why in the spec's Decisions section. But if a requirement turns out to be untestable entirely or impossible given the codebase, that's not a Decisions note — stop and tell the user, as described in "If something goes wrong" below.
 
 **Refactoring tasks.** If the task is to change *how* something is implemented without changing its observable behaviour (restructuring modules, swapping a data structure, changing test helpers), tests-first doesn't apply in the same way — the existing tests already cover the behaviour. In that case: make the change, run the existing tests after each step, and treat the task as done when all tests still pass and no new warnings are introduced.
 
 **Work incrementally.** Break the spec into small, independently verifiable pieces of work. Implement one piece at a time. Verify it works before moving to the next. If something breaks, you want to know exactly which change caused it.
+
+**Establish a baseline.** Before writing any code, run the existing test suite and note any pre-existing failures or warnings. This is your baseline — you are responsible for not adding to it, but not for fixing what was already broken. If a pre-existing failure is in the area you're working on, flag it to the user.
 
 **Verify continuously.** After each piece of work, run the relevant tests. After all pieces are done, run the full test suite. Don't wait until the end to discover that an early change broke something unrelated.
 
@@ -50,8 +58,9 @@ When in doubt, ask. Silently expanding or contracting the spec's scope is worse 
 Before wrapping up, work through this checklist:
 
 - All acceptance criteria in the spec are met.
-- The full test suite passes with no new warnings introduced.
+- The full test suite passes with no new warnings introduced compared to the baseline. If new warnings are unavoidable, document the reason in the spec's Decisions section and confirm with the user.
 - The spec's acceptance criteria checkboxes are ticked.
+- The spec's Status is updated to `done`.
 - Every architectural or design choice made during implementation is recorded in the spec's Decisions section. If there is no Decisions section yet, add one. If no non-trivial decisions were made, note that explicitly so the omission is deliberate.
 
 Then let the user know the implementation is complete, with a brief summary of what was built and any decisions that were made along the way. Keep it concise — the spec and the code tell the full story.

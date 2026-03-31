@@ -15,7 +15,7 @@ A spec must represent a single responsibility. If the user's ask contains multip
 
 Start by understanding the user's intent. They may have a clear picture or just a rough idea. Either is fine. Your job is to draw out what they mean and shape it into a well-structured spec.
 
-Read the spec format defined in `docs/specs/SPEC-FORMAT.md` before writing anything. If that file doesn't exist, follow the format described below.
+Read the spec format defined in `docs/specs/SPEC-FORMAT.md` before writing anything. If that file doesn't exist, create it using the format described below before drafting the spec — this keeps the format authoritative in one place rather than relying on the inline description in this skill.
 
 **If the user provides a research doc** (typically from `docs/research/`), read it fully before anything else. This is your primary context — it already contains the deep codebase analysis, file references, architecture notes, and patterns for the area. Use it as your foundation and skip redundant codebase exploration. You should still read specific files referenced in the research doc if you need to verify details or check something the research didn't cover, but don't re-do the broad survey.
 
@@ -30,7 +30,7 @@ Before drafting, make sure you understand:
 - How it relates to existing parts of the codebase.
 - What "done" looks like in concrete, testable terms.
 
-Ask clarifying questions when something is ambiguous or underspecified. Don't assume. It's better to ask one good question than to guess wrong and write a spec that needs rewriting.
+Ask clarifying questions when something is ambiguous or underspecified. Don't assume. It's better to ask one good question than to guess wrong and write a spec that needs rewriting. Batch your most important 2-3 questions together rather than asking one at a time or dumping a wall of questions. You can always ask follow-ups after the first round.
 
 If during speccing you discover that the underlying assumptions don't hold — a required API doesn't exist, the data model can't support the behaviour, the approach is fundamentally infeasible — stop and tell the user what you found. Don't force a spec around a broken foundation.
 
@@ -44,6 +44,7 @@ When you have enough to work with, draft the spec and present it for review. Exp
 - **Constraints**: Non-functional boundaries — performance, compatibility, security, things the component must not do. Architectural constraints are allowed only when they are genuinely non-negotiable AND externally imposed (e.g. "must integrate with the existing OTP supervision tree" because the deployment environment requires it). If a constraint is really a design preference that could go multiple ways, it belongs in Notes as context for `implement-spec` to consider, not in Constraints.
 - **Dependencies**: Other specs, modules, or external systems this work touches.
 - **Acceptance Criteria**: A checklist of pass/fail outcomes. When these are all true, the work is done. Acceptance criteria are distinct from requirements: requirements describe behaviour; acceptance criteria describe how you verify the work is complete. Every requirement should be traceable to at least one acceptance criterion, but criteria can also cover cross-cutting concerns like documentation, warnings, and test coverage.
+- **Status**: One of `draft`, `approved`, `implementing`, `done`. New specs start as `draft`. The user moves it to `approved` when they're satisfied. `implement-spec` sets it to `implementing` when work begins and `done` when all acceptance criteria pass.
 - **Notes** (optional): Context, open questions, rejected alternatives.
 - **Decisions** (optional): Left empty — this gets filled during implementation.
 
