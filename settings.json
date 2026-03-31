@@ -47,7 +47,9 @@
     "rules-output-auditor@sona-marketplace": true,
     "frontend-design@claude-plugins-official": true,
     "code-reviewer@sona-marketplace": true,
-    "elixir-quick-context@ivors-claude-code-marketplace": true
+    "elixir-quick-context@ivors-claude-code-marketplace": true,
+    "mb-query@sona-marketplace": true,
+    "spec@sona-marketplace": true
   },
   "extraKnownMarketplaces": {
     "ivors-claude-code-marketplace": {
