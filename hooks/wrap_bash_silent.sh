@@ -20,20 +20,33 @@ mix ci
 
 input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command')
+timeout=$(printf '%s' "$input" | jq -r '.tool_input.timeout // empty')
 
 # Check if any suppress pattern appears in the command
 while IFS= read -r suppress; do
     suppress=$(printf '%s' "$suppress" | xargs)
     [ -z "$suppress" ] && continue
     if printf '%s' "$cmd" | grep -qw "$suppress"; then
-        jq -n --arg cmd "$cmd" '{
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "updatedInput": {
-                    "command": ($ENV.HOME + "/.claude/hooks/run_silent_wrapper.sh " + ($cmd | @sh))
+        if [ -n "$timeout" ]; then
+            jq -n --arg cmd "$cmd" --argjson timeout "$timeout" '{
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "updatedInput": {
+                        "command": ($ENV.HOME + "/.claude/hooks/run_silent_wrapper.sh " + ($cmd | @sh)),
+                        "timeout": $timeout
+                    }
                 }
-            }
-        }'
+            }'
+        else
+            jq -n --arg cmd "$cmd" '{
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "updatedInput": {
+                        "command": ($ENV.HOME + "/.claude/hooks/run_silent_wrapper.sh " + ($cmd | @sh))
+                    }
+                }
+            }'
+        fi
         exit 0
     fi
 done <<< "$SUPPRESS_CMDS"
