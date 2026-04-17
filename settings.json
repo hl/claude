@@ -9,7 +9,8 @@
       "Bash(cat /tmp/*)",
       "Bash(cat /tmp/**/*)",
       "Bash(say *)"
-    ]
+    ],
+    "defaultMode": "default"
   },
   "model": "opus[1m]",
   "hooks": {
@@ -37,30 +38,39 @@
     ]
   },
   "enabledPlugins": {
-    "playwright-cli@playwright-cli": true,
     "plugin-dev@claude-plugins-official": true,
-    "claude-code-setup@claude-plugins-official": true,
-    "walkthrough@sona-marketplace": true,
-    "doc-ticket-solver@sona-marketplace": true,
-    "duckdb-csv@sona-marketplace": true,
-    "rules-engine@sona-marketplace": true,
-    "rules-output-auditor@sona-marketplace": true,
-    "frontend-design@claude-plugins-official": true,
     "code-reviewer@sona-marketplace": true,
     "elixir-quick-context@ivors-claude-code-marketplace": true,
-    "mb-query@sona-marketplace": true,
-    "spec@sona-marketplace": true
+    "spec@sona-marketplace": true,
+    "compound-engineering@compound-engineering-plugin": true
   },
   "extraKnownMarketplaces": {
     "ivors-claude-code-marketplace": {
       "source": {
         "source": "github",
         "repo": "Ivor/claude-code-marketplace"
-      }
+      },
+      "autoUpdate": true
+    },
+    "compound-engineering-plugin": {
+      "source": {
+        "source": "github",
+        "repo": "EveryInc/compound-engineering-plugin"
+      },
+      "autoUpdate": true
+    },
+    "hl-mp": {
+      "source": {
+        "source": "github",
+        "repo": "hl/mp"
+      },
+      "autoUpdate": true
     }
   },
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "xhigh",
+  "advisorModel": "opus",
+  "awaySummaryEnabled": false,
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
