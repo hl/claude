@@ -38,31 +38,13 @@
     ]
   },
   "enabledPlugins": {
-    "plugin-dev@claude-plugins-official": true,
-    "code-reviewer@sona-marketplace": true,
-    "elixir-quick-context@ivors-claude-code-marketplace": true,
-    "spec@sona-marketplace": true,
     "compound-engineering@compound-engineering-plugin": true
   },
   "extraKnownMarketplaces": {
-    "ivors-claude-code-marketplace": {
-      "source": {
-        "source": "github",
-        "repo": "Ivor/claude-code-marketplace"
-      },
-      "autoUpdate": true
-    },
     "compound-engineering-plugin": {
       "source": {
         "source": "github",
         "repo": "EveryInc/compound-engineering-plugin"
-      },
-      "autoUpdate": true
-    },
-    "hl-mp": {
-      "source": {
-        "source": "github",
-        "repo": "hl/mp"
       },
       "autoUpdate": true
     }
@@ -70,7 +52,6 @@
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "advisorModel": "opus",
-  "awaySummaryEnabled": false,
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "feedbackSurveyState": {
