@@ -12,7 +12,7 @@
     ],
     "defaultMode": "default"
   },
-  "model": "opus[1m]",
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -38,22 +38,15 @@
     ]
   },
   "enabledPlugins": {
-    "compound-engineering@compound-engineering-plugin": true
+    "yeet@hl-mp": true
   },
-  "extraKnownMarketplaces": {
-    "compound-engineering-plugin": {
-      "source": {
-        "source": "github",
-        "repo": "EveryInc/compound-engineering-plugin"
-      },
-      "autoUpdate": true
-    }
-  },
+  "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
   "advisorModel": "opus",
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
+  "teammateMode": "auto",
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
   }
