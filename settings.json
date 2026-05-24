@@ -10,7 +10,7 @@
       "Bash(cat /tmp/**/*)",
       "Bash(say *)"
     ],
-    "defaultMode": "default"
+    "defaultMode": "auto"
   },
   "model": "opus[1m]",
   "hooks": {
@@ -37,9 +37,7 @@
       }
     ]
   },
-  "enabledPlugins": {
-    "yeet@hl-mp": true
-  },
+  "enabledPlugins": {},
   "extraKnownMarketplaces": {},
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
@@ -47,6 +45,7 @@
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "auto",
+  "skipAutoPermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
   }
