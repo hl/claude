@@ -6,7 +6,9 @@
 # SUPPRESS LIST: Commands whose successful output is noise.
 # Agents: add commands here when output clogs the context window.
 # Only these commands get wrapped — everything else passes through.
-# Supports "cmd" (first word match) or "cmd subcommand" (two word match).
+# A pattern matches only when it STARTS an actual command segment (after
+# stripping leading whitespace and FOO=bar env assignments), not when it
+# merely appears somewhere in the command string.
 SUPPRESS_CMDS="
 mix test
 mix deps.get
@@ -22,11 +24,21 @@ input=$(cat)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command')
 timeout=$(printf '%s' "$input" | jq -r '.tool_input.timeout // empty')
 
-# Check if any suppress pattern appears in the command
+# Break the command into segments on shell separators (&&, ||, ;, |, &), then
+# strip leading whitespace and env-var assignments (FOO=bar) from each segment.
+# This anchors matching to where a command is actually invoked, so a pattern no
+# longer matches inside a string argument (e.g. git commit -m "fix mix compile").
+segments=$(printf '%s' "$cmd" \
+    | sed -E 's/&&/\n/g; s/\|\|/\n/g; s/[;|&]/\n/g' \
+    | sed -E 's/^[[:space:]]*//; s/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)+//')
+
+# Wrap only if a suppress pattern STARTS one of those segments.
 while IFS= read -r suppress; do
     suppress=$(printf '%s' "$suppress" | xargs)
     [ -z "$suppress" ] && continue
-    if printf '%s' "$cmd" | grep -qw "$suppress"; then
+    # Escape regex metacharacters so e.g. the dot in "mix deps.get" stays literal.
+    suppress_re=$(printf '%s' "$suppress" | sed 's/[][\.*^$/]/\\&/g')
+    if printf '%s\n' "$segments" | grep -qE "^${suppress_re}([[:space:]]|$)"; then
         if [ -n "$timeout" ]; then
             jq -n --arg cmd "$cmd" --argjson timeout "$timeout" '{
                 "hookSpecificOutput": {
