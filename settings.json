@@ -37,7 +37,6 @@
     ]
   },
   "enabledPlugins": {
-    "sona-candidate-evaluator@sona-marketplace": true,
     "compound-engineering@compound-engineering-plugin": true
   },
   "extraKnownMarketplaces": {
@@ -50,7 +49,6 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
-  "advisorModel": "opus",
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "auto",
