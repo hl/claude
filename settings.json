@@ -53,6 +53,10 @@
   "skipDangerousModePermissionPrompt": true,
   "teammateMode": "auto",
   "skipAutoPermissionPrompt": true,
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/statusline-command.sh"
+  },
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
   }
