@@ -4,9 +4,18 @@ export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 input=$(cat)
 
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // ""')
-dirname=$(basename "$cwd")
+cwd_name=$(basename "$cwd")
 
-# Git branch from repo info or worktree, falling back to git command
+# Project = main repo name (stable across worktrees, from the shared .git);
+# cwd = the worktree/subdir you're actually in. Outside a repo, project = cwd.
+common=$(git -C "$cwd" rev-parse --path-format=absolute --git-common-dir 2>/dev/null)
+if [ -n "$common" ]; then
+  project=$(basename "$(dirname "$common")")
+else
+  project="$cwd_name"
+fi
+
+# Git branch from worktree info, falling back to git command
 branch=$(echo "$input" | jq -r '.worktree.branch // empty')
 if [ -z "$branch" ]; then
   branch=$(git -C "$cwd" --no-optional-locks rev-parse --abbrev-ref HEAD 2>/dev/null)
@@ -41,9 +50,10 @@ V=$'\033[38;5;250m'   # slightly lighter for values
 R=$'\033[0m'
 sep="${K} | "
 
-out="${K}dir: ${V}${dirname}"
-[ -n "$branch" ] && out="${out}${sep}${K}git: ${V}${branch}"
-[ -n "$mod" ]    && out="${out}${sep}${K}mod: ${V}${mod}"
-[ -n "$ctx" ]    && out="${out}${sep}${K}ctx: ${V}${ctx}"
+out="${K}dir: ${V}${project}"
+[ -n "$cwd_name" ] && [ "$cwd_name" != "$project" ] && out="${out}${sep}${K}cwd: ${V}${cwd_name}"
+[ -n "$branch" ]   && out="${out}${sep}${K}git: ${V}${branch}"
+[ -n "$mod" ]      && out="${out}${sep}${K}mod: ${V}${mod}"
+[ -n "$ctx" ]      && out="${out}${sep}${K}ctx: ${V}${ctx}"
 
 printf '%s%s' "$out" "$R"
