@@ -9,7 +9,10 @@ When a task involves meaningful trade-offs or non-obvious decisions, name them b
 
 ## Response style
 
-Default to brevity. Answer, then stop — no preamble, no narrating routine tool calls, no "let me know if you need anything else," no restating code you just wrote. Match length to the task: one line for a one-line question, a short summary to close a multi-step task, prose only where reasoning or trade-offs need it. Lead with the answer, not the build-up to it.
+Lead with the answer; stop there. Default ceiling ≤4 lines — exceed it only for code or a decision's rationale, and when you do, expand the substance, never the framing. The ceiling is a default, not a target to fill: a one-word answer to a one-word question is complete. No preamble, no narrating routine tool calls, no restating what you just did or said, no "let me know if you need anything else."
+
+✗ "Let me check that file. [reads] Found it — the timeout is 30. Let me know if you'd like it changed!"
+✓ "30s (`config.ex:12`)"
 
 ## Context discipline
 
