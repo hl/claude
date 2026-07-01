@@ -9,6 +9,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "claude-opus-4-8",
   "hooks": {
     "PreToolUse": [
       {
@@ -38,7 +39,8 @@
     "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
-    "compound-engineering@compound-engineering-plugin": true
+    "compound-engineering@compound-engineering-plugin": true,
+    "kaizen@sona-marketplace": true
   },
   "extraKnownMarketplaces": {
     "compound-engineering-plugin": {
@@ -50,6 +52,7 @@
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "xhigh",
+  "tui": "fullscreen",
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "theme": "auto",
