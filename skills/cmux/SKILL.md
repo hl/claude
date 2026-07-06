@@ -1,6 +1,6 @@
 ---
 name: cmux
-description: Drive cmux — the terminal multiplexer / agent-surface control CLI — from natural language. Use this whenever a prompt asks you to open, inspect, prompt, read, or tear down cmux windows, workspaces, panes, surfaces, or agent sessions. Prefix orchestration prompts with /cmux.
+description: Drive cmux from natural language — spawn, prompt, read, and tear down its windows, workspaces, panes, and surfaces, and orchestrate the agent sessions (Claude Code, Codex, pi) running inside them. Use whenever a prompt asks to open, inspect, drive, or close cmux surfaces or run agents in them.
 argument-hint: [what to do in cmux]
 ---
 
@@ -59,11 +59,14 @@ cmux workspace create --name <name> --cwd <dir> --env-file .env --json
 - **Default `--env-file` to `.env`** (the repo's `.env`) unless told otherwise:
   `--env-file .env`. That is the canonical source for `OPENROUTER_API_KEY`,
   `ANTHROPIC_API_KEY`, etc.
+- **Inline vars:** `--env KEY=VALUE` (repeatable) sets individual vars without a
+  file. `CMUX_*` names are reserved and can't be overridden.
 - Pair it with `--layout <compact-json>` to boot a whole multi-pane team
   declaratively in one call (each pane's `command` auto-launches its agent).
-- **Don't inject over a working login.** If an agent is already authenticated
-  (e.g. Claude Code), don't push a placeholder key over it via `--env-file`;
-  scope credential injection to the agents that actually need it.
+- **Don't inject over a working login.** `--env`/`--env-file` apply to *every*
+  surface in the workspace — there is no per-pane scoping. If an agent is already
+  authenticated (e.g. Claude Code), keep its key out of the env-file, or give it
+  its own workspace, rather than pushing a placeholder over the working login.
 - **Assume the keys are already set up — and never read their values.** By
   default, just point `--env-file` at `.env` and proceed; do not `cat .env`,
   `echo $OPENROUTER_API_KEY`, or `read-screen` a surface to capture a key. **Only
@@ -83,9 +86,9 @@ You operate surfaces the way a person would, but over the CLI:
 
 ### Wait for agents via notification events (don't busy-poll)
 
-Instead of looping on `read-screen`, subscribe to cmux's push channel and block
-until an agent finishes its turn. **This is verified working for pi, codex,
-and Claude Code.**
+Instead of polling `read-screen`, stream cmux's push channel to a file and wait on
+*that* — a cheap file poll that trips the instant an agent finishes its turn.
+**This is verified working for pi, codex, and Claude Code.**
 
 **`cmux events` is the wait channel — not `cmux wait-for`.** `cmux wait-for <name>`
 is an unrelated *named-token rendezvous* (a manual semaphore you signal yourself);
@@ -117,8 +120,8 @@ workspace's surface for the actual reply. Filter to `--name notification.request
 a sibling `notification.clear_requested` fires when a surface gains focus and is just
 noise.
 
-**Block until a specific agent finishes** (capture its `workspace_id` first via
-`cmux list-workspaces --json --id-format both`):
+**Wait for a specific agent to finish** (capture its `workspace_id` first via
+`cmux workspace list --json --id-format both`):
 
 ```bash
 WS=<agent-workspace-uuid>
@@ -177,21 +180,24 @@ agent, launch it the same way you yolo Codex — bypass permissions at launch:
 Caveat verified in testing: a notification still fires on turn-completion **even when
 Claude refused to do the work** — so if you only watch events, you can mistake a
 "declined, nothing happened" turn for success. Always `read-screen` (or check the
-artifacts) after the event, don't trust the event alone. Claude Code emits cmux
-notifications out of the box (no `cmux hooks` entry needed); see
-**Wait for agents via notification events** above.
+artifacts) after the event, don't trust the event alone (see **Wait for agents via
+notification events** above).
 
 ### Best practices
 
-1. **`--help` before every unfamiliar verb.** Confirm the subcommand and flags exist.
-2. **Look before you leap.** Inspect with `tree` / `list` / `read-screen` before sending or closing anything.
-3. **Refs are positional and renumber.** `surface:N` / `workspace:N` shift as things open and close. Re-read the tree right before you act; for anything long-lived, anchor to a **stable window UUID**, not a positional ref.
-4. **Type then submit.** A prompt isn't sent until you `send-key enter`. Give agents a beat before you `read-screen` their reply.
-5. **Read back to verify.** After sending a command, `read-screen` to confirm it actually ran and got the result you expected — don't assume.
-6. **Close scoped, never broad.** Close only surfaces you just created or explicitly identified. Never loop a close over the whole `tree` — you'll kill things you didn't mean to. `close`/`close-window` may no-op while a live agent occupies a pane; use `close-surface` per pane.
-7. **One window per team.** Keep a unit of work to a single window so it stays monitorable and tearable as a unit.
-8. **Never print secrets.** If a surface has credentials/keys loaded, read results back without echoing the secret values.
-9. **Prefer push over poll.** Use `cmux events --name notification.requested` (see **Wait for agents via notification events** above) to know the instant an agent finishes instead of polling `read-screen` in a tight loop. Filter to `notification.requested` specifically — the broader `--category notification` also delivers `notification.clear_requested` focus events, which share a `workspace_id` and would trip a turn-done check falsely. Install hooks first (`cmux hooks setup`); match events on `workspace_id`. `cmux wait-for` is a manual named-token semaphore, **not** an agent-finished signal.
+The instructions above already cover the core loop (`--help` first, look before you
+leap, type-then-submit, read back to verify, never echo secrets). These are the rules
+that aren't obvious from the commands themselves:
+
+- **Refs are positional and renumber.** `surface:N` / `workspace:N` shift as things
+  open and close. Re-read the tree right before you act; for anything long-lived,
+  anchor to a **stable window/workspace UUID** (`--id-format both`), not a positional ref.
+- **Close scoped, never broad.** Close only surfaces you just created or explicitly
+  identified. Never loop a close over the whole `tree` — you'll kill things you didn't
+  mean to. `close-window` may no-op while a live agent occupies a pane; use
+  `close-surface` per pane.
+- **One window per team.** Keep a unit of work to a single window so it stays
+  monitorable and tearable as a unit.
 
 ## Workflows
 
