@@ -54,7 +54,8 @@ turn to finish** below).
 
 Instead of polling `read-screen`, stream cmux's push channel to a file and wait on
 *that* — a cheap file poll that trips the instant an agent finishes its turn.
-**This is verified working for pi, codex, and Claude Code.**
+**Match on `notification.created` — it is the turn-stop signal common to pi, codex,
+and Claude Code alike** (see the event choice below).
 
 **`cmux events` is the wait channel — not `cmux wait-for`.** `cmux wait-for <name>`
 is an unrelated *named-token rendezvous* (a manual semaphore you signal yourself);
@@ -64,7 +65,7 @@ it does **not** know when an agent finishes. The agent-completion signal is the
 **Prerequisite — install the notification hooks once:**
 
 ```bash
-cmux hooks setup            # wires pi, codex, opencode, gemini, … to emit on turn-stop
+cmux hooks setup --yes      # wires pi, codex, opencode, gemini, … to emit on turn-stop
 # or per agent:  cmux hooks pi install   /   cmux hooks codex install
 ```
 
@@ -72,19 +73,26 @@ Claude Code emits notifications out of the box when launched inside cmux (no
 `cmux hooks` entry needed). Without hooks, an agent stays silent and you're back to
 polling — so install them before relying on the wait.
 
-**What an agent emits when its turn ends** — one event per completed turn:
+**What each completed turn emits** — the notification store fires one
+`notification.created` event per turn. It's the downstream event for *every*
+notification, however created, so it's the one signal common to all agents:
 
 ```json
-{ "name": "notification.requested", "category": "notification",
-  "workspace_id": "120FC732-…", "surface_id": null, "seq": 1512, … }
+{ "name": "notification.created", "category": "notification",
+  "workspace_id": "E271358A-…", "surface_id": "A0BA3FDC-…", "seq": 1512, … }
 ```
 
-Match on **`workspace_id`** — for hook-emitted notifications `surface_id` is usually
-`null`, but `workspace_id` is always set. The title/body are **redacted** in the
-event (you get the signal, not the text), so once it fires, `read-screen` that
-workspace's surface for the actual reply. Filter to `--name notification.requested`;
-a sibling `notification.clear_requested` fires when a surface gains focus and is just
-noise.
+Both `workspace_id` and `surface_id` are **always set** on `.created`, so match
+whichever pins your target: `surface_id` to wait on one exact surface, or
+`workspace_id` when the workspace holds a single agent. The title/body are
+**redacted** in the event (you get the signal, not the text), so once it fires,
+`read-screen` that surface for the actual reply.
+
+Match `--name notification.created`, **not** its siblings:
+`notification.requested` only fires for the socket-`cmux notify` path, so it *misses*
+agents whose notifications are created store-side (confirmed: some Claude Code turns
+emit `.created` with no `.requested`); `notification.clear_requested` fires on focus
+and is just noise.
 
 **Wait for a specific agent to finish** (first grab its workspace UUID — the `id`
 field from `cmux workspace list --json --id-format both`; that's the value the
@@ -93,7 +101,7 @@ event's `workspace_id` carries):
 ```bash
 WS=<agent-workspace-uuid>
 # Start the listener to a file BEFORE sending the prompt, then poll the file.
-cmux events --name notification.requested --no-heartbeat --no-ack > /tmp/cmux.ev &
+cmux events --name notification.created --no-heartbeat --no-ack > /tmp/cmux.ev &
 EV=$!
 cmux send --surface <ref> "<task>"; cmux send-key --surface <ref> enter
 # wait (bounded) for this workspace's turn-done event

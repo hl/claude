@@ -107,18 +107,6 @@ Beyond the core loop above, these are the non-obvious rules:
 - **One window per team.** Keep a unit of work to a single window so it stays
   monitorable and tearable as a unit.
 
-## Workflows
-
-### Drive a surface end-to-end
-
-The default loop for any single-surface task: discover, inspect, act, verify, report.
-
-1. `cmux --help` (and per-subcommand `--help`) to confirm the verbs.
-2. Inspect current state (`tree --all` / `workspace list`).
-3. Take the action (create / send + send-key / read).
-4. Read back to verify the result.
-5. Report concisely what happened, citing the surfaces/refs involved.
-
 ## Report Format
 
 Report concisely in plain English: what you did, the surfaces/refs involved, and
