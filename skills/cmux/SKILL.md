@@ -120,8 +120,9 @@ workspace's surface for the actual reply. Filter to `--name notification.request
 a sibling `notification.clear_requested` fires when a surface gains focus and is just
 noise.
 
-**Wait for a specific agent to finish** (capture its `workspace_id` first via
-`cmux workspace list --json --id-format both`):
+**Wait for a specific agent to finish** (first grab its workspace UUID — the `id`
+field from `cmux workspace list --json --id-format both`; that's the value the
+event's `workspace_id` carries):
 
 ```bash
 WS=<agent-workspace-uuid>
@@ -185,9 +186,7 @@ notification events** above).
 
 ### Best practices
 
-The instructions above already cover the core loop (`--help` first, look before you
-leap, type-then-submit, read back to verify, never echo secrets). These are the rules
-that aren't obvious from the commands themselves:
+Beyond the core loop above, these are the non-obvious rules:
 
 - **Refs are positional and renumber.** `surface:N` / `workspace:N` shift as things
   open and close. Re-read the tree right before you act; for anything long-lived,
