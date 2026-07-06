@@ -29,10 +29,11 @@ pane (via `send` + `send-key enter`).
 Default to yolo for hands-off fleet runs; reach for `--full-auto` when you want a
 sandbox.
 
-**Always launch Codex with the `gpt-5.5` model unless a prompt specifies otherwise** —
-pass `-m gpt-5.5` at launch, e.g. `codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`.
-If a prompt names a different Codex model/effort, use that instead; `gpt-5.5` is just
-the default.
+**Launch Codex with `-m gpt-5.5` unless a prompt specifies otherwise** — e.g.
+`codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`. `gpt-5.5` is
+the current default and is *not* validated by cmux, so if Codex rejects it as unknown,
+consult Codex's own model list and pass whatever is current. If a prompt names a
+specific model/effort, use that instead.
 
 ### Claude Code — cc bypass mode
 
@@ -44,11 +45,10 @@ agent, launch it the same way you yolo Codex — bypass permissions at launch:
   equivalent of Codex yolo. The composer then shows `⏵⏵ bypass permissions on` and it
   executes shell/edits without prompting.
 
-Caveat verified in testing: a notification still fires on turn-completion **even when
-Claude refused to do the work** — so if you only watch events, you can mistake a
-"declined, nothing happened" turn for success. Always `read-screen` (or check the
-artifacts) after the event, don't trust the event alone (see **Waiting for an agent's
-turn to finish** below).
+Caveat verified in testing: a notification fires on turn-completion **even when Claude
+refused to do the work** — a bare event is not proof of success. So the `read-screen`
+step in **Waiting for an agent's turn to finish** (below) isn't optional here: confirm
+the reply or the artifacts before trusting the turn.
 
 ## Waiting for an agent's turn to finish (don't busy-poll)
 
