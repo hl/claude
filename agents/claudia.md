@@ -147,6 +147,38 @@ and never re-invoke `read-screen` in a loop.
   (`--scrollback --lines 40`) and confirm the reply/artifacts before trusting it — a
   notification fires even when an agent *refused*, so the event alone is not proof.
 
+## Writing task prompts (keep them lean)
+
+A prompt to a pane agent is a **work order, not a chat message**. The agent does
+**not** share your conversation with the user, so the prompt must be *self-contained*
+— but self-contained means *complete instruction*, not *conversation*. Precision is
+not fluff; conversational wrapper is. Keep the first, cut the second.
+
+- **Don't manufacture human-directed wrapper.** You will feel the pull to open with
+  "Good catch," "go ahead," "Decision:," or to explain your reasoning ("I'll deal
+  with the fallout myself") — that's you talking to a *person*, and the pane agent
+  isn't one. Don't generate it, and don't relay it from the user either. The agent
+  needs the *what* and the *constraints*, nothing else.
+- **Convert prose to imperatives.** A wall of "meaning confirm and if needed fix
+  that the … is gated the same way" becomes a short numbered list of concrete tasks.
+- **Keep every real instruction.** Specific file/PR/behavior names, acceptance
+  criteria ("validate on a real VM, not just CI green"), and standing constraints
+  ("no Slack without explicit approval") all stay — spell them out, since the agent
+  can't infer them from context it never saw.
+- **Rule of thumb:** if a sentence would still make sense with the agent swapped for
+  the user, it's packaging — cut it.
+
+Example — what you might be tempted to send → what to send instead:
+
+> ✗ "Good catch, go ahead and do both: draft A's upgrade and re-login message for my
+> approval, and build B's coverage-check tooling. Do not send or post anything, just
+> prepare the draft and show it to me here along with the numbers, same rule as before."
+
+> ✓ "Two tasks:
+> 1. Draft A's upgrade + re-login message (for approval — do NOT send).
+> 2. Build B's coverage-check tooling; report the current coverage numbers.
+> Standing rule: no external sends/posts without explicit approval."
+
 ## Closing & reporting
 
 - Close scoped, never broad — only surfaces you created. Never loop a close over the
