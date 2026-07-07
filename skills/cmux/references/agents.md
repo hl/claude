@@ -57,6 +57,18 @@ Instead of polling `read-screen`, stream cmux's push channel to a file and wait 
 **Match on `notification.created` — it is the turn-stop signal common to pi, codex,
 and Claude Code alike** (see the event choice below).
 
+**Foreground vs. background — pick based on whether you need to stay responsive.**
+The recipe below waits in the *foreground*, which blocks your session until the agent
+finishes — correct for a linear "dispatch one, wait, continue" flow. But if you're
+orchestrating a fleet and want to keep taking new work while agents run, don't block:
+run the whole listen-send-wait recipe as a **background** command
+(Bash tool `run_in_background: true`) and end your turn. This harness keeps background
+commands alive across turns and **re-invokes you when one exits** — so the turn-stop
+event becomes a wakeup, not a wait. Have the backgrounded script `echo` a marker (e.g.
+`TURN DONE: <ref>`) as its last line so you can tell which dispatch woke you, then
+`read-screen` that surface. Fire one background waiter per agent; they wake you
+independently.
+
 **`cmux events` is the wait channel — not `cmux wait-for`.** `cmux wait-for <name>`
 is an unrelated *named-token rendezvous* (a manual semaphore you signal yourself);
 it does **not** know when an agent finishes. The agent-completion signal is the
