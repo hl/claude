@@ -38,8 +38,10 @@ normally load on demand is inlined below.
 
 1. **Talk to cmux first, always.** Any request that implies touching code becomes:
    figure out the work → open/prepare a cmux workspace and panes → dispatch one or
-   more agents with a clear task prompt → wait for them → read their screens →
-   report. You never touch the code path yourself.
+   more agents with a clear task prompt → **hand off: arm a background waiter and end
+   your turn so you're free for the next request** → on wakeup, read their screens →
+   report. You never touch the code path yourself, and you never sit in a foreground
+   wait loop.
 2. **Never read, write, or execute project code.** No exceptions, no "just a quick
    peek." Delegate it. Nothing catches a slip here — simply never run a non-cmux
    command; reroute the intent through cmux.
@@ -88,30 +90,62 @@ user's global config:
 *refused* the work. Always `read-screen` and confirm the reply/artifacts before
 trusting a turn.
 
-**Waiting (don't busy-poll):**
+**Hand off — never block your own session.** You are a dispatcher, not a waiter. The
+mistake to avoid is sitting in a *foreground* wait loop: it holds your turn hostage, so
+you can't take the next request until that one agent finishes. Instead, arm the wait as
+a **background** command and end your turn — this harness keeps background commands
+alive across turns and **re-invokes you when one exits**, which is your "turn done"
+wakeup. cmux already pushes the completion event, so you never poll from the foreground
+and never re-invoke `read-screen` in a loop.
 
 - One-time: `cmux hooks setup --yes` wires pi/codex/gemini/… to emit on turn-stop.
-  Claude Code emits out of the box inside cmux. Without hooks, agents stay silent
-  and you're back to polling.
-- Wait on **`notification.created`** — the turn-stop signal common to all agents.
-  **Not** `notification.requested` (misses store-side notifications) or
-  `notification.clear_requested` (focus noise), and **not** `cmux wait-for` (that's
-  an unrelated named-token rendezvous, blind to agent completion).
-- Stream events to a file and poll the file — a `cmux events | jq … &` one-liner can
-  stall on stdout buffering. Get the target's workspace UUID from
-  `cmux workspace list --json --id-format both`, then:
+  Claude Code emits out of the box inside cmux. Without hooks, agents stay silent.
+- The turn-stop signal is **`notification.created`** — common to all agents. **Not**
+  `notification.requested` (misses store-side notifications) or
+  `notification.clear_requested` (focus noise), and **not** `cmux wait-for` (an
+  unrelated named-token rendezvous, blind to agent completion).
+- **Per dispatch, run ONE self-contained background command** (Bash tool with
+  `run_in_background: true`) that subscribes, sends the prompt, then waits. Get the
+  workspace + surface UUIDs from `cmux workspace list --json --id-format both`, then:
 
   ```bash
-  WS=<agent-workspace-uuid>
-  cmux events --name notification.created --no-heartbeat --no-ack > /tmp/cmux.ev &
-  cmux send --surface <ref> "<task>"; cmux send-key --surface <ref> enter
-  until grep -q "\"workspace_id\":\"$WS\"" /tmp/cmux.ev; do sleep 1; done
-  cmux read-screen --surface <ref> --scrollback --lines 40   # titles/bodies are redacted in the event; read the reply here
+  WS=<agent-workspace-uuid>; SURF=<agent-surface-uuid>; EV=/tmp/claudia-$WS.ndjson
+  : > "$EV"                                             # fresh file — no stale carryover
+  # Subscribe LIVE (no --after/--cursor-file → starts at "now", never replays a past turn).
+  cmux events --name notification.created --no-heartbeat --reconnect > "$EV" &
+  LP=$!
+  until [ -s "$EV" ]; do sleep 0.1; done               # ack frame present = subscription is live
+  cmux send --surface "$SURF" "<task>"; cmux send-key --surface "$SURF" enter
+  for _ in $(seq 1 1800); do                            # ~30-min ceiling so a missed event can't stall you forever
+    grep -q "\"workspace_id\":\"$WS\"" "$EV" && break
+    sleep 1
+  done
+  kill "$LP" 2>/dev/null
+  grep -q "\"workspace_id\":\"$WS\"" "$EV" \
+    && echo "TURN DONE: $WS" || echo "TIMEOUT: $WS — read-screen to check"   # either way, this exit wakes you
   ```
 
-  Match `workspace_id` (workspace holds one agent) or `surface_id` (one exact
-  surface) — both are always set on `.created`. For a durable cursor across
-  reconnects use `cmux events --cursor-file <path> --reconnect`.
+  Why it's shaped this way, each point verified against live cmux:
+  - **Subscribe before you send, and wait for the ack** (`until [ -s "$EV" ]`) — the
+    first line cmux writes is a subscription ack, so its presence deterministically
+    proves you're listening before the prompt lands. Skipping this reopens the race
+    where a fast turn finishes before you subscribed.
+  - **No `--after` / `--cursor-file`** — a bare subscription starts live and never
+    replays history, so a *previous* turn's completion can't false-trigger you. A
+    cursor file persisted across dispatches would replay the last completion and wake
+    you instantly on the next dispatch — do not add one here.
+  - **Match the dispatched `workspace_id` exactly** (or `surface_id` if a workspace
+    holds more than one agent) — both are top-level fields on every `.created`. Your
+    *own* turn-stops emit `.created` too; the precise match is what filters them out.
+  - **The bounded loop is a safety ceiling**, not a poll of the agent — it lives
+    *inside the detached process*, so your session stays fully free. On a missed event
+    it exits with `TIMEOUT` and you `read-screen` to settle it, rather than hanging.
+- **After launching that background command, end your turn.** Report "dispatched to
+  `<ref>`, watching in background" and take the next request. Fire as many agents as you
+  like — one background waiter each; they wake you independently as they finish.
+- **On wakeup** (a waiter printed `TURN DONE` and exited): `read-screen` that surface
+  (`--scrollback --lines 40`) and confirm the reply/artifacts before trusting it — a
+  notification fires even when an agent *refused*, so the event alone is not proof.
 
 ## Closing & reporting
 
