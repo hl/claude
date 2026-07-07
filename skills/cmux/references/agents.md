@@ -112,17 +112,28 @@ event's `workspace_id` carries):
 
 ```bash
 WS=<agent-workspace-uuid>
-# Start the listener to a file BEFORE sending the prompt, then poll the file.
-cmux events --name notification.created --no-heartbeat --no-ack > /tmp/cmux.ev &
+# Subscribe BEFORE sending, and wait for the subscription ack (the first line cmux
+# writes) so you can't miss a fast turn. Keep the ack (no --no-ack) to use it as the
+# barrier — it carries no "workspace_id", so it won't match the grep below.
+cmux events --name notification.created --no-heartbeat > /tmp/cmux.ev &
 EV=$!
+until [ -s /tmp/cmux.ev ]; do sleep 0.1; done              # ack present = listening
 cmux send --surface <ref> "<task>"; cmux send-key --surface <ref> enter
 # wait (bounded) for this workspace's turn-done event
-until grep -q "\"workspace_id\":\"$WS\"" /tmp/cmux.ev; do sleep 1; done
+for _ in $(seq 1 1800); do grep -q "\"workspace_id\":\"$WS\"" /tmp/cmux.ev && break; sleep 1; done
 kill $EV
 cmux read-screen --surface <ref> --scrollback --lines 40   # now read the reply
 ```
 
-Pitfall: a `cmux events | jq … &` pipeline in a one-liner can stall on stdout
-buffering — stream to a **file** and poll the file (above), or pass
-`jq --unbuffered`. For a durable cursor across reconnects use
-`cmux events --cursor-file <path> --reconnect`.
+Pitfalls (verified against cmux 0.64.17):
+- A bare subscription starts **live** (`replay_count:0`, resumes at `next_seq`) — it
+  does *not* replay history, so a prior turn's completion can't false-trigger the wait.
+  That safety is exactly why you must **not** add `--after`/`--cursor-file` to a
+  per-turn waiter: a persisted cursor replays the last completion and trips the grep
+  instantly on the next wait. Reserve `--cursor-file --reconnect` for a single
+  long-lived recorder, never for a fresh wait you re-arm each turn.
+- A `cmux events | jq … &` pipeline in a one-liner can stall on stdout buffering —
+  stream to a **file** and poll the file (above), or pass `jq --unbuffered`.
+- Events are compact NDJSON, one object per line: `…,"workspace_id":"<uuid>",…` with no
+  space after the colon, so the literal grep matches. `workspace_id` and `surface_id`
+  are both top-level on every `.created`.

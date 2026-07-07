@@ -105,25 +105,41 @@ and never re-invoke `read-screen` in a loop.
   `notification.clear_requested` (focus noise), and **not** `cmux wait-for` (an
   unrelated named-token rendezvous, blind to agent completion).
 - **Per dispatch, run ONE self-contained background command** (Bash tool with
-  `run_in_background: true`) that subscribes, sends the prompt, then waits — subscribing
-  *before* the send closes the race where a fast turn finishes before you're listening.
-  Get the workspace UUID from `cmux workspace list --json --id-format both`, then:
+  `run_in_background: true`) that subscribes, sends the prompt, then waits. Get the
+  workspace + surface UUIDs from `cmux workspace list --json --id-format both`, then:
 
   ```bash
-  WS=<agent-workspace-uuid>; REF=<surface-ref>
-  cmux events --name notification.created --reconnect --no-heartbeat --no-ack \
-    --cursor-file /tmp/claudia-$WS.seq > /tmp/claudia-$WS.ev &
-  EV=$!
-  sleep 0.5                                             # let the subscription establish
-  cmux send --surface "$REF" "<task>"; cmux send-key --surface "$REF" enter
-  until grep -q "\"workspace_id\":\"$WS\"" /tmp/claudia-$WS.ev; do sleep 1; done
-  kill "$EV" 2>/dev/null
-  echo "TURN DONE: $REF (workspace $WS)"                # this exit wakes you back up
+  WS=<agent-workspace-uuid>; SURF=<agent-surface-uuid>; EV=/tmp/claudia-$WS.ndjson
+  : > "$EV"                                             # fresh file — no stale carryover
+  # Subscribe LIVE (no --after/--cursor-file → starts at "now", never replays a past turn).
+  cmux events --name notification.created --no-heartbeat --reconnect > "$EV" &
+  LP=$!
+  until [ -s "$EV" ]; do sleep 0.1; done               # ack frame present = subscription is live
+  cmux send --surface "$SURF" "<task>"; cmux send-key --surface "$SURF" enter
+  for _ in $(seq 1 1800); do                            # ~30-min ceiling so a missed event can't stall you forever
+    grep -q "\"workspace_id\":\"$WS\"" "$EV" && break
+    sleep 1
+  done
+  kill "$LP" 2>/dev/null
+  grep -q "\"workspace_id\":\"$WS\"" "$EV" \
+    && echo "TURN DONE: $WS" || echo "TIMEOUT: $WS — read-screen to check"   # either way, this exit wakes you
   ```
 
-  The `sleep`/poll here is harmless: it runs *inside the detached process*, so your
-  session stays fully free the whole time. Match `workspace_id` (workspace holds one
-  agent) or `surface_id` (one exact surface) — both are always set on `.created`.
+  Why it's shaped this way, each point verified against live cmux:
+  - **Subscribe before you send, and wait for the ack** (`until [ -s "$EV" ]`) — the
+    first line cmux writes is a subscription ack, so its presence deterministically
+    proves you're listening before the prompt lands. Skipping this reopens the race
+    where a fast turn finishes before you subscribed.
+  - **No `--after` / `--cursor-file`** — a bare subscription starts live and never
+    replays history, so a *previous* turn's completion can't false-trigger you. A
+    cursor file persisted across dispatches would replay the last completion and wake
+    you instantly on the next dispatch — do not add one here.
+  - **Match the dispatched `workspace_id` exactly** (or `surface_id` if a workspace
+    holds more than one agent) — both are top-level fields on every `.created`. Your
+    *own* turn-stops emit `.created` too; the precise match is what filters them out.
+  - **The bounded loop is a safety ceiling**, not a poll of the agent — it lives
+    *inside the detached process*, so your session stays fully free. On a missed event
+    it exits with `TIMEOUT` and you `read-screen` to settle it, rather than hanging.
 - **After launching that background command, end your turn.** Report "dispatched to
   `<ref>`, watching in background" and take the next request. Fire as many agents as you
   like — one background waiter each; they wake you independently as they finish.
