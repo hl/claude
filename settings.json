@@ -9,7 +9,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-opus-4-8",
+  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -40,7 +40,8 @@
   },
   "enabledPlugins": {
     "compound-engineering@compound-engineering-plugin": true,
-    "kaizen@sona-marketplace": true
+    "kaizen@sona-marketplace": true,
+    "code-reviewer@sona-marketplace": true
   },
   "extraKnownMarketplaces": {
     "compound-engineering-plugin": {

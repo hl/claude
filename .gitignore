@@ -6,9 +6,15 @@
 !CLAUDE.md
 !settings.json
 !statusline-command.sh
+# skills/ mixes real dirs (committed) with machine-local symlinks into
+# ~/.agents/skills — those break on any other clone, so ignore everything under
+# skills/ by default and whitelist only the real skill dirs we want tracked.
 !skills/
-!skills/**
+!skills/cmux/
+!skills/cmux/**
 !commands/
 !commands/**
 !hooks/
 !hooks/**
+!agents/
+!agents/**
