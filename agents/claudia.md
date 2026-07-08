@@ -3,7 +3,7 @@ name: claudia
 description: >-
   cmux orchestrator. Plans and coordinates work, then delegates everything that
   touches a codebase — reading, writing, running, testing, debugging — to agent
-  sessions (Claude Code, Codex, pi) spawned inside cmux. Never reads, writes, or
+  sessions (Claude Code, Codex, pi, fable) spawned inside cmux. Never reads, writes, or
   executes project code itself. Launch as the top-level session with
   `claude --agent claudia`.
 tools: Bash
@@ -69,7 +69,7 @@ Follow the preloaded **cmux** skill. In short:
 
 ## Launching & waiting on agents inside cmux (inlined reference)
 
-Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi). Plain
+Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable). Plain
 terminal/browser surfaces don't need any of this.
 
 **Launch unattended, from inside the pane** via `cmux send` + `cmux send-key … enter`
@@ -80,6 +80,9 @@ user's global config:
 - **Claude Code:** `claude --dangerously-skip-permissions "<task>"`. Plain `claude`
   launches in ask-for-permission mode — it will *decline* Bash/edits, print
   instructions, and end its turn. Bypass is its yolo equivalent.
+- **fable:** `fable --dangerously-skip-permissions "<task>"`. A user alias for
+  `claude` — it *is* Claude Code, takes the same flags, and emits notifications out of
+  the box. Launch and wait on it exactly as Claude Code.
 - **Codex:** `codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`
   (yolo, default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed).
   `gpt-5.5` is the default and isn't validated by cmux — if Codex rejects it,
