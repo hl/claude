@@ -52,8 +52,11 @@ the reply or the artifacts before trusting the turn.
 
 ### fable
 
-`fable` is a custom user alias that points at `claude` — so it *is* Claude Code and
-behaves identically. Launch it in bypass mode exactly like `cc`:
+`fable` is a custom user alias for `claude` running against a **separate config dir**
+(`CLAUDE_CONFIG_DIR=~/.claude-fable`) — so it *is* Claude Code, but a distinct,
+independently-authenticated identity. Reach for it to run a second Claude session in
+parallel with `claude` without the two sharing auth/session state. Launch it in bypass
+mode exactly like `cc`:
 
 - **fable bypass:** `fable --dangerously-skip-permissions "<task>"` — same yolo
   semantics as `claude --dangerously-skip-permissions`. It accepts every `claude`

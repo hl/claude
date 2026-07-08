@@ -80,9 +80,10 @@ user's global config:
 - **Claude Code:** `claude --dangerously-skip-permissions "<task>"`. Plain `claude`
   launches in ask-for-permission mode — it will *decline* Bash/edits, print
   instructions, and end its turn. Bypass is its yolo equivalent.
-- **fable:** `fable --dangerously-skip-permissions "<task>"`. A user alias for
-  `claude` — it *is* Claude Code, takes the same flags, and emits notifications out of
-  the box. Launch and wait on it exactly as Claude Code.
+- **fable:** `fable --dangerously-skip-permissions "<task>"`. A user alias for `claude`
+  against a separate config dir (`~/.claude-fable`) — still Claude Code, but a distinct,
+  independently-authenticated identity for running a second Claude in parallel. Same
+  flags and out-of-the-box notifications; launch and wait on it exactly as Claude Code.
 - **Codex:** `codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`
   (yolo, default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed).
   `gpt-5.5` is the default and isn't validated by cmux — if Codex rejects it,
