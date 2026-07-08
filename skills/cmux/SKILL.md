@@ -1,6 +1,6 @@
 ---
 name: cmux
-description: Drive cmux from natural language — spawn, prompt, read, and tear down its windows, workspaces, panes, and surfaces, and orchestrate the agent sessions (Claude Code, Codex, pi) running inside them. Use whenever a prompt asks to open, inspect, drive, or close cmux surfaces or run agents in them.
+description: Drive cmux from natural language — spawn, prompt, read, and tear down its windows, workspaces, panes, and surfaces, and orchestrate the agent sessions (Claude Code, Codex, pi, fable) running inside them. Use whenever a prompt asks to open, inspect, drive, or close cmux surfaces or run agents in them.
 argument-hint: [what to do in cmux]
 ---
 
@@ -54,7 +54,7 @@ cmux workspace create --name <name> --cwd <dir> --env-file .env --json
 
 - **`cmux workspace create` supports `--env-file`, which loads that file's
   environment variables into every surface in the workspace** — so an agent
-  launched in a pane (`claude`, `pi`, `codex`, `gemini`) comes up already
+  launched in a pane (`claude`, `fable`, `pi`, `codex`, `gemini`) comes up already
   authenticated, no manual `export` needed.
 - **Default `--env-file` to `.env`** (the repo's `.env`) unless told otherwise:
   `--env-file .env`. That is the canonical source for `OPENROUTER_API_KEY`,
@@ -86,7 +86,7 @@ You operate surfaces the way a person would, but over the CLI:
 
 ### Driving AI agents inside cmux
 
-cmux surfaces can host coding agents (Claude Code, Codex, pi). Launching them so they
+cmux surfaces can host coding agents (Claude Code, Codex, pi, fable). Launching them so they
 run unattended, and waiting on their turn-completion via notification events, have
 agent-specific gotchas — bypass/yolo launch flags, one-time hook setup, and which
 event actually signals "done". **Before you launch or wait on any agent, read

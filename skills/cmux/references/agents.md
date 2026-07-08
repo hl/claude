@@ -1,6 +1,6 @@
 # Driving AI agents inside cmux
 
-Read this when a task involves **launching** a coding agent (Claude Code, Codex, pi)
+Read this when a task involves **launching** a coding agent (Claude Code, Codex, pi, fable)
 in a cmux surface, or **waiting** for one to finish its turn. For plain
 terminal/browser surfaces none of this applies — the core control loop in `SKILL.md`
 is enough.
@@ -49,6 +49,24 @@ Caveat verified in testing: a notification fires on turn-completion **even when 
 refused to do the work** — a bare event is not proof of success. So the `read-screen`
 step in **Waiting for an agent's turn to finish** (below) isn't optional here: confirm
 the reply or the artifacts before trusting the turn.
+
+### fable
+
+`fable` is a custom user alias for `claude` running against a **separate config dir**
+(`CLAUDE_CONFIG_DIR=~/.claude-fable`) — so it *is* Claude Code, but a distinct,
+independently-authenticated identity. Reach for it to run a second Claude session in
+parallel with `claude` without the two sharing auth/session state. Launch it in bypass
+mode exactly like `cc`:
+
+- **fable bypass:** `fable --dangerously-skip-permissions "<task>"` — same yolo
+  semantics as `claude --dangerously-skip-permissions`. It accepts every `claude`
+  flag, and emits `notification.created` on turn-stop out of the box (no `cmux hooks`
+  entry needed), so wait on it exactly as you would Claude Code. The "notification ≠
+  success" caveat above applies unchanged — `read-screen` and confirm.
+
+Because it's a shell alias, it resolves only in the pane's interactive shell — which
+is where `cmux send` types it, so it works there. It would *not* resolve from a
+non-interactive batch shell, but you never launch agents that way anyway.
 
 ## Waiting for an agent's turn to finish (don't busy-poll)
 
