@@ -113,27 +113,38 @@ and never re-invoke `read-screen` in a loop.
   workspace + surface UUIDs from `cmux workspace list --json --id-format both`, then:
 
   ```bash
-  WS=<agent-workspace-uuid>; SURF=<agent-surface-uuid>; EV=/tmp/claudia-$WS.ndjson
+  WS=<agent-workspace-uuid>; SURF=<agent-surface-uuid>; LABEL="<short task label>"
+  EV=/tmp/claudia-$WS.ndjson
   : > "$EV"                                             # fresh file — no stale carryover
   # Subscribe LIVE (no --after/--cursor-file → starts at "now", never replays a past turn).
   cmux events --name notification.created --no-heartbeat --reconnect > "$EV" &
   LP=$!
-  until [ -s "$EV" ]; do sleep 0.1; done               # ack frame present = subscription is live
+  for _ in $(seq 1 50); do [ -s "$EV" ] && break; sleep 0.1; done   # ack barrier — bounded, never hangs
+  [ -s "$EV" ] || { kill "$LP" 2>/dev/null; echo "NO SUBSCRIPTION: $WS ($LABEL) — is cmux up? Nothing was sent."; exit 1; }
   cmux send --surface "$SURF" "<task>"; cmux send-key --surface "$SURF" enter
   for _ in $(seq 1 1800); do                            # ~30-min ceiling so a missed event can't stall you forever
     grep -q "\"workspace_id\":\"$WS\"" "$EV" && break
+    kill -0 "$LP" 2>/dev/null || break                  # listener died (cmux gone?) — wake now, don't sit out the ceiling
     sleep 1
   done
   kill "$LP" 2>/dev/null
   grep -q "\"workspace_id\":\"$WS\"" "$EV" \
-    && echo "TURN DONE: $WS" || echo "TIMEOUT: $WS — read-screen to check"   # either way, this exit wakes you
+    && echo "TURN DONE: $WS ($LABEL)" || echo "TIMEOUT: $WS ($LABEL) — read-screen to check"   # either way, this exit wakes you
   ```
 
   Why it's shaped this way, each point verified against live cmux:
-  - **Subscribe before you send, and wait for the ack** (`until [ -s "$EV" ]`) — the
-    first line cmux writes is a subscription ack, so its presence deterministically
-    proves you're listening before the prompt lands. Skipping this reopens the race
-    where a fast turn finishes before you subscribed.
+  - **Subscribe before you send, and wait for the ack** — the first line cmux writes
+    is a subscription ack, so its presence deterministically proves you're listening
+    before the prompt lands. Skipping this reopens the race where a fast turn finishes
+    before you subscribed. The barrier is **bounded** (~5s) and bails with
+    `NO SUBSCRIPTION` *without sending the prompt* — an unbounded `until` would hang
+    the waiter forever if cmux is down, and you'd never be woken.
+  - **`LABEL` makes the wakeup self-describing.** The marker line is all you're
+    guaranteed to see at wake time — after compaction, a bare UUID tells you nothing.
+    Put a human-readable task label in it so any wakeup can be acted on from scratch.
+  - **The `kill -0` liveness check** wakes you promptly if the listener process dies
+    mid-wait (cmux quit/restarted) instead of silently sitting out the full ceiling
+    while events go nowhere.
   - **No `--after` / `--cursor-file`** — a bare subscription starts live and never
     replays history, so a *previous* turn's completion can't false-trigger you. A
     cursor file persisted across dispatches would replay the last completion and wake
@@ -150,6 +161,54 @@ and never re-invoke `read-screen` in a loop.
 - **On wakeup** (a waiter printed `TURN DONE` and exited): `read-screen` that surface
   (`--scrollback --lines 40`) and confirm the reply/artifacts before trusting it — a
   notification fires even when an agent *refused*, so the event alone is not proof.
+- **On a `TIMEOUT` wakeup**: `read-screen` first, then decide. If the turn actually
+  finished (event was missed), treat it as done. If the agent is still mid-turn, arm a
+  *fresh* waiter for the same surface and end your turn again — never fall back to
+  foreground polling. `NO SUBSCRIPTION` means nothing was dispatched: check cmux is up,
+  then redo the whole dispatch.
+
+## Durable state — cmux is your ledger
+
+Fleet state that lives only in your conversation dies with compaction or a restart —
+and a long fleet run *will* outlive your context. Push state into cmux as you go, so
+any future you can reconstruct the run with cmux commands alone:
+
+- **Name things so the tree is self-describing.** Create with
+  `--name <issue-123-fix-auth> --description "<one-line goal>"`; then
+  `cmux tree --all` + `cmux workspace list --json --id-format both` answers
+  "who is doing what" from nothing.
+- **Log stage transitions as they happen:**
+  `cmux log --workspace <ws> --source claudia "dispatched: <task>"` (likewise
+  `PR #N opened`, `review clean`, `blocked: <why>`), and keep the current stage
+  visible with `cmux set-status claudia "<stage>" --workspace <ws>`.
+  `cmux list-log --workspace <ws>` replays the history.
+- **On wakeup after compaction — or any time your memory of the fleet feels thin —
+  reconstruct before acting:** `cmux tree --all`, then `list-log` per live workspace.
+  Trust the ledger over your recollection, and reconcile: a workspace in the tree with
+  no ledger trail (or a trail with no workspace) is an orphan to investigate, not
+  ignore.
+
+## Dispatch policy
+
+- **Match the agent/model to the job.** A heavyweight model reviewing a one-line
+  version bump is money on the floor. Mechanical, small-diff work → a cheaper tier
+  (e.g. `claude --model sonnet …`); design-heavy, cross-cutting, or gnarly-debugging
+  work → full strength (`claude`, `fable`). If a cheap pass flags real complexity,
+  escalate — redispatch to a stronger model rather than pushing the weak one through.
+- **Reviews get fresh eyes.** Never have the authoring agent (or any pane that saw
+  its plan) review its own work — correlated reasoning rubber-stamps. Spawn a separate
+  reviewer whose prompt contains only the diff/PR ref and the acceptance criteria,
+  nothing of the author's reasoning.
+- **Irreversible actions are blast-radius-gated, not approval-gated.** Merging,
+  pushing to shared branches, publishing, deploying: write the gate into the worker's
+  task prompt. In bounds (all required checks green, modest diff, no migrations, CI
+  config, auth/secrets paths) → proceed autonomously. Out of bounds → leave the work
+  ready, `cmux notify` + report to the user; never let a worker default its way
+  through the gate.
+- **CI waits happen inside the worker, not in your loop.** Have the worker run
+  `gh pr checks <pr> --watch` as its final step — checks resolving becomes the
+  worker's turn-stop event, so CI completion wakes you like any other turn. Never
+  poll a pane (or CI) for check status yourself.
 
 ## Writing task prompts (keep them lean)
 
