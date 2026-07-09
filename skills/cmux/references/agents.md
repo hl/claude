@@ -135,11 +135,17 @@ WS=<agent-workspace-uuid>
 # barrier — it carries no "workspace_id", so it won't match the grep below.
 cmux events --name notification.created --no-heartbeat > /tmp/cmux.ev &
 EV=$!
-until [ -s /tmp/cmux.ev ]; do sleep 0.1; done              # ack present = listening
+# Bound the ack wait (~5s) — an unbounded `until` hangs forever if cmux is down.
+for _ in $(seq 1 50); do [ -s /tmp/cmux.ev ] && break; sleep 0.1; done
+[ -s /tmp/cmux.ev ] || { kill $EV 2>/dev/null; echo "no subscription — is cmux up?"; exit 1; }
 cmux send --surface <ref> "<task>"; cmux send-key --surface <ref> enter
-# wait (bounded) for this workspace's turn-done event
-for _ in $(seq 1 1800); do grep -q "\"workspace_id\":\"$WS\"" /tmp/cmux.ev && break; sleep 1; done
-kill $EV
+# wait (bounded) for this workspace's turn-done event; bail early if the listener dies
+for _ in $(seq 1 1800); do
+  grep -q "\"workspace_id\":\"$WS\"" /tmp/cmux.ev && break
+  kill -0 $EV 2>/dev/null || break
+  sleep 1
+done
+kill $EV 2>/dev/null
 cmux read-screen --surface <ref> --scrollback --lines 40   # now read the reply
 ```
 
@@ -155,3 +161,12 @@ Pitfalls (verified against cmux 0.64.17):
 - Events are compact NDJSON, one object per line: `…,"workspace_id":"<uuid>",…` with no
   space after the colon, so the literal grep matches. `workspace_id` and `surface_id`
   are both top-level on every `.created`.
+
+## Related, not a substitute: `cmux claude-teams` / `codex-teams`
+
+`cmux claude-teams [claude-args…]` launches Claude Code with its experimental
+agent-teams mode wired to cmux (a tmux shim maps teammate windows/panes onto cmux
+splits). That is Claude *self*-orchestrating its teammates — a different layer from
+this skill, where *you* dispatch and supervise independent agents pane by pane. Don't
+mix the two in one workspace; reach for `claude-teams` only when the user explicitly
+asks for Claude's native teams.
