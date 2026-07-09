@@ -83,19 +83,45 @@ Orchestration habits on top of the skill:
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
-Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable). Plain
-terminal/browser panes don't need any of this. herdr **auto-detects agent status**
-(`idle` / `working` / `blocked` / `done` / `unknown`) — no hook setup needed. Status
-semantics you must know:
+Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable, opencode,
+copilot). Plain terminal/browser panes don't need any of this. herdr surfaces one
+`agent_status` per pane — `idle` / `working` / `blocked` / `done` / `unknown` — and
+derives it **two different ways depending on the agent**, with no setup on your part
+either way:
 
-- **`done` = turn finished but the pane hasn't been viewed.** It survives CLI reads,
-  and a waiter armed *after* the turn ended still sees it — but **focusing the pane in
-  the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
+- **Reported (authoritative) — pi and opencode.** With *native agent integration*
+  installed, these agents' own processes push their real state over herdr's socket
+  (`pane.report_agent`) on lifecycle events, so `idle`/`working`/`blocked` come straight
+  from the agent rather than from scraping the screen. Practical upshot: **`blocked` on a
+  permission/question prompt is prompt and precise** for these two — trust it.
+- **Heuristic (inferred) — Claude Code (incl. fable), Codex, Copilot.** These do **not**
+  report state. Their integration hook only registers the session's *identity*
+  (`pane.report_agent_session` — session id, plus the transcript path for Claude), which
+  helps herdr keep attribution stable across pane-id churn but does **nothing** for
+  moment-to-moment status. Their `agent_status` is still inferred by scraping pane output
+  (OSC-title spinner glyphs, the `❯` prompt box, known permission-prompt forms), exactly
+  as before integration existed. So enabling integration for these three changed
+  *attribution*, **not** status reliability — every caveat below applies to them in full.
+- `herdr integration status` shows which agent types are wired up; when in doubt about a
+  pane, treat pi/opencode as reported and Claude/Codex/Copilot/fable as heuristic.
+
+Status semantics you must know:
+
+- **`done` is herdr's overlay — never an agent's own report.** No agent, reported or
+  heuristic, ever emits `done` (the reportable set is only idle/working/blocked/unknown);
+  herdr synthesizes `done` when a turn goes `working`→`idle` on a pane **nobody has
+  viewed**. So it behaves identically for *every* agent, pi/opencode included: it survives
+  CLI reads, and a waiter armed *after* the turn ended still sees it — but **focusing the
+  pane in the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
   `done` may never be observable. Never wait on `done` alone; treat
   `idle`-after-`working` as completion too.
-- **A launch-time prompt reads as `idle`, not `blocked`** (e.g. Claude Code's
-  folder-trust question in a cwd it hasn't seen). An agent that never reaches
-  `working` isn't thinking — read its pane and answer whatever it's stuck on.
+- **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
+  Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
+  reporter is live and matches no blocker heuristic. An agent that never reaches
+  `working` isn't thinking — read its pane and answer whatever it's stuck on. (Once
+  running, pi/opencode do surface *in-session* prompts as `blocked`; the heuristic three
+  depend on herdr recognizing the prompt's on-screen shape, which it usually — not
+  always — does.)
 
 **Launch unattended.** Use hands-off flags so the agent doesn't stall on an approval
 prompt no one will answer — these are per-launch only and don't change the user's
@@ -142,6 +168,32 @@ Per-agent argv (what goes after the `--`):
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
 trusting a turn.
 
+**Answering interactive select-menus (AskUserQuestion-style) safely.** A pane can
+block on a TUI menu with a highlighted (`❯`) option instead of a plain text prompt —
+Claude Code's `AskUserQuestion` renders one. These need different handling than a
+normal prompt:
+
+- **Never use `herdr pane run` (text + Enter) to answer a select-menu.** `pane run` is
+  for typing shell/text input; it sends your text then a real Enter. In a select-menu
+  there's no text field to fill — a bare digit is *not* a jump-to-option hotkey — so
+  the Enter you send just confirms whatever option is *already* highlighted, which may
+  silently confirm the wrong one.
+- **Instead, navigate, verify, then confirm — three separate calls:**
+  1. Navigate with actual arrow keys: `herdr pane send-keys <pane> Down` (or `Up`),
+     repeated the number of times needed to reach the target option.
+  2. `herdr pane read <pane>` and confirm the highlighted (`❯`) option's literal text
+     matches the intended choice.
+  3. Only then send Enter as its **own** separate call: `herdr pane send-keys <pane>
+     Enter`.
+  Never bundle navigation and confirmation into one blind command — always read
+  between moving the cursor and pressing Enter.
+- **Any mismatch between the intended choice and the highlighted text is a hard
+  stop.** Re-navigate; don't guess, don't proceed, don't assume the next Down/Up will
+  land correctly.
+- **This applies with extra weight to any menu gating an irreversible or destructive
+  action** (merge, force-push, delete, deploy, prod migration) — a wrong silent
+  confirmation there is the failure mode this rule exists to prevent.
+
 **Hand off — never block your own session.** You are a dispatcher, not a waiter. Never
 sit in a foreground wait loop — it holds your turn hostage, so you can't take the next
 request until that one agent finishes. Per dispatch, run **ONE self-contained
@@ -179,10 +231,14 @@ Why it's shaped this way:
   the whole ceiling and can only watch a single status.
 - **`done` OR `idle`-after-`working` is the completion signal** — focus can flip
   `done` to `idle` before any observer sees it. Requiring `working` first keeps the
-  agent's startup moment (briefly `idle`) from false-firing.
+  agent's startup moment (briefly `idle`) from false-firing. This holds identically for
+  reported (pi/opencode) and heuristic (Claude/Codex/Copilot) agents — reporters emit
+  `idle` at startup too, and none of them emit `done`, so the waiter is agent-agnostic
+  and needs no per-agent tuning.
 - **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
-  the prompt (`herdr pane run <pane> "<answer>"`, or `send-keys` for menu prompts)
-  instead of sitting out the ceiling.
+  the prompt — `herdr pane run <pane> "<answer>"` for a text prompt, or the
+  navigate/verify/confirm sequence above for a select-menu — instead of sitting out
+  the ceiling.
 - **The ceiling (~30 min) is a safety net, not a poll of your turn.** On `TIMEOUT`,
   read the pane and decide: finished after all → treat as done; genuinely still
   working → arm a fresh waiter and end your turn again. Never fall back to foreground
