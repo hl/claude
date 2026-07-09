@@ -1,4 +1,59 @@
 {
+  "alwaysThinkingEnabled": true,
+  "autoDreamEnabled": true,
+  "effortLevel": "xhigh",
+  "enabledPlugins": {
+    "code-reviewer@sona-marketplace": true,
+    "compound-engineering@compound-engineering-plugin": true,
+    "kaizen@sona-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "compound-engineering-plugin": {
+      "source": {
+        "repo": "EveryInc/compound-engineering-plugin",
+        "source": "github"
+      }
+    }
+  },
+  "feedbackSurveyState": {
+    "lastShownTime": 1754052688085
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix format \"{}\"",
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|MultiEdit|Write"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "~/.claude/hooks/wrap_bash_silent.sh",
+            "type": "command"
+          }
+        ],
+        "matcher": "Bash"
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash '/Users/hl/.claude/hooks/herdr-agent-state.sh' session",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "*"
+      }
+    ]
+  },
   "permissions": {
     "allow": [
       "Bash(elixir /tmp/*.exs)",
@@ -9,57 +64,13 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
-  "hooks": {
-    "PreToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "~/.claude/hooks/wrap_bash_silent.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|MultiEdit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '.tool_input.file_path | select(test(\"\\\\.exs?$\"))' | xargs -I{} mix format \"{}\""
-          }
-        ]
-      }
-    ]
-  },
-  "statusLine": {
-    "type": "command",
-    "command": "bash ~/.claude/statusline-command.sh"
-  },
-  "enabledPlugins": {
-    "compound-engineering@compound-engineering-plugin": true,
-    "kaizen@sona-marketplace": true,
-    "code-reviewer@sona-marketplace": true
-  },
-  "extraKnownMarketplaces": {
-    "compound-engineering-plugin": {
-      "source": {
-        "source": "github",
-        "repo": "EveryInc/compound-engineering-plugin"
-      }
-    }
-  },
-  "alwaysThinkingEnabled": true,
-  "effortLevel": "xhigh",
-  "tui": "fullscreen",
-  "autoDreamEnabled": true,
-  "skipDangerousModePermissionPrompt": true,
-  "theme": "auto",
-  "teammateMode": "auto",
   "skipAutoPermissionPrompt": true,
-  "feedbackSurveyState": {
-    "lastShownTime": 1754052688085
-  }
+  "skipDangerousModePermissionPrompt": true,
+  "statusLine": {
+    "command": "bash ~/.claude/statusline-command.sh",
+    "type": "command"
+  },
+  "teammateMode": "auto",
+  "theme": "auto",
+  "tui": "fullscreen"
 }
