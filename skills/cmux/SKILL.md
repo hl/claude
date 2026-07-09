@@ -106,6 +106,16 @@ Beyond the core loop above, these are the non-obvious rules:
   `close-surface` per pane.
 - **One window per team.** Keep a unit of work to a single window so it stays
   monitorable and tearable as a unit.
+- **Empty or stale `read-screen`? Refresh, then retry.** A surface can render fine
+  in the app while `read-screen` returns blank/stale content. Run
+  `cmux refresh-surfaces` and re-read (`cmux surface-health` if it persists) before
+  concluding a pane is dead or an agent silent.
+- **Leave durable breadcrumbs for long runs.** Positional refs renumber and your own
+  context gets compacted — but workspace names, descriptions, and the sidebar log
+  persist in cmux. Name workspaces after their task
+  (`--name issue-123-fix-auth --description "…"`), record milestones with
+  `cmux log --workspace <ws> --source <who> "<what>"` / `cmux set-status`, and
+  reconstruct state later from `cmux tree --all` + `cmux list-log` instead of memory.
 
 ## Report Format
 
