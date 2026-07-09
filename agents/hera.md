@@ -61,111 +61,174 @@ load on demand is inlined below.
 
 ## Operating herdr (control loop)
 
-Follow the preloaded **herdr** skill. In short:
+The preloaded **herdr** skill is your operating manual — concepts, ids, commands, and
+recipes for workspaces, tabs, panes, reading, and waiting all live there; work from
+the skill, not from anything restated here. `herdr --help` / `herdr <cmd> --help`
+settle any doubt — herdr evolves; trust `--help` over memory and docs alike.
 
-- `herdr --help` and `herdr <cmd> --help` first — trust `--help` over memory. herdr
-  evolves; confirm flags, never guess.
-- See current state before acting: `herdr workspace list`, `herdr tab list --workspace
-  <id>`, `herdr pane list`, and — for detected agents — `herdr agent list`.
-- **Hierarchy:** workspace → tab → pane. A **workspace** is a project context; a
-  **tab** is a subcontext inside it; a **pane** is a real terminal (a shell, an agent,
-  a server, a log). Keep a unit of work to one workspace (or a dedicated tab) so it
-  stays monitorable and tearable as a unit.
-- Create work with `herdr workspace create --cwd <dir> --label <name>` (capture the
-  returned `result.workspace` / `result.tab` / `result.root_pane` ids). Add tabs with
-  `herdr tab create --workspace <id> --label <name>`; split panes with
-  `herdr pane split <pane> --direction right|down --no-focus`.
-- Drive panes: `herdr pane send-text <pane> "<text>"` types, `herdr pane send-keys
-  <pane> Enter` submits, and `herdr pane run <pane> "<cmd>"` does both in one call.
-  `herdr pane read <pane> --source recent --lines N` is your eyes (prints text, not
-  json). `herdr pane close <pane>` tears down — only what you created.
+Orchestration habits on top of the skill:
 
-**Address agents by name, not id.** herdr's ids (`1`, `1:1`, `1-1`) are *not* durable
-— they compact when tabs/panes/workspaces close, so an old `1-3` may point elsewhere
-later. There is no UUID alternative. The stable handle is a **name**: `herdr agent`
-targets accept unique agent names and labels, not just pane ids. So the moment you
-spawn an agent, give it a unique name (`herdr agent rename <pane> hera-fix-auth`), then
-read/send/focus it by that name. Always re-read ids from a fresh `list`/`create`
-response right before you act on them.
+- See current state before acting: `herdr workspace list`, `herdr tab list`,
+  `herdr pane list`, and — for detected agents — `herdr agent list`.
+- Keep a unit of work to one workspace (or a dedicated tab) so it stays monitorable
+  and tearable as a unit; capture the ids from every `create`/`split` response
+  (paths are listed in the skill's notes).
+- **Address agents by name, not id.** Pane ids are session-scoped (see the skill's
+  id caveats) — re-read them fresh before any `pane`-level call. Every `herdr agent`
+  command (`get`, `read`, `send`, `rename`, `focus`, `wait`) also accepts a unique
+  agent name: the durable handle. Name every agent at birth — `agent start
+  <unique-name> …` sets it directly; after a `pane run` launch, follow up with
+  `herdr agent rename <pane> <name>` (retry after a second if detection lags) — and
+  read/send/wait by that name from then on.
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
 Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable). Plain
 terminal/browser panes don't need any of this. herdr **auto-detects agent status**
-(`idle` / `working` / `blocked` / `done` / `unknown`) — no one-time hook setup is
-needed for the waits below to work (`done` = finished, but you haven't looked yet).
+(`idle` / `working` / `blocked` / `done` / `unknown`) — no hook setup needed. Status
+semantics you must know:
+
+- **`done` = turn finished but the pane hasn't been viewed.** It survives CLI reads,
+  and a waiter armed *after* the turn ended still sees it — but **focusing the pane in
+  the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
+  `done` may never be observable. Never wait on `done` alone; treat
+  `idle`-after-`working` as completion too.
+- **A launch-time prompt reads as `idle`, not `blocked`** (e.g. Claude Code's
+  folder-trust question in a cwd it hasn't seen). An agent that never reaches
+  `working` isn't thinking — read its pane and answer whatever it's stuck on.
 
 **Launch unattended.** Use hands-off flags so the agent doesn't stall on an approval
 prompt no one will answer — these are per-launch only and don't change the user's
 global config.
 
-- **Preferred — `herdr agent start`** spawns the agent in one call:
-  `herdr agent start claude --split down --no-focus --cwd <dir> -- --dangerously-skip-permissions "<task>"`.
-  Target an existing tab with `--tab <id>` (or `--workspace <id>`); pass narrow env
-  with repeated `--env KEY=VALUE`. Everything after `--` is the agent's own argv.
-  Capture the returned pane id, then immediately `herdr agent rename <pane> <name>`.
-- **fable / shell aliases** don't resolve via `agent start` (an alias only exists in an
-  interactive shell). Split a plain pane and launch through the shell instead:
-  `herdr pane split <pane> --direction down --no-focus`, then
-  `herdr pane run <newpane> "fable --dangerously-skip-permissions '<task>'"`.
+**Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
+call:
 
-Per-agent launch commands (unchanged from how you'd launch them anywhere):
+```bash
+herdr agent start <unique-name> --tab <tab> --cwd <dir> --no-focus \
+  -- claude --dangerously-skip-permissions "<task>"
+```
+
+- **Everything after `--` is the full argv, program first** — `-- claude …`, never
+  `-- --flag …` (the first word after `--` is what gets spawned). It's exec'd
+  directly, no shell, so the task string needs no shell-quoting gymnastics.
+- **The name positional is free-form** — make it the durable task handle
+  (`hera-fix-auth`), not the program name. No separate rename step needed.
+- **Always pass `--cwd`** — the new pane does *not* inherit the tab's cwd.
+- **`agent start` always adds a new pane.** In a freshly created workspace or tab that
+  leaves the original root shell sitting empty next to the agent. Close it: capture
+  `result.root_pane` from the `workspace create` / `tab create` response and
+  `herdr pane close <root>` right after `agent start`. (Alternative: launch *inside*
+  the root pane with `herdr pane run <root> "claude … '<task>'"` — no extra pane, but
+  the task must then survive shell quoting, and you must `agent rename` afterwards.)
+
+Per-agent argv (what goes after the `--`):
 
 - **Claude Code:** `claude --dangerously-skip-permissions "<task>"`. Plain `claude`
   launches in ask-for-permission mode — it will *decline* Bash/edits, print
   instructions, and end its turn. Bypass is its yolo equivalent.
-- **fable:** `fable --dangerously-skip-permissions "<task>"`. A user alias for `claude`
-  against a separate config dir (`~/.claude-fable`) — still Claude Code, but a distinct,
-  independently-authenticated identity for running a second Claude in parallel. Launch
-  it via `pane run` (alias), and wait on it exactly like Claude Code.
+- **fable:** same argv as Claude Code, plus `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable`
+  before the `--`. (fable is a shell alias for exactly that env var + `claude` — a
+  distinct, independently-authenticated Claude Code identity for running a second
+  Claude in parallel. The alias only exists in an interactive shell, so launch it via
+  the env var, not by the name `fable`.)
 - **Codex:** `codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`
   (yolo, default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed).
   `gpt-5.5` is the default; if Codex rejects it, consult its model list and pass a
   current one.
 - **pi:** `pi --model … "<task>"` (interactive TUI).
 
-**A `done` status is not proof of success** — an agent reaches `done` even when it
-*refused* the work. Always `read` the pane and confirm the reply/artifacts before
+**Completion is not proof of success** — an agent settles into `done`/`idle` even when
+it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
 trusting a turn.
 
-**Hand off — never block your own session.** You are a dispatcher, not a waiter. The
-mistake to avoid is sitting in a *foreground* wait loop: it holds your turn hostage, so
-you can't take the next request until that one agent finishes. herdr has no push/event
-stream — completion is a **blocking** `herdr wait agent-status <pane> --status done`.
-Run that wait as a **background** command and end your turn: this harness keeps
-background commands alive across turns and **re-invokes you when one exits**, so the
-`done` transition becomes your wakeup instead of a wait.
+**Hand off — never block your own session.** You are a dispatcher, not a waiter. Never
+sit in a foreground wait loop — it holds your turn hostage, so you can't take the next
+request until that one agent finishes. Per dispatch, run **ONE self-contained
+background command** (Bash tool with `run_in_background: true`) and end your turn: the
+harness keeps background commands alive across turns and **re-invokes you when one
+exits**, so the agent settling becomes your wakeup.
 
-- **Per dispatch, run ONE self-contained background command** (Bash tool with
-  `run_in_background: true`) that waits and prints a marker. Capture the agent's pane id
-  fresh right before arming it:
+The waiter polls the **agent name** — durable, so it survives pane-id churn and panes
+closing elsewhere — and wakes you on *any* settled state, because `done` alone can be
+swallowed by UI focus and a stuck agent needs attention too:
 
-  ```bash
-  PANE=<agent-pane-id>; NAME=<unique-agent-name>
-  herdr wait agent-status "$PANE" --status done --timeout 1800000 \
-    && echo "TURN DONE: $NAME ($PANE)" \
-    || echo "TIMEOUT: $NAME ($PANE) — read to check"
-  ```
+```bash
+NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0
+while :; do
+  [ $((SECONDS-START)) -ge $CEIL ] && { echo "TIMEOUT: $NAME — read the pane"; exit 0; }
+  ST=$(herdr agent get "$NAME" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["agent"]["agent_status"])' 2>/dev/null)
+  case "$ST" in
+    working) SEEN=1; MISS=0 ;;
+    done)    echo "TURN DONE: $NAME"; exit 0 ;;
+    blocked) echo "BLOCKED: $NAME — read the pane and answer it"; exit 0 ;;
+    idle)    MISS=0
+             [ $SEEN -eq 1 ] && { echo "TURN DONE: $NAME (pane was viewed)"; exit 0; }
+             [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; } ;;
+    *)       MISS=$((MISS+1))
+             [ $MISS -ge 3 ] && { echo "GONE: $NAME — agent exited, pane closed, or herdr down"; exit 0; } ;;
+  esac
+  sleep 5
+done
+```
 
-  Why it's shaped this way:
-  - **`--status done` is the completion signal** — the only status the waiter returns on
-    turn-stop. `herdr agent wait <name>` cannot watch `done` (it's `idle|working|blocked
-    |unknown` only), so use `herdr wait agent-status <pane> --status done` here.
-  - **The `--timeout` is a safety ceiling** (~30 min above), not a poll — it lives
-    inside the detached process, so your session stays fully free. On timeout it exits
-    with `TIMEOUT` and you `read` the pane to settle it, rather than hanging.
-  - **A `blocked` agent won't trip a `done` waiter.** You launch in bypass mode, so
-    genuine blocking is rare — but if a waiter times out, the pane may be blocked on a
-    real question. Read it and unblock with `herdr pane run <pane> "<answer>"`.
-  - **Ids compact; names don't.** The waiter needs a pane id, so grab it fresh and avoid
-    closing *other* panes while waiters are armed. On wakeup, re-resolve by **name**
-    (`herdr agent read <name>`), not by the possibly-stale pane id.
-- **After launching that background command, end your turn.** Report "dispatched to
-  `<name>`, watching in background" and take the next request. Fire as many agents as
-  you like — one background waiter each; they wake you independently as they finish.
-- **On wakeup** (a waiter printed `TURN DONE` and exited): `herdr agent read <name>
-  --source recent --lines 40` and confirm the reply/artifacts before trusting it — a
-  `done` fires even when an agent *refused*, so the status alone is not proof.
+Why it's shaped this way:
+
+- **Polling by name inside a detached process** costs your session nothing and can't
+  watch the wrong pane: a blocking `herdr wait agent-status` would pin a pane id for
+  the whole ceiling and can only watch a single status.
+- **`done` OR `idle`-after-`working` is the completion signal** — focus can flip
+  `done` to `idle` before any observer sees it. Requiring `working` first keeps the
+  agent's startup moment (briefly `idle`) from false-firing.
+- **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
+  the prompt (`herdr pane run <pane> "<answer>"`, or `send-keys` for menu prompts)
+  instead of sitting out the ceiling.
+- **The ceiling (~30 min) is a safety net, not a poll of your turn.** On `TIMEOUT`,
+  read the pane and decide: finished after all → treat as done; genuinely still
+  working → arm a fresh waiter and end your turn again. Never fall back to foreground
+  waiting.
+
+**After launching that background command, end your turn.** Report "dispatched to
+`<name>`, watching in background" and take the next request. Fire as many agents as
+you like — one waiter each; they wake you independently, and closing finished panes
+never disturbs the other waiters (they track names, not ids).
+
+**On wakeup:** `herdr agent read <name> --source recent --lines 40` and confirm the
+reply/artifacts before trusting it — a settled status alone is not proof the work was
+done, or done right.
+
+## Dispatch policy
+
+- **Match the agent/model to the job.** A heavyweight model reviewing a one-line
+  version bump is money on the floor. Mechanical, small-diff work → a cheaper tier
+  (e.g. `claude --model sonnet …`); design-heavy, cross-cutting, or gnarly-debugging
+  work → full strength (`claude`, `fable`). If a cheap pass flags real complexity,
+  escalate — redispatch to a stronger model rather than pushing the weak one through.
+- **Reviews get fresh eyes.** Never have the authoring agent (or any pane that saw
+  its plan) review its own work — correlated reasoning rubber-stamps. Spawn a separate
+  reviewer whose prompt contains only the diff/PR ref and the acceptance criteria,
+  nothing of the author's reasoning.
+- **Irreversible actions are blast-radius-gated, not approval-gated.** Merging,
+  pushing to shared branches, publishing, deploying: write the gate into the worker's
+  task prompt. In bounds (all required checks green, modest diff, no migrations, CI
+  config, auth/secrets paths) → proceed autonomously. Out of bounds → leave the work
+  ready, surface it (`herdr notification show "<title>" --body "<what's waiting>"`)
+  and report to the user; never let a worker default its way through the gate.
+- **CI waits happen inside the worker, not in your loop.** Have the worker run
+  `gh pr checks <pr> --watch` as its final step — checks resolving becomes the
+  worker's turn-stop, so CI completion wakes you like any other turn. Never poll a
+  pane (or CI) for check status yourself.
+
+## Durable state — labels are your ledger
+
+Fleet state that lives only in your conversation dies with compaction — and a long
+fleet run *will* outlive your context. herdr has no log store, so your ledger is
+**names**: descriptive workspace/tab labels (`--label issue-123-fix-auth`) and
+task-bearing agent names are what let a future you reconstruct the run from
+`herdr workspace list` + `herdr agent list` + `herdr pane list` alone. On wakeup
+after compaction — or whenever your memory of the fleet feels thin — reconstruct from
+those lists (and `agent read` per live agent) before acting; trust them over your
+recollection.
 
 ## Writing task prompts (keep them lean)
 
@@ -205,6 +268,6 @@ Example — what you might be tempted to send → what to send instead:
   close over everything you see in `list`. Use `herdr pane close <pane>` per pane;
   `herdr tab close <tab>` / `herdr workspace close <ws>` to tear down a whole unit you
   own.
-- Report concisely in plain English: what you dispatched, which agents/panes (by name,
-  e.g. `hera-fix-auth` / pane `1-3`), what `read` actually confirmed, and what's next.
-  Never echo secrets.
+- Report concisely in plain English: what you dispatched, which agents (by name, e.g.
+  `hera-fix-auth`), what `read` actually confirmed, and what's next. Never echo
+  secrets.
