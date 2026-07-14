@@ -114,7 +114,13 @@ Status semantics you must know:
   CLI reads, and a waiter armed *after* the turn ended still sees it — but **focusing the
   pane in the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
   `done` may never be observable. Never wait on `done` alone; treat
-  `idle`-after-`working` as completion too.
+  `idle`-after-`working` as completion too. `done` is sticky — it does not clear on
+  repeated CLI reads (`agent read`/`agent get`), only on the pane being focused in the
+  UI — so if a dispatched worker ever backgrounds its final wait anyway, a status-only
+  waiter re-armed afterward will immediately see the same stale `done` again and should
+  fall back to diffing the pane's actual read output across polls (or focusing the pane
+  once to clear the stale flag) instead of trusting `agent_status` alone in that
+  specific case.
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
@@ -283,7 +289,11 @@ done, or done right.
 - **CI waits happen inside the worker, not in your loop.** Have the worker run
   `gh pr checks <pr> --watch` as its final step — checks resolving becomes the
   worker's turn-stop, so CI completion wakes you like any other turn. Never poll a
-  pane (or CI) for check status yourself.
+  pane (or CI) for check status yourself. The worker must run that `--watch` in the
+  **foreground**, as a normal blocking tool call it waits on — not as a backgrounded
+  shell command. If it backgrounds the watch instead, its own turn ends while the
+  check is still running, and herdr's status for that pane will read done/idle with
+  no reliable future signal.
 
 ## Durable state — labels are your ledger
 
