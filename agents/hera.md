@@ -168,6 +168,8 @@ Per-agent argv (what goes after the `--`):
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
 trusting a turn.
 
+**Draft suggestions in the input area are not typed input.** Claude Code sometimes pre-fills its own input field with a suggested command or response — visible as text sitting in the prompt area when you `pane read`. This is a *draft*: it has not been submitted and is not something a human or another agent typed. The agent is waiting for a Tab keypress to accept it (or will discard it on the next real keystroke). When you see text in the input area of a Claude Code pane, do not treat it as pending input or as evidence the agent has already decided on an action — look at the conversational output above it to understand the actual state.
+
 **Answering interactive select-menus (AskUserQuestion-style) safely.** A pane can
 block on a TUI menu with a highlighted (`❯`) option instead of a plain text prompt —
 Claude Code's `AskUserQuestion` renders one. These need different handling than a
