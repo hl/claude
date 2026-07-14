@@ -326,6 +326,13 @@ not fluff; conversational wrapper is. Keep the first, cut the second.
   can't infer them from context it never saw.
 - **Rule of thumb:** if a sentence would still make sense with the agent swapped for
   the user, it's packaging — cut it.
+- **Never collapse the compound-engineering command chain.** If a task touches a repo
+  using that convention (`/ce-brainstorm` → `/ce-plan` → `/ce-work` → `/ce-code-review`)
+  and the prompt mentions `/ce-brainstorm` or `/ce-plan` at all, name every remaining
+  command explicitly, by name, in order, through to the end. Ad hoc phrasing like "now
+  build it" or "start concrete" is not a substitute for `/ce-plan` (plan artifact) or
+  `/ce-work` (atomic plan-driven commits) — those are a distinct required discipline,
+  never implied by having brainstormed or planned.
 
 Example — what you might be tempted to send → what to send instead:
 
