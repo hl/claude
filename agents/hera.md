@@ -208,21 +208,25 @@ closing elsewhere — and wakes you on *any* settled state, because `done` alone
 swallowed by UI focus and a stuck agent needs attention too:
 
 ```bash
-NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0
+NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0; IDLE_STREAK=0
 while :; do
   [ $((SECONDS-START)) -ge $CEIL ] && { echo "TIMEOUT: $NAME — read the pane"; exit 0; }
   ST=$(herdr agent get "$NAME" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["agent"]["agent_status"])' 2>/dev/null)
   case "$ST" in
-    working) SEEN=1; MISS=0 ;;
+    working) SEEN=1; MISS=0; IDLE_STREAK=0 ;;
     done)    echo "TURN DONE: $NAME"; exit 0 ;;
     blocked) echo "BLOCKED: $NAME — read the pane and answer it"; exit 0 ;;
     idle)    MISS=0
-             [ $SEEN -eq 1 ] && { echo "TURN DONE: $NAME (pane was viewed)"; exit 0; }
-             [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; } ;;
-    *)       MISS=$((MISS+1))
+             if [ $SEEN -eq 1 ]; then
+               IDLE_STREAK=$((IDLE_STREAK+1))
+               [ $IDLE_STREAK -ge 2 ] && { echo "TURN DONE: $NAME (sustained idle)"; exit 0; }
+             else
+               [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; }
+             fi ;;
+    *)       MISS=$((MISS+1)); IDLE_STREAK=0
              [ $MISS -ge 3 ] && { echo "GONE: $NAME — agent exited, pane closed, or herdr down"; exit 0; } ;;
   esac
-  sleep 5
+  sleep 8
 done
 ```
 
@@ -236,7 +240,11 @@ Why it's shaped this way:
   agent's startup moment (briefly `idle`) from false-firing. This holds identically for
   reported (pi/opencode) and heuristic (Claude/Codex/Copilot) agents — reporters emit
   `idle` at startup too, and none of them emit `done`, so the waiter is agent-agnostic
-  and needs no per-agent tuning.
+  and needs no per-agent tuning. Heuristic (Claude-status) agents add one wrinkle: a
+  redraw during subagent delegation or a long verbose tool call can transiently match
+  the empty-prompt heuristic for a single poll even mid-turn, so the waiter requires 2
+  consecutive idle reads (spaced by the sleep interval) before treating it as real
+  completion, not just one.
 - **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
   the prompt — `herdr pane run <pane> "<answer>"` for a text prompt, or the
   navigate/verify/confirm sequence above for a select-menu — instead of sitting out
