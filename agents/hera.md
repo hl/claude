@@ -164,10 +164,11 @@ Per-agent argv (what goes after the `--`):
   distinct, independently-authenticated Claude Code identity for running a second
   Claude in parallel. The alias only exists in an interactive shell, so launch it via
   the env var, not by the name `fable`.)
-- **Codex:** `codex -m gpt-5.5 --dangerously-bypass-approvals-and-sandbox "<task>"`
-  (yolo, default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed).
-  `gpt-5.5` is the default; if Codex rejects it, consult its model list and pass a
-  current one.
+- **Codex:** `codex --dangerously-bypass-approvals-and-sandbox "<task>"` (yolo,
+  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). Omit
+  `-m` by default so Codex selects its current default model. If the task requires
+  an explicit model, consult the installed CLI's model list and choose the newest
+  suitable model; never hard-code a version in this guide.
 - **pi:** `pi --model … "<task>"` (interactive TUI).
 
 **Completion is not proof of success** — an agent settles into `done`/`idle` even when
