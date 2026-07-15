@@ -114,7 +114,13 @@ Status semantics you must know:
   CLI reads, and a waiter armed *after* the turn ended still sees it — but **focusing the
   pane in the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
   `done` may never be observable. Never wait on `done` alone; treat
-  `idle`-after-`working` as completion too.
+  `idle`-after-`working` as completion too. `done` is sticky — it does not clear on
+  repeated CLI reads (`agent read`/`agent get`), only on the pane being focused in the
+  UI — so if a dispatched worker ever backgrounds its final wait anyway, a status-only
+  waiter re-armed afterward will immediately see the same stale `done` again and should
+  fall back to diffing the pane's actual read output across polls (or focusing the pane
+  once to clear the stale flag) instead of trusting `agent_status` alone in that
+  specific case.
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
@@ -208,21 +214,25 @@ closing elsewhere — and wakes you on *any* settled state, because `done` alone
 swallowed by UI focus and a stuck agent needs attention too:
 
 ```bash
-NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0
+NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0; IDLE_STREAK=0
 while :; do
   [ $((SECONDS-START)) -ge $CEIL ] && { echo "TIMEOUT: $NAME — read the pane"; exit 0; }
-  ST=$(herdr agent get "$NAME" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["agent"]["agent_status"])' 2>/dev/null)
+  ST=$(herdr agent get "$NAME" 2>/dev/null | jq -r '.result.agent.agent_status // empty' 2>/dev/null)
   case "$ST" in
-    working) SEEN=1; MISS=0 ;;
+    working) SEEN=1; MISS=0; IDLE_STREAK=0 ;;
     done)    echo "TURN DONE: $NAME"; exit 0 ;;
     blocked) echo "BLOCKED: $NAME — read the pane and answer it"; exit 0 ;;
     idle)    MISS=0
-             [ $SEEN -eq 1 ] && { echo "TURN DONE: $NAME (pane was viewed)"; exit 0; }
-             [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; } ;;
-    *)       MISS=$((MISS+1))
+             if [ $SEEN -eq 1 ]; then
+               IDLE_STREAK=$((IDLE_STREAK+1))
+               [ $IDLE_STREAK -ge 2 ] && { echo "TURN DONE: $NAME (sustained idle)"; exit 0; }
+             else
+               [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; }
+             fi ;;
+    *)       MISS=$((MISS+1)); IDLE_STREAK=0
              [ $MISS -ge 3 ] && { echo "GONE: $NAME — agent exited, pane closed, or herdr down"; exit 0; } ;;
   esac
-  sleep 5
+  sleep 8
 done
 ```
 
@@ -236,7 +246,11 @@ Why it's shaped this way:
   agent's startup moment (briefly `idle`) from false-firing. This holds identically for
   reported (pi/opencode) and heuristic (Claude/Codex/Copilot) agents — reporters emit
   `idle` at startup too, and none of them emit `done`, so the waiter is agent-agnostic
-  and needs no per-agent tuning.
+  and needs no per-agent tuning. Heuristic (Claude-status) agents add one wrinkle: a
+  redraw during subagent delegation or a long verbose tool call can transiently match
+  the empty-prompt heuristic for a single poll even mid-turn, so the waiter requires 2
+  consecutive idle reads (spaced by the sleep interval) before treating it as real
+  completion, not just one.
 - **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
   the prompt — `herdr pane run <pane> "<answer>"` for a text prompt, or the
   navigate/verify/confirm sequence above for a select-menu — instead of sitting out
@@ -275,7 +289,11 @@ done, or done right.
 - **CI waits happen inside the worker, not in your loop.** Have the worker run
   `gh pr checks <pr> --watch` as its final step — checks resolving becomes the
   worker's turn-stop, so CI completion wakes you like any other turn. Never poll a
-  pane (or CI) for check status yourself.
+  pane (or CI) for check status yourself. The worker must run that `--watch` in the
+  **foreground**, as a normal blocking tool call it waits on — not as a backgrounded
+  shell command. If it backgrounds the watch instead, its own turn ends while the
+  check is still running, and herdr's status for that pane will read done/idle with
+  no reliable future signal.
 
 ## Durable state — labels are your ledger
 
@@ -308,6 +326,13 @@ not fluff; conversational wrapper is. Keep the first, cut the second.
   can't infer them from context it never saw.
 - **Rule of thumb:** if a sentence would still make sense with the agent swapped for
   the user, it's packaging — cut it.
+- **Never collapse the compound-engineering command chain.** If a task touches a repo
+  using that convention (`/ce-brainstorm` → `/ce-plan` → `/ce-work` → `/ce-code-review`)
+  and the prompt mentions `/ce-brainstorm` or `/ce-plan` at all, name every remaining
+  command explicitly, by name, in order, through to the end. Ad hoc phrasing like "now
+  build it" or "start concrete" is not a substitute for `/ce-plan` (plan artifact) or
+  `/ce-work` (atomic plan-driven commits) — those are a distinct required discipline,
+  never implied by having brainstormed or planned.
 
 Example — what you might be tempted to send → what to send instead:
 
