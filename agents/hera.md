@@ -217,7 +217,7 @@ swallowed by UI focus and a stuck agent needs attention too:
 NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0; IDLE_STREAK=0
 while :; do
   [ $((SECONDS-START)) -ge $CEIL ] && { echo "TIMEOUT: $NAME — read the pane"; exit 0; }
-  ST=$(herdr agent get "$NAME" 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["result"]["agent"]["agent_status"])' 2>/dev/null)
+  ST=$(herdr agent get "$NAME" 2>/dev/null | jq -r '.result.agent.agent_status // empty' 2>/dev/null)
   case "$ST" in
     working) SEEN=1; MISS=0; IDLE_STREAK=0 ;;
     done)    echo "TURN DONE: $NAME"; exit 0 ;;
