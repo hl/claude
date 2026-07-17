@@ -83,8 +83,10 @@ Orchestration habits on top of the skill:
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
-Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable, opencode,
-copilot). Plain terminal/browser panes don't need any of this. herdr surfaces one
+Only relevant when a pane hosts a coding agent — herdr detects Claude Code, Codex, pi,
+fable, opencode, and copilot; you launch the first four (recipes below) and may also
+read status on panes running the others. Plain terminal/browser panes don't need any
+of this. herdr surfaces one
 `agent_status` per pane — `idle` / `working` / `blocked` / `done` / `unknown` — and
 derives it **two different ways depending on the agent**, with no setup on your part
 either way:
@@ -133,12 +135,32 @@ Status semantics you must know:
 prompt no one will answer — these are per-launch only and don't change the user's
 global config.
 
+**Isolate every agent in its own git worktree.** Parallel workers must never share
+one working tree — a half-written edit from one corrupts another's build, and a bad
+change stays contained to a throwaway branch. Claude Code and fable do this natively:
+add `-w <name>` to the argv (`-w` alone auto-names it) and they create and enter a
+fresh worktree at startup. Codex and pi have **no** worktree flag, so create the
+worktree first with a git command run *inside a herdr pane* — never your own Bash,
+same as the `.env`-sourcing precedent above. With `agent start` there's no worker
+pane yet, so run it in the tab's root pane first (the one you were going to close
+anyway), then point the worker's `--cwd` at the result: `herdr pane run <root> "git
+-C <repo> worktree add <abs-path> -b <branch>"` then `herdr agent start <name> --cwd
+<abs-path> -- codex …`. Name the worktree/branch after the agent so the ledger
+(workspace/tab/agent names) still reads straight.
+
+That default makes a *new* branch — right for agents doing new work. When an agent
+must instead operate on an existing branch or commit (a reviewer checking out a PR,
+anything pinned to a ref), attach the worktree to that ref: pane-run `git worktree add
+[--detach] <path> <branch-or-ref>` then `--cwd` into it — not `-w`, which forces a
+fresh branch. Use `--detach` for read-only review so it claims no branch (the same
+branch can't be checked out in two worktrees at once).
+
 **Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
 call:
 
 ```bash
 herdr agent start <unique-name> --tab <tab> --cwd <dir> --no-focus \
-  -- claude --dangerously-skip-permissions "<task>"
+  -- claude -w <unique-name> --dangerously-skip-permissions "<task>"
 ```
 
 - **Everything after `--` is the full argv, program first** — `-- claude …`, never
@@ -156,20 +178,24 @@ herdr agent start <unique-name> --tab <tab> --cwd <dir> --no-focus \
 
 Per-agent argv (what goes after the `--`):
 
-- **Claude Code:** `claude --dangerously-skip-permissions "<task>"`. Plain `claude`
-  launches in ask-for-permission mode — it will *decline* Bash/edits, print
-  instructions, and end its turn. Bypass is its yolo equivalent.
-- **fable:** same argv as Claude Code, plus `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable`
-  before the `--`. (fable is a shell alias for exactly that env var + `claude` — a
-  distinct, independently-authenticated Claude Code identity for running a second
-  Claude in parallel. The alias only exists in an interactive shell, so launch it via
-  the env var, not by the name `fable`.)
+- **Claude Code:** `claude -w <name> --dangerously-skip-permissions "<task>"`. `-w`
+  (`--worktree [name]`) creates and enters a fresh git worktree for the session —
+  always pass it, named after the agent. Plain `claude` launches in
+  ask-for-permission mode — it will *decline* Bash/edits, print instructions, and end
+  its turn. Bypass is its yolo equivalent.
+- **fable:** same argv as Claude Code (`-w` works identically), plus
+  `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable` before the `--`. (fable is a shell
+  alias for exactly that env var + `claude` — a distinct, independently-authenticated
+  Claude Code identity for running a second Claude in parallel. The alias only exists
+  in an interactive shell, so launch it via the env var, not by the name `fable`.)
 - **Codex:** `codex --dangerously-bypass-approvals-and-sandbox "<task>"` (yolo,
-  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). Omit
+  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). No worktree
+  flag — create the worktree first (pane-run git, above) and point `--cwd` at it. Omit
   `-m` by default so Codex selects its current default model. If the task requires
   an explicit model, consult the installed CLI's model list and choose the newest
   suitable model; never hard-code a version in this guide.
-- **pi:** `pi --model … "<task>"` (interactive TUI).
+- **pi:** `pi --model … "<task>"` (interactive TUI). No worktree flag either — same as
+  Codex: create the worktree first (pane-run git, above) and point `--cwd` at it.
 
 **Completion is not proof of success** — an agent settles into `done`/`idle` even when
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
@@ -352,6 +378,11 @@ Example — what you might be tempted to send → what to send instead:
   close over everything you see in `list`. Use `herdr pane close <pane>` per pane;
   `herdr tab close <tab>` / `herdr workspace close <ws>` to tear down a whole unit you
   own.
+- **Worktrees outlive panes.** A worktree and its branch — from claude's `-w` or a
+  pane-run `git worktree add` — persist on disk after the pane closes; closing
+  panes/tabs never removes them. Reclaim one only once its work is merged or
+  abandoned, via a pane-run `git worktree remove <path>` (never your own Bash, never
+  while it still holds unmerged work).
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
   `hera-fix-auth`), what `read` actually confirmed, and what's next. Never echo
   secrets.
