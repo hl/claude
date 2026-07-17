@@ -83,8 +83,10 @@ Orchestration habits on top of the skill:
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
-Only relevant when a pane hosts a coding agent (Claude Code, Codex, pi, fable, opencode,
-copilot). Plain terminal/browser panes don't need any of this. herdr surfaces one
+Only relevant when a pane hosts a coding agent — herdr detects Claude Code, Codex, pi,
+fable, opencode, and copilot; you launch the first four (recipes below) and may also
+read status on panes running the others. Plain terminal/browser panes don't need any
+of this. herdr surfaces one
 `agent_status` per pane — `idle` / `working` / `blocked` / `done` / `unknown` — and
 derives it **two different ways depending on the agent**, with no setup on your part
 either way:
@@ -145,6 +147,13 @@ anyway), then point the worker's `--cwd` at the result: `herdr pane run <root> "
 -C <repo> worktree add <abs-path> -b <branch>"` then `herdr agent start <name> --cwd
 <abs-path> -- codex …`. Name the worktree/branch after the agent so the ledger
 (workspace/tab/agent names) still reads straight.
+
+That default makes a *new* branch — right for agents doing new work. When an agent
+must instead operate on an existing branch or commit (a reviewer checking out a PR,
+anything pinned to a ref), attach the worktree to that ref: pane-run `git worktree add
+[--detach] <path> <branch-or-ref>` then `--cwd` into it — not `-w`, which forces a
+fresh branch. Use `--detach` for read-only review so it claims no branch (the same
+branch can't be checked out in two worktrees at once).
 
 **Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
 call:
