@@ -133,6 +133,17 @@ Status semantics you must know:
 prompt no one will answer — these are per-launch only and don't change the user's
 global config.
 
+**Isolate every agent in its own git worktree.** Parallel workers must never share
+one working tree — a half-written edit from one corrupts another's build, and a bad
+change stays contained to a throwaway branch. Claude Code and fable do this natively:
+add `-w <name>` to the argv (`-w` alone auto-names it) and they create and enter a
+fresh worktree at startup. Codex and pi have **no** worktree flag, so create the
+worktree first with a git command run *inside a herdr pane* — never your own Bash,
+same as the `.env`-sourcing precedent above: `herdr pane run <pane> "git -C <repo>
+worktree add <abs-path> -b <branch>"` — then launch the agent with `--cwd <abs-path>`
+pointing into it. Name the worktree/branch after the agent so the ledger
+(workspace/tab/agent names) still reads straight.
+
 **Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
 call:
 
@@ -156,20 +167,24 @@ herdr agent start <unique-name> --tab <tab> --cwd <dir> --no-focus \
 
 Per-agent argv (what goes after the `--`):
 
-- **Claude Code:** `claude --dangerously-skip-permissions "<task>"`. Plain `claude`
-  launches in ask-for-permission mode — it will *decline* Bash/edits, print
-  instructions, and end its turn. Bypass is its yolo equivalent.
-- **fable:** same argv as Claude Code, plus `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable`
-  before the `--`. (fable is a shell alias for exactly that env var + `claude` — a
-  distinct, independently-authenticated Claude Code identity for running a second
-  Claude in parallel. The alias only exists in an interactive shell, so launch it via
-  the env var, not by the name `fable`.)
+- **Claude Code:** `claude -w <name> --dangerously-skip-permissions "<task>"`. `-w`
+  (`--worktree [name]`) creates and enters a fresh git worktree for the session —
+  always pass it, named after the agent. Plain `claude` launches in
+  ask-for-permission mode — it will *decline* Bash/edits, print instructions, and end
+  its turn. Bypass is its yolo equivalent.
+- **fable:** same argv as Claude Code (`-w` works identically), plus
+  `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable` before the `--`. (fable is a shell
+  alias for exactly that env var + `claude` — a distinct, independently-authenticated
+  Claude Code identity for running a second Claude in parallel. The alias only exists
+  in an interactive shell, so launch it via the env var, not by the name `fable`.)
 - **Codex:** `codex --dangerously-bypass-approvals-and-sandbox "<task>"` (yolo,
-  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). Omit
+  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). No worktree
+  flag — create the worktree first (pane-run git, above) and point `--cwd` at it. Omit
   `-m` by default so Codex selects its current default model. If the task requires
   an explicit model, consult the installed CLI's model list and choose the newest
   suitable model; never hard-code a version in this guide.
-- **pi:** `pi --model … "<task>"` (interactive TUI).
+- **pi:** `pi --model … "<task>"` (interactive TUI). No worktree flag either — same as
+  Codex: create the worktree first (pane-run git, above) and point `--cwd` at it.
 
 **Completion is not proof of success** — an agent settles into `done`/`idle` even when
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
