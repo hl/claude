@@ -83,29 +83,34 @@ Orchestration habits on top of the skill:
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
-Only relevant when a pane hosts a coding agent — herdr detects Claude Code, Codex, pi,
-fable, opencode, and copilot; you launch the first four (recipes below) and may also
-read status on panes running the others. Plain terminal/browser panes don't need any
+Only relevant when a pane hosts a coding agent — herdr detects a broad, growing set
+(Claude Code, Codex, pi, fable, opencode, copilot, and more — `herdr integration status`
+lists them); you launch the first four (recipes below) and may also read status on panes
+running the others. Plain terminal/browser panes don't need any
 of this. herdr surfaces one
 `agent_status` per pane — `idle` / `working` / `blocked` / `done` / `unknown` — and
 derives it **two different ways depending on the agent**, with no setup on your part
 either way:
 
-- **Reported (authoritative) — pi and opencode.** With *native agent integration*
-  installed, these agents' own processes push their real state over herdr's socket
-  (`pane.report_agent`) on lifecycle events, so `idle`/`working`/`blocked` come straight
-  from the agent rather than from scraping the screen. Practical upshot: **`blocked` on a
-  permission/question prompt is prompt and precise** for these two — trust it.
-- **Heuristic (inferred) — Claude Code (incl. fable), Codex, Copilot.** These do **not**
-  report state. Their integration hook only registers the session's *identity*
-  (`pane.report_agent_session` — session id, plus the transcript path for Claude), which
-  helps herdr keep attribution stable across pane-id churn but does **nothing** for
-  moment-to-moment status. Their `agent_status` is still inferred by scraping pane output
-  (OSC-title spinner glyphs, the `❯` prompt box, known permission-prompt forms), exactly
-  as before integration existed. So enabling integration for these three changed
-  *attribution*, **not** status reliability — every caveat below applies to them in full.
-- `herdr integration status` shows which agent types are wired up; when in doubt about a
-  pane, treat pi/opencode as reported and Claude/Codex/Copilot/fable as heuristic.
+- **Reported (authoritative) — pi, OMP, opencode, Kilo, Hermes (and custom socket
+  integrations).** With *native agent integration* installed, these agents' own processes
+  push their real state over herdr's socket (`pane.report_agent`) on lifecycle events, so
+  `idle`/`working`/`blocked` come straight from the agent rather than from scraping the
+  screen. Practical upshot: **`blocked` on a permission/question prompt is prompt and
+  precise** for these — trust it. (Of the four you launch, only pi is a reporter.)
+- **Heuristic (inferred) — Claude Code (incl. fable), Codex, Copilot, Droid, Kimi,
+  Qoder.** These do **not** report state. Their integration hook only registers the
+  session's *identity* (`pane.report_agent_session` — session id, plus the transcript
+  path for Claude), which helps herdr keep attribution stable across pane-id churn but
+  does **nothing** for moment-to-moment status. Their `agent_status` is still inferred by
+  scraping pane output (OSC-title spinner glyphs, the `❯` prompt box, known
+  permission-prompt forms), exactly as before integration existed. So enabling
+  integration for these changed *attribution*, **not** status reliability — every caveat
+  below applies to them in full.
+- `herdr integration status` is authoritative on which agent types are wired up and
+  which report vs. only identify; when in doubt about a pane, treat
+  pi/OMP/opencode/Kilo/Hermes as reported and Claude/Codex/Copilot/fable/Droid/Kimi/Qoder
+  as heuristic.
 
 Status semantics you must know:
 
@@ -127,7 +132,7 @@ Status semantics you must know:
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
   `working` isn't thinking — read its pane and answer whatever it's stuck on. (Once
-  running, pi/opencode do surface *in-session* prompts as `blocked`; the heuristic three
+  running, the reporters do surface *in-session* prompts as `blocked`; the heuristic ones
   depend on herdr recognizing the prompt's on-screen shape, which it usually — not
   always — does.)
 
@@ -137,23 +142,38 @@ global config.
 
 **Isolate every agent in its own git worktree.** Parallel workers must never share
 one working tree — a half-written edit from one corrupts another's build, and a bad
-change stays contained to a throwaway branch. Claude Code and fable do this natively:
-add `-w <name>` to the argv (`-w` alone auto-names it) and they create and enter a
-fresh worktree at startup. Codex and pi have **no** worktree flag, so create the
-worktree first with a git command run *inside a herdr pane* — never your own Bash,
-same as the `.env`-sourcing precedent above. With `agent start` there's no worker
-pane yet, so run it in the tab's root pane first (the one you were going to close
-anyway), then point the worker's `--cwd` at the result: `herdr pane run <root> "git
--C <repo> worktree add <abs-path> -b <branch>"` then `herdr agent start <name> --cwd
-<abs-path> -- codex …`. Name the worktree/branch after the agent so the ledger
-(workspace/tab/agent names) still reads straight.
+change stays contained to a throwaway branch. Two first-class ways:
 
-That default makes a *new* branch — right for agents doing new work. When an agent
-must instead operate on an existing branch or commit (a reviewer checking out a PR,
-anything pinned to a ref), attach the worktree to that ref: pane-run `git worktree add
-[--detach] <path> <branch-or-ref>` then `--cwd` into it — not `-w`, which forces a
-fresh branch. Use `--detach` for read-only review so it claims no branch (the same
-branch can't be checked out in two worktrees at once).
+- **`herdr worktree create` — preferred, works for every agent.** A native herdr
+  command, so it's fully within your herdr-only tool surface: no pane-run git, no
+  scratch pane to close. It creates the checkout, opens it as its **own workspace**
+  grouped under the parent repo, and prints JSON:
+
+  ```bash
+  herdr worktree create --cwd <repo> --branch <agent-name> --label <agent-name> --no-focus --json
+  ```
+
+  `--branch` creates a new branch off `--base` (or `HEAD` when omitted), or checks out
+  an existing local branch of that name. Read the new workspace id and its root pane
+  from the response, then launch the worker into that workspace — either
+  `herdr agent start <name> --workspace <ws> --cwd <checkout-path> -- codex …` (then
+  close the workspace's empty root pane), or `pane run` the agent straight into the root
+  pane and `agent rename` it. Name branch/worktree/agent alike so the ledger
+  (workspace/tab/agent names) still reads straight.
+- **Claude Code & fable `-w` — lighter, those two only.** Add `-w <name>` to the argv
+  (`-w` alone auto-names it) and the agent creates and enters a fresh worktree at
+  startup inside its own pane, with no separate herdr workspace to manage. Use it when
+  you just want an isolated tree in the current tab. Codex and pi have **no** such flag
+  — give them `herdr worktree create`.
+
+Both defaults make a *new* branch — right for agents doing new work. For an
+**existing** branch or ref (a reviewer checking out a PR, anything pinned), don't
+branch fresh: open the existing branch with `herdr worktree open --cwd <repo> --branch
+<existing-branch>`, or branch from a specific ref with `herdr worktree create --cwd
+<repo> --branch <name> --base <ref>`. Native worktree has no detached-HEAD mode, so the
+one case still needing pane-run git is a read-only checkout of a bare commit:
+`herdr pane run <root> "git -C <repo> worktree add --detach <path> <ref>"` then `--cwd`
+into it — never your own Bash, same precedent as `.env` sourcing.
 
 **Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
 call:
@@ -190,12 +210,14 @@ Per-agent argv (what goes after the `--`):
   in an interactive shell, so launch it via the env var, not by the name `fable`.)
 - **Codex:** `codex --dangerously-bypass-approvals-and-sandbox "<task>"` (yolo,
   default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). No worktree
-  flag — create the worktree first (pane-run git, above) and point `--cwd` at it. Omit
+  flag — make the worktree first with `herdr worktree create` (above) and point `--cwd`
+  at the checkout. Omit
   `-m` by default so Codex selects its current default model. If the task requires
   an explicit model, consult the installed CLI's model list and choose the newest
   suitable model; never hard-code a version in this guide.
 - **pi:** `pi --model … "<task>"` (interactive TUI). No worktree flag either — same as
-  Codex: create the worktree first (pane-run git, above) and point `--cwd` at it.
+  Codex: make the worktree first with `herdr worktree create` (above) and point `--cwd`
+  at the checkout.
 
 **Completion is not proof of success** — an agent settles into `done`/`idle` even when
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
@@ -292,7 +314,7 @@ Why it's shaped this way:
 you like — one waiter each; they wake you independently, and closing finished panes
 never disturbs the other waiters (they track names, not ids).
 
-**On wakeup:** `herdr agent read <name> --source recent --lines 40` and confirm the
+**On wakeup:** `herdr agent read <name> --source recent-unwrapped --lines 40` and confirm the
 reply/artifacts before trusting it — a settled status alone is not proof the work was
 done, or done right.
 
@@ -378,11 +400,15 @@ Example — what you might be tempted to send → what to send instead:
   close over everything you see in `list`. Use `herdr pane close <pane>` per pane;
   `herdr tab close <tab>` / `herdr workspace close <ws>` to tear down a whole unit you
   own.
-- **Worktrees outlive panes.** A worktree and its branch — from claude's `-w` or a
-  pane-run `git worktree add` — persist on disk after the pane closes; closing
-  panes/tabs never removes them. Reclaim one only once its work is merged or
-  abandoned, via a pane-run `git worktree remove <path>` (never your own Bash, never
-  while it still holds unmerged work).
+- **Worktrees outlive panes.** A worktree and its branch — from `herdr worktree create`
+  or claude's `-w` — persist on disk after the pane closes; closing panes/tabs (or
+  `workspace close`) never removes the checkout. Reclaim one only once its work is merged
+  or abandoned, and never while it still holds unmerged work. A `herdr worktree create`
+  worktree is a herdr-managed workspace: remove it with `herdr worktree remove
+  --workspace <ws>` (add `--force` only if git refuses a dirty checkout; it deletes the
+  checkout, never the branch). A `-w` worktree is *not* a herdr workspace, so reclaim it
+  with a pane-run `git worktree remove <path>` (never your own Bash) or leave it to the
+  worker.
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
   `hera-fix-auth`), what `read` actually confirmed, and what's next. Never echo
   secrets.
