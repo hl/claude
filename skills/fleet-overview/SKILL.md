@@ -34,11 +34,14 @@ fill in the follow-up half of the third column.
 ### 1. Sweep — one call, compact rows (keeps raw JSON out of context)
 
 `herdr agent list` returns `.result.agents[]` (each an `AgentInfo`). Reduce it to
-clean TSV at the source so only the rows reach you, not the JSON:
+clean TSV at the source so only the rows reach you, not the JSON — and **exclude
+yourself**: you (the orchestrator) run in your own herdr pane, so you appear in the
+list too; herdr injects your pane id as `$HERDR_PANE_ID`, so filter that row out.
 
 ```bash
-herdr agent list 2>/dev/null | jq -r '
+herdr agent list 2>/dev/null | jq -r --arg self "${HERDR_PANE_ID:-}" '
   .result.agents[]
+  | select(.pane_id != $self)                              # drop the orchestrator itself
   | [ (.name // .agent // .pane_id),                       # 1 agent (durable name)
       .agent_status,                                        # 2 idle|working|blocked|done|unknown
       (.tokens.summary // .terminal_title_stripped // "-"), # 3 what it is doing
