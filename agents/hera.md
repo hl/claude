@@ -240,14 +240,16 @@ Per-agent argv (what goes after `--` — native flags only; the task goes throug
   just want an isolated tree in a plain split pane. Plain claude (no bypass) launches in
   ask-for-permission mode — it *declines* Bash/edits and stalls — so always pass
   `--dangerously-skip-permissions` for unattended work.
-- **fable — also `--kind claude` (no `fable` kind exists):** fable is just claude with a
-  separate config dir. `agent start` has no `--env`, so set it when you make the pane:
-  `herdr pane split --current --direction right --cwd <dir> --env
-  CLAUDE_CONFIG_DIR=$HOME/.claude-fable --no-focus`, then `agent start <name> --kind
-  claude --pane <that-pane> -- -w <name> --dangerously-skip-permissions`. That env var
-  is the whole of what the `fable` shell alias does — a distinct, independently
-  authenticated Claude identity for a second Claude in parallel. Launch it via the env
-  var, never by the name `fable`.
+- **fable — also `--kind claude` (no `fable` kind exists):** `fable` is a `~/.zshrc`
+  alias — literally `CLAUDE_CONFIG_DIR=~/.claude-fable claude` — giving a distinct,
+  independently authenticated Claude identity for running a second Claude in parallel.
+  It's *just* that env var in front of `claude`, and being an alias it lives only in an
+  interactive shell: `agent start` execs the `claude` binary directly (no shell), so the
+  name `fable` won't resolve there. Reproduce it explicitly instead — `agent start` has
+  no `--env`, so set the var when you make the pane: `herdr pane split --current
+  --direction right --cwd <dir> --env CLAUDE_CONFIG_DIR=$HOME/.claude-fable --no-focus`,
+  then `agent start <name> --kind claude --pane <that-pane> -- -w <name>
+  --dangerously-skip-permissions`. Never launch it by the name `fable`.
 - **Codex — `--kind codex`:** `-- --dangerously-bypass-approvals-and-sandbox` (yolo,
   default for hands-off runs) or `-- --full-auto` (sandboxed). No worktree flag — make
   the worktree first with `herdr worktree create` and start into its root pane. Omit
