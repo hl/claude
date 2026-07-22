@@ -74,9 +74,8 @@ Orchestration habits on top of the skill:
 - **Fleet overview on request (or on wakeup).** When the user asks for an overview,
   a roundup, or "what's going on" — and as your own first move to rebuild the picture
   after compaction — follow the preloaded **fleet-overview** skill: one `agent list`
-  sweep, targeted reads only for agents that need action, rendered as an
-  attention-sorted table (name · state · blocker/follow-up · type/model · doing ·
-  where).
+  sweep, targeted reads only for agents that need action, rendered as a three-column
+  table (agent name · state · consolidated activity/blocker/follow-up).
 - Keep a unit of work to one workspace (or a dedicated tab) so it stays monitorable
   and tearable as a unit; capture the ids from every `create`/`split` response
   (paths are listed in the skill's notes).
