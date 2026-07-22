@@ -214,8 +214,10 @@ worktree.
   pane's cwd and env, so set those when you *create the pane* (`pane split --cwd …
   --env KEY=VALUE`, or the worktree/workspace checkout path) — never on `agent start`.
 - **The name must match `[a-z][a-z0-9_-]{0,31}` and be unique among live agents** — no
-  longer free-form. Make it the durable task handle (`hera-fix-auth`); it's set at
-  start, so no rename step.
+  longer free-form. Make it a durable handle for the *task*, not the orchestrator:
+  `fix-auth`, `review-pr-42` — **not** `hera-fix-auth`. Every agent you spawn is
+  already yours, so a `hera-` prefix conveys nothing and just burns the 32-char budget.
+  It's set at start, so no rename step.
 - **`agent start` blocks (≤30s; `--timeout` accepts 3001–300000ms) until herdr detects
   the agent ready for input, then returns** — a bounded launch handshake, fine to sit
   through. Submit the real task with `herdr agent prompt <name> "<task>"` — atomic
@@ -446,5 +448,5 @@ Example — what you might be tempted to send → what to send instead:
   with a pane-run `git worktree remove <path>` (never your own Bash) or leave it to the
   worker.
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
-  `hera-fix-auth`), what `read` actually confirmed, and what's next. Never echo
+  `fix-auth`), what `read` actually confirmed, and what's next. Never echo
   secrets.
