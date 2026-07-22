@@ -64,8 +64,11 @@ load on demand is inlined below.
 
 The preloaded **herdr** skill is your operating manual — concepts, ids, commands, and
 recipes for workspaces, tabs, panes, reading, and waiting all live there; work from
-the skill, not from anything restated here. `herdr --help` / `herdr <cmd> --help`
-settle any doubt — herdr evolves; trust `--help` over memory and docs alike.
+the skill, not from anything restated here. `herdr --help` and a bare command *group*
+(`herdr agent`, `herdr worktree`) list the current subcommands; `--help` on a *leaf*
+subcommand just reprints the top-level help, so for a leaf command's exact flags read
+`herdr api schema --json` (never probe a mutating leaf by omitting its args). herdr
+evolves; trust the live CLI over memory and docs alike.
 
 Orchestration habits on top of the skill:
 
@@ -81,11 +84,14 @@ Orchestration habits on top of the skill:
   (paths are listed in the skill's notes).
 - **Address agents by name, not id.** Pane ids are session-scoped (see the skill's
   id caveats) — re-read them fresh before any `pane`-level call. Every `herdr agent`
-  command (`get`, `read`, `send`, `rename`, `focus`, `wait`) also accepts a unique
-  agent name: the durable handle. Name every agent at birth — `agent start
-  <unique-name> …` sets it directly; after a `pane run` launch, follow up with
-  `herdr agent rename <pane> <name>` (retry after a second if detection lags) — and
-  read/send/wait by that name from then on.
+  command (`get`, `read`, `send-keys`, `prompt`, `rename`, `focus`, `wait`, `start`)
+  accepts a unique agent name *or* the pane id currently hosting it. The name is a
+  durable alias — but it's cleared the moment that agent exits, is released, or is
+  replaced, and it must match `[a-z][a-z0-9_-]{0,31}` and be unique among live agents
+  (no longer free-form). Name every agent at birth — `agent start <unique-name> …`
+  sets it directly; after a `pane run` launch, follow up with `herdr agent rename
+  <pane> <name>` (retry after a second if detection lags) — and read/prompt/wait by
+  that name from then on.
 
 ## Launching & waiting on agents inside herdr (inlined reference)
 
@@ -161,10 +167,11 @@ change stays contained to a throwaway branch. Two first-class ways:
 
   `--branch` creates a new branch off `--base` (or `HEAD` when omitted), or checks out
   an existing local branch of that name. Read the new workspace id and its root pane
-  from the response, then launch the worker into that workspace — either
-  `herdr agent start <name> --workspace <ws> --cwd <checkout-path> -- codex …` (then
-  close the workspace's empty root pane), or `pane run` the agent straight into the root
-  pane and `agent rename` it. Name branch/worktree/agent alike so the ledger
+  (`.result.root_pane.pane_id`) from the response. `agent start` never creates a pane,
+  so launch the worker **into that root pane**: `herdr agent start <name> --kind <kind>
+  --pane <root_pane> -- <native-args>`, then submit work with `herdr agent prompt <name>
+  "<task>"` (mechanics below). Using the root pane directly means there's no leftover
+  empty shell to close. Name branch/worktree/agent alike so the ledger
   (workspace/tab/agent names) still reads straight.
 - **Claude Code & fable `-w` — lighter, those two only.** Add `-w <name>` to the argv
   (`-w` alone auto-names it) and the agent creates and enters a fresh worktree at
@@ -181,49 +188,68 @@ one case still needing pane-run git is a read-only checkout of a bare commit:
 `herdr pane run <root> "git -C <repo> worktree add --detach <path> <ref>"` then `--cwd`
 into it — never your own Bash, same precedent as `.env` sourcing.
 
-**Preferred — `herdr agent start`** spawns the pane, the process, and the name in one
-call:
+**`herdr agent start` targets an existing pane — it never creates layout.** (This is
+the 0.7.x model: `agent start` needs `--kind` and `--pane`, has no `--tab`/`--cwd`, and
+does not spawn a pane.) Get a pane first — the `worktree create` root pane above, a
+fresh `workspace`/`tab` root pane, or a `herdr pane split --current --direction right
+--cwd <dir> --no-focus` — make sure it's at its shell prompt, then start the agent into
+it and submit the task as a **second** step:
 
 ```bash
-herdr agent start <unique-name> --tab <tab> --cwd <dir> --no-focus \
-  -- claude -w <unique-name> --dangerously-skip-permissions "<task>"
+herdr agent start <unique-name> --kind claude --pane <pane-id> \
+  -- -w <unique-name> --dangerously-skip-permissions
+herdr agent prompt <unique-name> "<task>"
 ```
 
-- **Everything after `--` is the full argv, program first** — `-- claude …`, never
-  `-- --flag …` (the first word after `--` is what gets spawned). It's exec'd
-  directly, no shell, so the task string needs no shell-quoting gymnastics.
-- **The name positional is free-form** — make it the durable task handle
-  (`hera-fix-auth`), not the program name. No separate rename step needed.
-- **Always pass `--cwd`** — the new pane does *not* inherit the tab's cwd.
-- **`agent start` always adds a new pane.** In a freshly created workspace or tab that
-  leaves the original root shell sitting empty next to the agent. Close it: capture
-  `result.root_pane` from the `workspace create` / `tab create` response and
-  `herdr pane close <root>` right after `agent start`. (Alternative: launch *inside*
-  the root pane with `herdr pane run <root> "claude … '<task>'"` — no extra pane, but
-  the task must then survive shell quoting, and you must `agent rename` afterwards.)
+Pick **one** isolation path, never both: the `-w` above is for a *plain split* pane
+(claude makes the worktree). If `<pane-id>` is already a `herdr worktree create` root
+pane, the checkout is isolated — **drop `-w`** or you'll nest a worktree inside a
+worktree.
 
-Per-agent argv (what goes after the `--`):
+- **`--kind` picks the agent and its executable; args after `--` are that executable's
+  native flags** — no program name, no shell (exec'd directly, so no quoting
+  gymnastics). Supported kinds include `claude`, `codex`, `pi`, `opencode`, `copilot`,
+  `gemini`, `grok` and more; run `herdr agent` or `herdr api schema` for the full set.
+- **`--pane` is required; there's no `--tab` and no `--cwd`.** The agent inherits the
+  pane's cwd and env, so set those when you *create the pane* (`pane split --cwd …
+  --env KEY=VALUE`, or the worktree/workspace checkout path) — never on `agent start`.
+- **The name must match `[a-z][a-z0-9_-]{0,31}` and be unique among live agents** — no
+  longer free-form. Make it the durable task handle (`hera-fix-auth`); it's set at
+  start, so no rename step.
+- **`agent start` blocks (≤30s; `--timeout` accepts 3001–300000ms) until herdr detects
+  the agent ready for input, then returns** — a bounded launch handshake, fine to sit
+  through. Submit the real task with `herdr agent prompt <name> "<task>"` — atomic
+  text+Enter, bracketed-paste-safe, and **without `--wait`** so it returns right after
+  submitting; then arm the background waiter below. Do **not** pass the task as a
+  start-time arg: a worker that's already `working` can defeat the readiness handshake
+  and time the launch out.
 
-- **Claude Code:** `claude -w <name> --dangerously-skip-permissions "<task>"`. `-w`
-  (`--worktree [name]`) creates and enters a fresh git worktree for the session —
-  always pass it, named after the agent. Plain `claude` launches in
-  ask-for-permission mode — it will *decline* Bash/edits, print instructions, and end
-  its turn. Bypass is its yolo equivalent.
-- **fable:** same argv as Claude Code (`-w` works identically), plus
-  `--env CLAUDE_CONFIG_DIR=$HOME/.claude-fable` before the `--`. (fable is a shell
-  alias for exactly that env var + `claude` — a distinct, independently-authenticated
-  Claude Code identity for running a second Claude in parallel. The alias only exists
-  in an interactive shell, so launch it via the env var, not by the name `fable`.)
-- **Codex:** `codex --dangerously-bypass-approvals-and-sandbox "<task>"` (yolo,
-  default for hands-off runs) or `codex --full-auto "<task>"` (sandboxed). No worktree
-  flag — make the worktree first with `herdr worktree create` (above) and point `--cwd`
-  at the checkout. Omit
-  `-m` by default so Codex selects its current default model. If the task requires
-  an explicit model, consult the installed CLI's model list and choose the newest
-  suitable model; never hard-code a version in this guide.
-- **pi:** `pi --model … "<task>"` (interactive TUI). No worktree flag either — same as
-  Codex: make the worktree first with `herdr worktree create` (above) and point `--cwd`
-  at the checkout.
+Per-agent argv (what goes after `--` — native flags only; the task goes through
+`agent prompt`, never here):
+
+- **Claude Code — `--kind claude`:** `-- -w <name> --dangerously-skip-permissions`.
+  `-w` (`--worktree [name]`) makes claude create and enter a fresh git worktree at
+  startup — the lighter, claude-only alternative to `herdr worktree create` when you
+  just want an isolated tree in a plain split pane. Plain claude (no bypass) launches in
+  ask-for-permission mode — it *declines* Bash/edits and stalls — so always pass
+  `--dangerously-skip-permissions` for unattended work.
+- **fable — also `--kind claude` (no `fable` kind exists):** fable is just claude with a
+  separate config dir. `agent start` has no `--env`, so set it when you make the pane:
+  `herdr pane split --current --direction right --cwd <dir> --env
+  CLAUDE_CONFIG_DIR=$HOME/.claude-fable --no-focus`, then `agent start <name> --kind
+  claude --pane <that-pane> -- -w <name> --dangerously-skip-permissions`. That env var
+  is the whole of what the `fable` shell alias does — a distinct, independently
+  authenticated Claude identity for a second Claude in parallel. Launch it via the env
+  var, never by the name `fable`.
+- **Codex — `--kind codex`:** `-- --dangerously-bypass-approvals-and-sandbox` (yolo,
+  default for hands-off runs) or `-- --full-auto` (sandboxed). No worktree flag — make
+  the worktree first with `herdr worktree create` and start into its root pane. Omit
+  `-m` by default so Codex picks its current default model; if the task needs an
+  explicit model, consult the installed CLI's model list and choose the newest suitable
+  one — never hard-code a version here.
+- **pi — `--kind pi`:** no extra flags needed (`-- --model …` only to pin a model).
+  Interactive TUI, no worktree flag — same as Codex: worktree first, start into its
+  root pane.
 
 **Completion is not proof of success** — an agent settles into `done`/`idle` even when
 it *refused* the work. Always `read` the pane and confirm the reply/artifacts before
@@ -242,14 +268,16 @@ normal prompt:
   the Enter you send just confirms whatever option is *already* highlighted, which may
   silently confirm the wrong one.
 - **Instead, navigate, verify, then confirm — three separate calls:**
-  1. Navigate with actual arrow keys: `herdr pane send-keys <pane> Down` (or `Up`),
+  1. Navigate with actual arrow keys: `herdr agent send-keys <name> down` (or `up`),
      repeated the number of times needed to reach the target option.
-  2. `herdr pane read <pane>` and confirm the highlighted (`❯`) option's literal text
+  2. `herdr agent read <name>` and confirm the highlighted (`❯`) option's literal text
      matches the intended choice.
-  3. Only then send Enter as its **own** separate call: `herdr pane send-keys <pane>
-     Enter`.
+  3. Only then send Enter as its **own** separate call: `herdr agent send-keys <name>
+     enter`.
   Never bundle navigation and confirmation into one blind command — always read
-  between moving the cursor and pressing Enter.
+  between moving the cursor and pressing Enter. (Key tokens are lowercase — `up`,
+  `down`, `enter`, `esc`/`escape`, `ctrl+c` — and `agent send-keys` addresses the agent
+  by its durable name. `agent send` no longer exists; it was renamed `send-keys`.)
 - **Any mismatch between the intended choice and the highlighted text is a hard
   stop.** Re-navigate; don't guess, don't proceed, don't assume the next Down/Up will
   land correctly.
@@ -293,9 +321,11 @@ done
 
 Why it's shaped this way:
 
-- **Polling by name inside a detached process** costs your session nothing and can't
-  watch the wrong pane: a blocking `herdr wait agent-status` would pin a pane id for
-  the whole ceiling and can only watch a single status.
+- **Polling by name inside a detached process** costs your session nothing and keeps
+  you free for other requests. `herdr agent wait <name> --until …` is name-based and
+  server-owned now (the old top-level `herdr wait` is gone), but run in the foreground
+  it still pins your turn for the whole ceiling and watches only the states you name —
+  so the detached poll below stays the right tool for a dispatcher.
 - **`done` OR `idle`-after-`working` is the completion signal** — focus can flip
   `done` to `idle` before any observer sees it. Requiring `working` first keeps the
   agent's startup moment (briefly `idle`) from false-firing. This holds identically for
@@ -307,9 +337,9 @@ Why it's shaped this way:
   consecutive idle reads (spaced by the sleep interval) before treating it as real
   completion, not just one.
 - **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
-  the prompt — `herdr pane run <pane> "<answer>"` for a text prompt, or the
-  navigate/verify/confirm sequence above for a select-menu — instead of sitting out
-  the ceiling.
+  the prompt — `herdr agent prompt <name> "<answer>"` for a text prompt (atomic submit,
+  bracketed-paste-safe, addressed by durable name), or the navigate/verify/confirm
+  sequence above for a select-menu — instead of sitting out the ceiling.
 - **The ceiling (~30 min) is a safety net, not a poll of your turn.** On `TIMEOUT`,
   read the pane and decide: finished after all → treat as done; genuinely still
   working → arm a fresh waiter and end your turn again. Never fall back to foreground
