@@ -12,6 +12,8 @@
 !skills/
 !skills/cmux/
 !skills/cmux/**
+!skills/fleet-overview/
+!skills/fleet-overview/**
 !commands/
 !commands/**
 !hooks/
