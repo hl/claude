@@ -84,8 +84,10 @@ Orchestration habits on top of the skill:
   (paths are listed in the skill's notes).
 - **Address agents by name, not id.** Pane ids are session-scoped (see the skill's
   id caveats) — re-read them fresh before any `pane`-level call. Every `herdr agent`
-  command (`get`, `read`, `send-keys`, `prompt`, `rename`, `focus`, `wait`, `start`)
-  accepts a unique agent name *or* the pane id currently hosting it. The name is a
+  command that *targets* an existing agent (`get`, `read`, `send-keys`, `prompt`,
+  `rename`, `focus`, `wait`) accepts a unique agent name *or* the pane id currently
+  hosting it. (`agent start` is the exception — it *assigns* a new name into an
+  agent-free shell pane; see its contract below.) The name is a
   durable alias — but it's cleared the moment that agent exits, is released, or is
   replaced, and it must match `[a-z][a-z0-9_-]{0,31}` and be unique among live agents
   (no longer free-form). Name every agent at birth — `agent start <unique-name> …`
@@ -96,8 +98,10 @@ Orchestration habits on top of the skill:
 ## Launching & waiting on agents inside herdr (inlined reference)
 
 Only relevant when a pane hosts a coding agent — herdr detects a broad, growing set
-(Claude Code, Codex, pi, fable, opencode, copilot, and more — `herdr integration status`
-lists them); you launch the first four (recipes below) and may also read status on panes
+(Claude Code, Codex, pi, opencode, copilot, and more — `herdr integration status`
+lists them; fable is detected *as* `claude`, not a separate kind). You launch four
+kinds of session yourself — Claude Code, fable (a second, independently authenticated
+Claude identity), Codex, and pi (recipes below) — and may also read status on panes
 running the others. Plain terminal/browser panes don't need any
 of this. herdr surfaces one
 `agent_status` per pane — `idle` / `working` / `blocked` / `done` / `unknown` — and
@@ -130,16 +134,17 @@ Status semantics you must know:
   heuristic, ever emits `done` (the reportable set is only idle/working/blocked/unknown);
   herdr synthesizes `done` when a turn goes `working`→`idle` on a pane **nobody has
   viewed**. So it behaves identically for *every* agent, pi/opencode included: it survives
-  CLI reads, and a waiter armed *after* the turn ended still sees it — but **focusing the
-  pane in the UI clears it to `idle`**. If the user is watching a pane when its turn ends,
-  `done` may never be observable. Never wait on `done` alone; treat
-  `idle`-after-`working` as completion too. `done` is sticky — it does not clear on
-  repeated CLI reads (`agent read`/`agent get`), only on the pane being focused in the
-  UI — so if a dispatched worker ever backgrounds its final wait anyway, a status-only
-  waiter re-armed afterward will immediately see the same stale `done` again and should
-  fall back to diffing the pane's actual read output across polls (or focusing the pane
-  once to clear the stale flag) instead of trusting `agent_status` alone in that
-  specific case.
+  CLI reads, and a waiter armed *after* the turn ended still sees it — but **any focus
+  marks the pane seen and clears it to `idle`**, and that includes a CLI focus you can
+  issue yourself (`herdr agent focus <name>`, or `herdr pane focus`), not just the pane
+  being focused in the UI. If the user is watching a pane when its turn ends, `done` may
+  never be observable. Never wait on `done` alone; treat `idle`-after-`working` as
+  completion too. `done` is sticky — it does not clear on `agent read`/`agent get`
+  (reads don't mark a pane seen), only on a focus — so if a dispatched worker ever
+  backgrounds its final wait anyway, a status-only waiter re-armed afterward will
+  immediately see the same stale `done` again and should fall back to diffing the pane's
+  actual read output across polls (or running `herdr agent focus <name>` once to clear
+  the stale flag) instead of trusting `agent_status` alone in that specific case.
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
@@ -314,8 +319,10 @@ while :; do
              else
                [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; }
              fi ;;
+    unknown) MISS=$((MISS+1)); IDLE_STREAK=0
+             [ $MISS -ge 3 ] && { echo "UNCLASSIFIED: $NAME — present but herdr can't read its state; read the pane"; exit 0; } ;;
     *)       MISS=$((MISS+1)); IDLE_STREAK=0
-             [ $MISS -ge 3 ] && { echo "GONE: $NAME — agent exited, pane closed, or herdr down"; exit 0; } ;;
+             [ $MISS -ge 3 ] && { echo "GONE: $NAME — no status (agent exited, pane closed, or herdr down); read the pane"; exit 0; } ;;
   esac
   sleep 8
 done
