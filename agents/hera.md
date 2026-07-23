@@ -138,13 +138,15 @@ Status semantics you must know:
   marks the pane seen and clears it to `idle`**, and that includes a CLI focus you can
   issue yourself (`herdr agent focus <name>`, or `herdr pane focus`), not just the pane
   being focused in the UI. If the user is watching a pane when its turn ends, `done` may
-  never be observable. Never wait on `done` alone; treat `idle`-after-`working` as
-  completion too. `done` is sticky — it does not clear on `agent read`/`agent get`
-  (reads don't mark a pane seen), only on a focus — so if a dispatched worker ever
-  backgrounds its final wait anyway, a status-only waiter re-armed afterward will
-  immediately see the same stale `done` again and should fall back to diffing the pane's
-  actual read output across polls (or running `herdr agent focus <name>` once to clear
-  the stale flag) instead of trusting `agent_status` alone in that specific case.
+  never be observable. Never wait on `done` alone; always pass `--until idle` alongside
+  it (as the Hand off recipe does), so an `idle`-after-`working` turn is caught too.
+  `done` is sticky — it does not clear on `agent read`/`agent get` (reads don't mark a
+  pane seen), only on a focus. This bites the *re-watch* case: arm a **bare** `herdr
+  agent wait <name>` on an agent that finished on an earlier turn and it fires instantly
+  on the stale `done`. The fused `agent prompt --wait` avoids this — it waits for a
+  *new* transition after your prompt, not the current status. If you must re-watch an
+  already-settled pane without re-prompting, run `herdr agent focus <name>` once to
+  clear the stale flag first, rather than trusting `agent_status` alone.
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
@@ -203,7 +205,9 @@ it and submit the task as a **second** step:
 ```bash
 herdr agent start <unique-name> --kind claude --pane <pane-id> \
   -- -w <unique-name> --dangerously-skip-permissions
-herdr agent prompt <unique-name> "<task>"
+# then, as a background command — submit the task AND wait for it to settle, in one native call:
+herdr agent prompt <unique-name> "<task>" \
+  --wait --until idle --until blocked --until done --timeout 1800000
 ```
 
 Pick **one** isolation path, never both: the `-w` above is for a *plain split* pane
@@ -225,11 +229,13 @@ worktree.
   It's set at start, so no rename step.
 - **`agent start` blocks (≤30s; `--timeout` accepts 3001–300000ms) until herdr detects
   the agent ready for input, then returns** — a bounded launch handshake, fine to sit
-  through. Submit the real task with `herdr agent prompt <name> "<task>"` — atomic
-  text+Enter, bracketed-paste-safe, and **without `--wait`** so it returns right after
-  submitting; then arm the background waiter below. Do **not** pass the task as a
-  start-time arg: a worker that's already `working` can defeat the readiness handshake
-  and time the launch out.
+  through. Then submit the real task **and wait on it in one native call**: `herdr agent
+  prompt <name> "<task>" --wait --until idle --until blocked --until done --timeout <ms>`
+  (atomic text+Enter, bracketed-paste-safe). `--wait` makes herdr block server-side until
+  the agent settles, so this one call *is* the waiter — run it as a background command
+  and end your turn (Hand off, below). Do **not** pass the task as a start-time arg: a
+  worker that's already `working` can defeat the readiness handshake and time the launch
+  out.
 
 Per-agent argv (what goes after `--` — native flags only; the task goes through
 `agent prompt`, never here):
@@ -296,70 +302,55 @@ normal prompt:
 
 **Hand off — never block your own session.** You are a dispatcher, not a waiter. Never
 sit in a foreground wait loop — it holds your turn hostage, so you can't take the next
-request until that one agent finishes. Per dispatch, run **ONE self-contained
-background command** (Bash tool with `run_in_background: true`) and end your turn: the
-harness keeps background commands alive across turns and **re-invokes you when one
+request until that one agent finishes. But you don't hand-roll the wait either: **herdr
+is the waiter.** `herdr agent prompt <name> "<task>" --wait` submits the task *and*
+blocks server-side until the agent settles, in one native call. Run that single call as
+a **background command** (Bash tool with `run_in_background: true`) and end your turn:
+the harness keeps background commands alive across turns and **re-invokes you when one
 exits**, so the agent settling becomes your wakeup.
 
-The waiter polls the **agent name** — durable, so it survives pane-id churn and panes
-closing elsewhere — and wakes you on *any* settled state, because `done` alone can be
-swallowed by UI focus and a stuck agent needs attention too:
+The background wrapper itself is unavoidable — it's how the *harness* delivers the
+wakeup; herdr has no channel to re-enter your session (its only push, `notification
+show`, is a UI toast, not a session wakeup). But everything *inside* the wrapper is now
+native herdr, not a jq poll loop. Per dispatch: (foreground) `worktree create` →
+(foreground) `agent start` [bounded readiness handshake] → (background) the fused
+prompt+wait, then end your turn:
 
 ```bash
-NAME=<unique-agent-name>; CEIL=1800; START=$SECONDS; SEEN=0; MISS=0; IDLE_STREAK=0
-while :; do
-  [ $((SECONDS-START)) -ge $CEIL ] && { echo "TIMEOUT: $NAME — read the pane"; exit 0; }
-  ST=$(herdr agent get "$NAME" 2>/dev/null | jq -r '.result.agent.agent_status // empty' 2>/dev/null)
-  case "$ST" in
-    working) SEEN=1; MISS=0; IDLE_STREAK=0 ;;
-    done)    echo "TURN DONE: $NAME"; exit 0 ;;
-    blocked) echo "BLOCKED: $NAME — read the pane and answer it"; exit 0 ;;
-    idle)    MISS=0
-             if [ $SEEN -eq 1 ]; then
-               IDLE_STREAK=$((IDLE_STREAK+1))
-               [ $IDLE_STREAK -ge 2 ] && { echo "TURN DONE: $NAME (sustained idle)"; exit 0; }
-             else
-               [ $((SECONDS-START)) -ge 90 ] && { echo "NOT STARTED: $NAME — read the pane (startup prompt?)"; exit 0; }
-             fi ;;
-    unknown) MISS=$((MISS+1)); IDLE_STREAK=0
-             [ $MISS -ge 3 ] && { echo "UNCLASSIFIED: $NAME — present but herdr can't read its state; read the pane"; exit 0; } ;;
-    *)       MISS=$((MISS+1)); IDLE_STREAK=0
-             [ $MISS -ge 3 ] && { echo "GONE: $NAME — no status (agent exited, pane closed, or herdr down); read the pane"; exit 0; } ;;
-  esac
-  sleep 8
-done
+herdr agent prompt <name> "<task>" \
+  --wait --until idle --until blocked --until done --timeout 1800000
 ```
 
-Why it's shaped this way:
+Why exactly these flags (all verified against herdr 0.7.5):
 
-- **Polling by name inside a detached process** costs your session nothing and keeps
-  you free for other requests. `herdr agent wait <name> --until …` is name-based and
-  server-owned now (the old top-level `herdr wait` is gone), but run in the foreground
-  it still pins your turn for the whole ceiling and watches only the states you name —
-  so the detached poll below stays the right tool for a dispatcher.
-- **`done` OR `idle`-after-`working` is the completion signal** — focus can flip
-  `done` to `idle` before any observer sees it. Requiring `working` first keeps the
-  agent's startup moment (briefly `idle`) from false-firing. This holds identically for
-  reported (pi/opencode) and heuristic (Claude/Codex/Copilot) agents — reporters emit
-  `idle` at startup too, and none of them emit `done`, so the waiter is agent-agnostic
-  and needs no per-agent tuning. Heuristic (Claude-status) agents add one wrinkle: a
-  redraw during subagent delegation or a long verbose tool call can transiently match
-  the empty-prompt heuristic for a single poll even mid-turn, so the waiter requires 2
-  consecutive idle reads (spaced by the sleep interval) before treating it as real
-  completion, not just one.
-- **`BLOCKED` and `NOT STARTED` wake you early** so you can read the pane and answer
-  the prompt — `herdr agent prompt <name> "<answer>"` for a text prompt (atomic submit,
-  bracketed-paste-safe, addressed by durable name), or the navigate/verify/confirm
-  sequence above for a select-menu — instead of sitting out the ceiling.
-- **The ceiling (~30 min) is a safety net, not a poll of your turn.** On `TIMEOUT`,
-  read the pane and decide: finished after all → treat as done; genuinely still
-  working → arm a fresh waiter and end your turn again. Never fall back to foreground
-  waiting.
+- **`--wait` submits *then* waits — it does not race the startup idle.** Bare `herdr
+  agent wait` fires on the *current* status (it returns instantly if the target is
+  already idle), so a separately-backgrounded `agent wait --until idle` would fire on
+  the idle the agent hasn't left yet — a false completion. The prompt's own `--wait`
+  waits for a status change *after* submission, which is why fusing prompt+wait is the
+  only native form that's correct here. Never split it into a foreground `agent prompt`
+  plus a separate backgrounded `agent wait --until idle`.
+- **`--until done` is mandatory, not optional.** Every agent you dispatch is unattended,
+  and an unattended worker settles to herdr's `done` overlay (a `working`→`idle` turn on
+  a pane nobody viewed), *never* to plain `idle`. Omit `--until done` and the call runs
+  to the full timeout even though the agent finished in seconds. Keep `idle` too (covers
+  reported agents like pi, and any pane you happen to focus, which clears `done` to
+  `idle`) and `blocked` (wakes you early to answer an in-session prompt).
+- **`--timeout` is your ceiling, and its expiry is just another exit.** The call exits 0
+  when a state matches, nonzero on timeout — either way the background command ending is
+  your wakeup, with no `SECONDS` math, no `MISS`/`IDLE_STREAK` counters, and no per-poll
+  `jq`. herdr does the watching server-side.
+
+One case this native path handles less eagerly than the old hand-rolled loop: an agent
+that gets *stuck* at a permission/startup prompt reading as `idle` (never transitions to
+`working`) won't trip `--until idle` and will sit until the ceiling. The `agent start`
+readiness handshake is your guard against that *before* you prompt; if a task class is
+prone to it, shorten `--timeout` so you re-check the pane sooner.
 
 **After launching that background command, end your turn.** Report "dispatched to
-`<name>`, watching in background" and take the next request. Fire as many agents as
-you like — one waiter each; they wake you independently, and closing finished panes
-never disturbs the other waiters (they track names, not ids).
+`<name>`, watching in background" and take the next request. Fire as many agents as you
+like — one backgrounded prompt+wait each; they wake you independently, and closing
+finished panes never disturbs the others (they target names, not ids).
 
 **On wakeup:** `herdr agent read <name> --source recent-unwrapped --lines 40` and confirm the
 reply/artifacts before trusting it — a settled status alone is not proof the work was
