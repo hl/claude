@@ -95,6 +95,44 @@ Orchestration habits on top of the skill:
   <pane> <name>` (retry after a second if detection lags) — and read/prompt/wait by
   that name from then on.
 
+## Never steal the user's focus
+
+The user drives the fleet from **your** pane. Every focus change yanks their keyboard into
+some worker's TUI, so treat the focused pane as theirs, not yours: you inspect the fleet by
+*reading*, never by looking.
+
+- **Pass `--no-focus` on everything that creates or moves layout** — `worktree create`,
+  `worktree open`, `workspace create`, `tab create`, `pane split`, `pane move`. Current
+  herdr preserves focus on creation by default and `--focus` opts in, but say it
+  explicitly anyway. (`agent start` never changes topology or focus.)
+- **Read instead of focusing.** `agent read`, `agent get`, `agent list`, `pane read` move
+  no focus and don't mark a pane seen — that's your whole inspection surface, fleet-overview
+  sweeps included. `agent focus` / `tab focus` / `workspace focus` are for taking the user
+  somewhere they asked to go, never for a look; `herdr agent attach` seizes the pane
+  outright — never run it.
+- **When a focus move is unavoidable, hand focus back.** Two cases only: clearing a stale
+  `done` before re-watching (see the status notes below), and `herdr worktree remove`, which
+  focuses the parent workspace on its own. Bracket them:
+
+  ```bash
+  ME=$(herdr pane current --current | jq -r '.result.pane.pane_id')
+  # ... the focus-moving command ...
+  herdr agent focus "$ME"
+  ```
+
+  Re-derive `$ME` on the spot rather than remembering it — `pane current --current` resolves
+  the *calling* pane, so it's immune to pane-id churn and survives compaction. `agent focus`
+  accepts a pane id that hosts an agent, and your pane hosts this Claude session, so you
+  never need to rename yourself.
+- **Restore to whoever actually had focus, not reflexively to yourself.** If the user had
+  navigated to a worker before you acted, put them back there: capture
+  `herdr api snapshot | jq -r '.result.snapshot | .focused_workspace_id, .focused_tab_id, .focused_pane_id'`
+  *before* the operation, then afterwards `agent focus` that pane — or, if it hosts no
+  agent, `herdr workspace focus <ws>` followed by `herdr tab focus <tab>`.
+- **Closing carries focus with it.** `pane`/`tab`/`workspace close` on the *focused* unit
+  forces focus somewhere else; closing a unit nobody is in doesn't. Restore as above whenever
+  you close something that was focused.
+
 ## Launching & waiting on agents inside herdr (inlined reference)
 
 Only relevant when a pane hosts a coding agent — herdr detects a broad, growing set
@@ -136,8 +174,8 @@ Status semantics you must know:
   viewed**. So it behaves identically for *every* agent, pi/opencode included: it survives
   CLI reads, and a waiter armed *after* the turn ended still sees it — but **any focus
   marks the pane seen and clears it to `idle`**, and that includes a CLI focus you can
-  issue yourself (`herdr agent focus <name>`, or `herdr pane focus`), not just the pane
-  being focused in the UI. If the user is watching a pane when its turn ends, `done` may
+  issue yourself (`herdr agent focus <name>`, or `herdr pane focus --direction …`), not
+  just the pane being focused in the UI. If the user is watching a pane when its turn ends, `done` may
   never be observable. Never wait on `done` alone; always pass `--until idle` alongside
   it (as the Hand off recipe does), so an `idle`-after-`working` turn is caught too.
   `done` is sticky — it does not clear on `agent read`/`agent get` (reads don't mark a
@@ -146,7 +184,8 @@ Status semantics you must know:
   on the stale `done`. The fused `agent prompt --wait` avoids this — it waits for a
   *new* transition after your prompt, not the current status. If you must re-watch an
   already-settled pane without re-prompting, run `herdr agent focus <name>` once to
-  clear the stale flag first, rather than trusting `agent_status` alone.
+  clear the stale flag first, rather than trusting `agent_status` alone — then hand focus
+  straight back to your own pane (**Never steal the user's focus**, above).
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in a cwd it hasn't seen) — it fires before any
   reporter is live and matches no blocker heuristic. An agent that never reaches
@@ -189,8 +228,8 @@ change stays contained to a throwaway branch. Two first-class ways:
 Both defaults make a *new* branch — right for agents doing new work. For an
 **existing** branch or ref (a reviewer checking out a PR, anything pinned), don't
 branch fresh: open the existing branch with `herdr worktree open --cwd <repo> --branch
-<existing-branch>`, or branch from a specific ref with `herdr worktree create --cwd
-<repo> --branch <name> --base <ref>`. Native worktree has no detached-HEAD mode, so the
+<existing-branch> --no-focus`, or branch from a specific ref with `herdr worktree create
+--cwd <repo> --branch <name> --base <ref> --no-focus`. Native worktree has no detached-HEAD mode, so the
 one case still needing pane-run git is a read-only checkout of a bare commit:
 `herdr pane run <root> "git -C <repo> worktree add --detach <path> <ref>"` then `--cwd`
 into it — never your own Bash, same precedent as `.env` sourcing.
@@ -444,7 +483,8 @@ Example — what you might be tempted to send → what to send instead:
   or abandoned, and never while it still holds unmerged work. A `herdr worktree create`
   worktree is a herdr-managed workspace: remove it with `herdr worktree remove
   --workspace <ws>` (add `--force` only if git refuses a dirty checkout; it deletes the
-  checkout, never the branch). A `-w` worktree is *not* a herdr workspace, so reclaim it
+  checkout, never the branch) — it focuses the parent workspace on its own, so bracket it
+  with the focus hand-back recipe. A `-w` worktree is *not* a herdr workspace, so reclaim it
   with a pane-run `git worktree remove <path>` (never your own Bash) or leave it to the
   worker.
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
