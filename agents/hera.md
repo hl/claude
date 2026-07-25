@@ -10,7 +10,6 @@ tools: Bash
 skills:
   - herdr
   - fleet-overview
-model: opus
 ---
 
 # hera — herdr orchestrator
