@@ -9,7 +9,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
   "hooks": {
     "PostToolUse": [
       {
@@ -73,5 +72,6 @@
   "skipAutoPermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
-  }
+  },
+  "model": "opus[1m]"
 }
