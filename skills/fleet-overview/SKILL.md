@@ -6,6 +6,7 @@ description: >-
   the hera orchestrator (or any session running inside herdr) when asked for a
   fleet/agent overview, a status roundup, or "what's going on with the agents".
   Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq`.
+allowed-tools: Bash(herdr:*), Bash(jq:*)
 ---
 
 # Fleet overview
@@ -39,16 +40,24 @@ yourself**: you (the orchestrator) run in your own herdr pane, so you appear in 
 list too; herdr injects your pane id as `$HERDR_PANE_ID`, so filter that row out.
 
 ```bash
-herdr agent list 2>/dev/null | jq -r --arg self "${HERDR_PANE_ID:-}" '
+herdr agent list | jq -r --arg self "${HERDR_PANE_ID:-}" '
   .result.agents[]
   | select(.pane_id != $self)                              # drop the orchestrator itself
-  | [ (.name // .agent // .pane_id),                       # 1 agent (durable name)
+  | [ (.name // .terminal_title_stripped // .pane_id),     # 1 agent — never .agent (that is
+                                                            #   the kind, "claude"; it collides)
       .agent_status,                                        # 2 idle|working|blocked|done|unknown
-      (.tokens.summary // .terminal_title_stripped // "-"), # 3 what it is doing
-      (.launch_pending or (.interactive_ready | not)),      # startup-stuck? (for reads below)
+      (.tokens.summary // .terminal_title_stripped // "-"), # 3 what it is doing (.tokens is
+                                                            #   absent in herdr 0.7.5 — the
+                                                            #   title is the live source)
+      ((.launch_pending // false)
+        or ((.interactive_ready // true) | not)),           # startup-stuck? (for reads below)
       (.state_change_seq | tostring)                        # progress counter (stall check)
     ] | @tsv'
 ```
+
+No `2>/dev/null` — if `herdr` errors, an empty sweep must read as *the call failed*, not
+as *the fleet is empty*. Say which one you saw; never report an empty table over a
+swallowed error.
 
 ### 2. Decide which agents need a pane read
 
@@ -60,9 +69,12 @@ Only these need enriching (the rest are self-explanatory from column 3):
 - startup-stuck — `unknown`, `launch_pending`, not `interactive_ready`, or `idle`
   that has *never* been `working` (a pre-session trust/permission prompt reads as
   `idle`, not `blocked`).
-- a `working` agent whose `state_change_seq` hasn't moved across two sweeps
-  (~5s apart) — possibly stalled. `agent list` has no timestamp, so this delta is
-  the only progress signal; there is no wall-clock duration to report.
+- a `working` agent whose `state_change_seq` hasn't moved between two sweeps —
+  possibly stalled. `agent list` has no timestamp, so this delta is the only
+  progress signal; there is no wall-clock duration to report. Don't try to `sleep`
+  between the sweeps — foreground `sleep` is blocked. Take the second sweep *after*
+  step 3's reads, which supplies the gap for free; if nothing else needs reading,
+  either skip the stall check or wait on it with `Monitor`.
 
 ### 3. Enrich the follow-up — targeted reads only for those agents
 
@@ -72,6 +84,9 @@ take**, not a transcript dump:
 ```bash
 herdr agent read <name> --source recent-unwrapped --lines 30
 ```
+
+These reads are independent of each other — issue them as **parallel tool calls in a
+single block**, one per agent, not one round-trip apiece.
 
 - `blocked` → the pending question / permission it's waiting on.
 - `done` / `idle`-after-`working` → classify the result: **finished ✓**, **refused /

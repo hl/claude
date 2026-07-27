@@ -10,9 +10,6 @@
     "defaultMode": "auto"
   },
   "model": "opus[1m]",
-  "skillOverrides": {
-    "find-skills": "off"
-  },
   "hooks": {
     "PostToolUse": [
       {
@@ -52,17 +49,6 @@
   "statusLine": {
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
-  },
-  "enabledPlugins": {
-    "compound-engineering@compound-engineering-plugin": true
-  },
-  "extraKnownMarketplaces": {
-    "compound-engineering-plugin": {
-      "source": {
-        "source": "github",
-        "repo": "EveryInc/compound-engineering-plugin"
-      }
-    }
   },
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
