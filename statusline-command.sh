@@ -25,6 +25,9 @@ fi
 model=$(echo "$input" | jq -r '.model.display_name // ""')
 model_id=$(echo "$input" | jq -r '.model.id // empty')
 
+# Reasoning effort level
+effort=$(echo "$input" | jq -r '.effort.level // empty')
+
 # Context remaining
 remaining=$(echo "$input" | jq -r '.context_window.remaining_percentage // empty')
 
@@ -53,6 +56,7 @@ sep="${K} | "
 out="${K}dir: ${V}${project}"
 [ -n "$cwd_name" ] && [ "$cwd_name" != "$project" ] && out="${out}${sep}${K}cwd: ${V}${cwd_name}"
 [ -n "$branch" ]   && out="${out}${sep}${K}git: ${V}${branch}"
+[ -n "$mod" ] && [ -n "$effort" ] && mod="${mod} - ${effort}"
 [ -n "$mod" ]      && out="${out}${sep}${K}mod: ${V}${mod}"
 [ -n "$ctx" ]      && out="${out}${sep}${K}ctx: ${V}${ctx}"
 
