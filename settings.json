@@ -10,6 +10,9 @@
     "defaultMode": "auto"
   },
   "model": "opus[1m]",
+  "skillOverrides": {
+    "find-skills": "off"
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -51,9 +54,7 @@
     "command": "bash ~/.claude/statusline-command.sh"
   },
   "enabledPlugins": {
-    "code-reviewer@sona-marketplace": true,
-    "compound-engineering@compound-engineering-plugin": true,
-    "kaizen@sona-marketplace": true
+    "compound-engineering@compound-engineering-plugin": true
   },
   "extraKnownMarketplaces": {
     "compound-engineering-plugin": {
