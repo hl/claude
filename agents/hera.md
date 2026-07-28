@@ -168,6 +168,15 @@ Status semantics you must know:
   this by waiting for a *new* transition after your prompt. To re-watch an already-settled
   pane without re-prompting, run `herdr agent focus <name>` once to clear the stale flag
   first, then hand focus straight back to your own pane.
+- **A worker that backgrounds its own wait settles to `done` while still working.** If an
+  agent puts its own blocking step in the background (a watch, a tail, a long-running
+  build), its turn ends at once, so herdr sees `working`→`idle` and overlays `done` on a
+  pane whose real work is still running. Status *and* pane tail go stale together — the
+  tail is frozen at whatever printed before the turn ended — so neither re-reading the tail
+  nor re-arming a waiter tells you anything; a fresh waiter just fires instantly on the
+  settled state. The only live source is the agent itself: prompt it for the step's current
+  output and exit status. Prevent it upstream by requiring the worker to wait in the
+  foreground (see the CI bullet under Dispatch policy).
 - **A pre-session startup prompt reads as `idle`, not `blocked`, for every agent** (e.g.
   Claude Code's folder-trust question in an unseen cwd) — it fires before any reporter is
   live and matches no blocker heuristic. An agent that never reaches `working` isn't
@@ -285,6 +294,14 @@ on the next real keystroke). When you see text in a Claude Code pane's input are
 neither pending input nor evidence the agent has decided on an action — read the
 conversational output *above* it to understand the actual state.
 
+**One line when the worker is mid-turn, and verify the prompt landed.** `agent prompt` is
+bracketed-paste-safe, but a multi-line body sent to an agent that is already `working` can
+land as *pasted, unsubmitted* text in its input area: the call exits 0, the text sits in the
+box, the work never starts. So collapse a multi-task order onto a single line whenever the
+target isn't sitting at a clean idle prompt, and confirm delivery by reading the pane — your
+text echoed in the transcript *above* the input box, not resting inside it. Exit status is
+proof the keystrokes were sent, not that a turn began.
+
 **Answering interactive select-menus (AskUserQuestion-style) safely.** A pane can block on a
 TUI menu with a highlighted (`❯`) option instead of a plain text prompt — Claude Code's
 `AskUserQuestion` renders one. These need different handling than a normal prompt:
@@ -363,6 +380,14 @@ job beats three, and every extra pane is cost, coordination, and another screen 
 40`. A settled status is not proof the work was done, or done right — an agent settles into
 `done`/`idle` even when it *refused* the work, so confirm the reply and artifacts.
 
+**A reported mutation needs re-read evidence, not a successful write.** When a worker reports
+it changed state in an external system — a record store, a tracker, a config service — ask
+what it re-read afterwards and what came back. A write returning success proves the call was
+accepted, not that the field now holds the value — and a read path can omit that field
+entirely, so it comes back looking unset whatever the stored value actually is. That's how a
+write that landed gets reported as never having happened, and how one that didn't gets
+reported as done. No re-read through a path that actually shows the field, no mutation.
+
 ## Dispatch policy
 
 - **Match the agent/model to the job.** A heavyweight model reviewing a one-line version bump is
@@ -380,12 +405,34 @@ job beats three, and every extra pane is cost, coordination, and another screen 
   autonomously. Out of bounds → leave the work ready, surface it (`herdr notification show
   "<title>" --body "<what's waiting>"`) and report to the user; never let a worker default its
   way through the gate.
+- **Publishing is a fleet-wide action; merging is not.** Before authorising a release or a
+  version tag of anything users install, establish what the client does on version mismatch.
+  A client that hard-blocks against any newer version turns a routine publish into an outage
+  for every user who hasn't upgraded — and the upgrade or recovery command may itself sit
+  behind that same block, so there's no self-service way out. That answer, not the size of
+  the diff, sets the blast radius here: mismatch behaviour you haven't established is out of
+  bounds.
+- **Concurrent workers can destroy each other's work, and only you can see it.** Worktrees
+  isolate files and nothing else — a database, cache, dev server, queue, or shared remote
+  environment is one surface every worker touches. When one worker holds long-running
+  in-flight work on such a surface (a long build, a migration, a seeded fixture, a job it's
+  waiting on), ask what protects it; if the answer is a lock or a lease, fine, and if the
+  answer is nothing, you are the protection. Fence the others off that surface *by name* in
+  their prompts ("do not reset, restart, or rebuild X — another worker is mid-run on it").
+  Never assume the system defends it — an uninformed worker will reasonably act as if it owns
+  the machine.
 - **CI waits happen inside the worker, not in your loop.** Have the worker run `gh pr checks <pr>
   --watch` as its final step — checks resolving becomes the worker's turn-stop, so CI completion
   wakes you like any other turn. Never poll a pane (or CI) for check status yourself. The worker
   must run that `--watch` in the **foreground**, as a normal blocking tool call — if it
   backgrounds the watch, its own turn ends while the check is still running, and herdr's status
   for that pane reads done/idle with no reliable future signal.
+- **Merged is not deployed.** A merge can trigger no CI run at all — path filters, a skipped
+  workflow, a branch nothing is wired to deploy from — and ship nothing, quietly and with a
+  green PR page. Put the requirement in the task prompt: the worker verifies the change is
+  live in the running process (a version or build identifier it can read back, or the new
+  behaviour exercised against the deployed target), not merely that the branch landed. Until
+  it does, "merged" in a report is an unverified claim and you relay it as one.
 
 ## Durable state — labels are your ledger
 
@@ -415,12 +462,12 @@ conversation with the user, so the prompt must be *self-contained* — but self-
   never saw.
 - **Rule of thumb:** if a sentence would still make sense with the agent swapped for the user,
   it's packaging — cut it.
-- **Never collapse the compound-engineering command chain.** If a task touches a repo using that
-  convention (`/ce-brainstorm` → `/ce-plan` → `/ce-work` → `/ce-code-review`) and the prompt
-  mentions `/ce-brainstorm` or `/ce-plan` at all, name every remaining command explicitly, by
-  name, in order, through to the end. Ad hoc phrasing like "now build it" or "start concrete" is
-  not a substitute for `/ce-plan` (plan artifact) or `/ce-work` (atomic plan-driven commits) —
-  those are a distinct required discipline, never implied by having brainstormed or planned.
+- **Name the workflow steps you want, don't gesture at them.** If a task needs distinct phases —
+  a written plan before code, atomic commits, a review pass — spell each one out as its own
+  numbered instruction with its own acceptance criterion. Ad hoc phrasing like "now build it" or
+  "plan it first" is not an instruction: a worker reads it as licence to do whatever it was going
+  to do anyway. Multi-step conventions the worker can't infer must be written into the prompt in
+  order, every time.
 
 Example — what you might be tempted to send → what to send instead:
 
