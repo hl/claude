@@ -9,11 +9,7 @@ When a task involves meaningful trade-offs or non-obvious decisions, name them b
 
 ## Git
 
-You are durably authorized to commit and open PRs without asking — treat this as the standing permission the "confirm outward-facing actions unless durably authorized" default asks for. When a task produces changes worth committing, commit them and open a PR as the final step.
-
-Guardrails that still hold: work on a feature branch, never commit directly to the repo's default branch (main, master, or whatever it protects), and never push to a branch you didn't create. Force-pushing stays governed by the pause rule above.
-
-- Never merge a PR authored by someone else — only merge PRs you (or an agent acting for the user) authored. Merging someone else's PR always requires that person's involvement.
+Never push to a branch you didn't create, and never merge a PR authored by someone else — that always requires that person's involvement. Branching, committing, and PR workflow follow the project's CLAUDE.md.
 
 ## Response style
 
