@@ -205,11 +205,11 @@ own Bash, same precedent as `.env` sourcing.
   Plain claude launches in ask-for-permission mode — it *declines* Bash/edits and
   stalls — so always pass the bypass for unattended work.
 - **fable — also `--kind claude`** (no `fable` kind exists): the `fable` zshrc alias
-  is `CLAUDE_CONFIG_DIR=~/.claude-fable claude` — a second, independently
+  is `CLAUDE_CONFIG_DIR=~/.claude-api claude` — a second, independently
   authenticated Claude identity for running a second Claude in parallel. `agent start`
   execs the `claude` binary directly (no shell), so the alias won't resolve; set the
   var at pane creation instead — `herdr pane split … --env
-  CLAUDE_CONFIG_DIR=$HOME/.claude-fable --no-focus` — then start with `--kind claude`
+  CLAUDE_CONFIG_DIR=$HOME/.claude-api --no-focus` — then start with `--kind claude`
   as usual. Never launch it by the name `fable`.
 - **Codex — `--kind codex`:** `-- --dangerously-bypass-approvals-and-sandbox` (yolo,
   default for hands-off runs) or `-- --full-auto` (sandboxed). Omit `-m` by default;

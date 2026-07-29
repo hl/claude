@@ -50,6 +50,7 @@
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
+  "enabledPlugins": {},
   "alwaysThinkingEnabled": true,
   "effortLevel": "high",
   "tui": "fullscreen",
