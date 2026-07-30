@@ -80,9 +80,9 @@ Habits:
 - Keep a unit of work to one workspace (or a dedicated tab) so it stays monitorable
   and tearable as a unit; capture the ids from every `create`/`split` response.
 - Name every agent at birth (`agent start <name> …`) and address it by name from then
-  on — pane ids are session-scoped, so re-read them fresh before any `pane`-level
-  call. The alias dies with its agent: a name that stops resolving means the worker is
-  gone, not that you mistyped it.
+  on — pane ids are stable handles but change when a pane moves to another workspace,
+  so re-read them fresh before any `pane`-level call. The alias dies with its agent: a
+  name that stops resolving means the worker is gone, not that you mistyped it.
 
 ## Never steal the user's focus
 
@@ -106,7 +106,7 @@ into some worker's TUI, so inspect the fleet by *reading*, never by looking:
   ```
 
   Re-derive `$ME` on the spot rather than remembering it — `pane current --current`
-  resolves the *calling* pane, immune to pane-id churn and compaction. Your pane hosts
+  resolves the *calling* pane, immune to pane moves and compaction. Your pane hosts
   this Claude session, so `agent focus` accepts it directly.
 - Restore to whoever actually had focus, not reflexively to yourself. If the user had
   navigated to a worker before you acted, put them back: capture
@@ -251,10 +251,12 @@ coordination, and another screen to read.
 - **Text in the input box is never evidence of a turn** — read state from the
   transcript *above* the box. Two things put text there and neither is work that
   started: Claude Code's own draft suggestions (pre-filled, waiting for Tab), and your
-  own prompt landing as pasted-but-unsubmitted text when the target was already
-  `working` — the call exits 0, the work never starts. Collapse multi-task orders onto
-  a single line unless the target is at a clean idle prompt, and confirm your text
-  echoed in the transcript.
+  own prompt landing when the target was already `working`. `agent prompt` submits
+  text and Enter atomically (bracketed-paste-aware, so multi-line orders are fine),
+  but its `--wait` tracks lifecycle state, not your turn: prompt an agent mid-turn and
+  the wait can be satisfied by the *pre-existing* turn settling, reading as completion
+  of work that never started. Prompt only settled agents, and confirm your text echoed
+  in the transcript.
 - **Select-menus (AskUserQuestion-style) get three separate calls.** Never answer one
   with `herdr pane run` — there's no text field, a bare digit is not a jump-to-option
   hotkey, and the trailing Enter just confirms whatever's already highlighted.
