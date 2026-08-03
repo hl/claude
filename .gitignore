@@ -3,6 +3,7 @@
 
 # Track config and skills
 !.gitignore
+!README.md
 !CLAUDE.md
 !settings.json
 !statusline-command.sh

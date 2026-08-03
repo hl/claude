@@ -3,7 +3,7 @@ name: fleet-overview
 description: >-
   Render a single-glance status table of every agent in the herdr fleet — agent
   name, current state, and a consolidated activity/blocker/follow-up column. For
-  the hera orchestrator (or any session running inside herdr) when asked for a
+  the ananke orchestrator (or any session running inside herdr) when asked for a
   fleet/agent overview, a status roundup, or "what's going on with the agents".
   Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq`.
 allowed-tools: Bash(herdr:*), Bash(jq:*)
@@ -74,7 +74,7 @@ Only these need enriching (the rest are self-explanatory from column 3):
   progress signal; there is no wall-clock duration to report. Don't try to `sleep`
   between the sweeps — foreground `sleep` is blocked. Take the second sweep *after*
   step 3's reads, which supplies the gap for free; if nothing else needs reading,
-  either skip the stall check or wait on it with `Monitor`.
+  either skip the stall check or defer it to your next turn.
 
 ### 3. Enrich the follow-up — targeted reads only for those agents
 
@@ -94,7 +94,7 @@ single block**, one per agent, not one round-trip apiece.
   or **awaiting review**.
 - startup-stuck → the trust/permission prompt blocking session start.
 
-Two read caveats (full detail is in your inlined launch reference): text sitting in
+Two read caveats (full detail lives in the herdr skill and the orchestrator doc): text sitting in
 a Claude Code **input area is a draft, not submitted** — judge state from the
 conversation above it; and a `done` flag can be **stale** if a worker backgrounded
 its final wait — if `done` persists with no fresh output across reads, diff the pane
@@ -110,11 +110,11 @@ Fleet: 5 agents — 1 ⛔ blocked · 2 ✅ done(unread) · 1 ▶ working · 1 �
 
 | Agent | State | Activity / follow-up |
 |-------|-------|----------------------|
-| hera-fix-auth | ⛔ blocked | editing auth guard — needs answer: run `mix ecto.migrate`? |
-| hera-review | ✅ done | reviewed PR #42 — finished ✓, 3 findings, confirm before merge |
-| hera-flaky | ⏸ idle | turn ended, unread — read the pane to confirm the result |
-| hera-perf | ▶ working | profiling hot path |
-| hera-docs | ⏸ idle | wrote README — result seen, no action |
+| auth-guard-1a2-work | ⛔ blocked | editing auth guard — needs answer: run `mix ecto.migrate`? |
+| auth-guard-1a2-review | ✅ done | reviewed PR #42 — finished ✓, 3 findings, confirm before merge |
+| fix-flaky | ⏸ idle | turn ended, unread — read the pane to confirm the result |
+| perf-hotpath | ▶ working | profiling hot path |
+| plan-docs | ⏸ idle | filed 3 beads — result seen, no action |
 
 **State glyphs:** ▶ working · ⏸ idle · ⛔ blocked · ✅ done · ❔ unknown.
 **Activity / follow-up cell:** always the current activity; for any agent that
@@ -122,13 +122,13 @@ needs action, append ` — <blocker or follow-up>`. A healthy `working` agent, o
 `idle` one whose result is already seen, needs no follow-up clause.
 
 To resolve a blocker after reading it: `herdr pane run <pane> "<answer>"` for a text
-prompt, or the navigate/verify/confirm sequence for a select-menu (see the launch
-reference).
+prompt, or the navigate/verify/confirm sequence for a select-menu (see the herdr
+skill).
 
 ## Rules
 
 - **herdr + jq only.** Never `cat`/`python`/`git`/an editor — same absolute rule as
-  the rest of hera. `jq` is sanctioned herdr plumbing.
+  the rest of ananke. `jq` is sanctioned herdr plumbing.
 - **Names, not ids.** Address every agent by its durable `name`; pane ids churn.
 - **A settled status is not proof of success.** For every ✅/⏸ finish, the follow-up
   clause must reflect what the pane *actually* said — finished, refused, or asked
