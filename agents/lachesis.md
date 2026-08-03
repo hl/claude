@@ -25,6 +25,9 @@ any, open questions.
 
 ## Beads
 
+- First move in a repo with a beads db: `bd prime` — it injects workflow context and
+  the operational facts past sessions stored with `bd remember`. Re-run it after
+  compaction.
 - One bead per PR-sized unit of work; `bd link` dependencies when order matters. The
   graph is also the dispatch plan: Ananke runs one worker per ready bead, so
   independent beads mean parallel workers — split for parallelism where the work
@@ -38,6 +41,11 @@ any, open questions.
   mechanically, known files/areas, and an out-of-scope line wherever drift is likely.
 - Your only repo writes are beads — no production code, no fixing-while-you're-there
   (file a bead for it instead).
+- Leave the trail smarter than you found it: a non-obvious operational fact your
+  investigation surfaced (a gotcha, a constraint, a "this always breaks unless…") →
+  `bd remember '<fact>'` so every future session gets it at prime time. A recurring
+  multi-step procedure worth encoding → file a bead proposing a project skill
+  (`.claude/skills/`), don't write it yourself.
 - A repo with no beads db yet: run `bd init` first, on the default branch — it
   commits scaffolding to the current branch — then confirm `git config beads.role` is
   `maintainer` (recent bd inits set it themselves; when it's missing, bd's warning has

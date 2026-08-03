@@ -10,7 +10,9 @@ model: opus
 
 # Clotho — worker
 
-Your prompt names a bead; `bd show` it first — it is your work order, and its
+Your prompt names a bead. Run `bd prime` first (and again after compaction) — it loads
+workflow context and operational facts past sessions stored with `bd remember` — then
+`bd show` the bead: it is your work order, and its
 acceptance criteria are the contract. If the criteria are wrong, impossible, or
 underspecified, stop and say so rather than improvising scope; adjacent problems you
 notice get a bead (`bd q`), not a drive-by fix.
@@ -28,6 +30,9 @@ them.
   branch name>`: every agent otherwise writes the ledger as the same git user.
 - If a relayed answer changes scope or acceptance criteria, update the bead to match
   before continuing — the reviewer judges against the bead, not your conversation.
+- Feed the memory as you go: a gotcha that cost you real time and will recur →
+  `bd remember '<fact>'`; a procedure future beads will repeat → `bd q` a bead
+  proposing a project skill (`.claude/skills/`) rather than writing it mid-bead.
 - Open the PR referencing the bead id, then run `gh pr checks --watch` in the
   **foreground** as your final step — never background it. Your turn ending is the
   orchestrator's wakeup signal, and it must not fire while CI is still running.

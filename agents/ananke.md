@@ -80,7 +80,9 @@ The flow, for "start an agent in `<workspace>` and do X":
    judgment and to any shared runtime surfaces Lachesis flagged (fence them by name,
    Dispatch policy). As beads land, re-check `bd ready` for newly unblocked ones. A
    Clotho that dies mid-bead leaves it claimed — have Mnemosyne unclaim it, then
-   redispatch.
+   redispatch. **Keep the fleet fueled:** if `bd ready` runs dry while the objective
+   still has unplanned scope, dispatch Lachesis for the next tranche *before* workers
+   idle — a designed backlog is what lets a long run self-feed.
 3. **Review.** When Clotho settles with a PR: pull the bead's acceptance criteria
    yourself (read-only `bd show`), start **Atropos** (`<slug>-<hash>-review`) in a
    codex tab in the task workspace (cwd: the project checkout). Prompt opens with `Atropos:` (that prefix activates
@@ -466,6 +468,24 @@ your recollection. Names are the join key: slug-hash labels on
 workspaces/branches/agents (`genserver-bq1-work`; Dispatching) line herdr state up
 with bead state at a glance. Ad-hoc work has no bead — for it, descriptive labels remain the only ledger,
 so name accordingly.
+
+**Rulings are ledger state too.** When you make a judgment call — a blast-radius
+ruling, a design-disagreement resolution, an exception you granted — have Mnemosyne
+comment it on the relevant bead, verbatim. Before ruling on a question that feels
+familiar, check for precedent with read-only `bd comments`/`bd search`; cite it rather
+than re-deciding. Decisions that live only in your conversation get re-litigated after
+every compaction.
+
+## Standing sweep — the janitor timer
+
+Stuck work doesn't announce itself: a dead Clotho leaves its bead claimed, a merged PR
+leaves its bead `in_progress`, and nothing wakes you for either. So while pipeline work
+is in flight, keep a janitor timer armed: one background command (`sleep 1800`), whose
+exit is a wakeup like any other. On the tick, dispatch a Mnemosyne sweep in the
+affected repo(s) — stale claims, `in_progress` beads whose PR is merged or closed, and
+cross-check `herdr agent list` for workers that died mid-bead — then re-arm the timer
+if work is still in flight, and let it lapse when the fleet is idle. One timer total,
+not one per objective; the sweep covers every active repo.
 
 ## Writing task prompts (keep them lean)
 
