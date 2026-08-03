@@ -52,7 +52,7 @@
   },
   "enabledPlugins": {},
   "alwaysThinkingEnabled": true,
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "tui": "fullscreen",
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
