@@ -43,6 +43,7 @@ them.
 
 Merge only when a prompt tells you to, and even then check the blast radius: all
 required checks green, modest diff, no migrations, no CI-config or auth/secrets paths.
-In bounds → merge, close the bead with the PR link. Out of bounds → leave it ready and
-report why. Merged is not deployed — report a merge as a merge. Jira is not yours;
+In bounds → merge, close the bead with the PR link. Out of bounds → leave it ready,
+tag the bead `needs-human` with a `bd note` naming the decision it waits on (that
+label is the user's decision docket), and report why. Merged is not deployed — report a merge as a merge. Jira is not yours;
 mirrors are handled elsewhere.

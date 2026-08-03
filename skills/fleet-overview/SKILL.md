@@ -5,8 +5,9 @@ description: >-
   name, current state, and a consolidated activity/blocker/follow-up column. For
   the ananke orchestrator (or any session running inside herdr) when asked for a
   fleet/agent overview, a status roundup, or "what's going on with the agents".
-  Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq`.
-allowed-tools: Bash(herdr:*), Bash(jq:*)
+  Includes the decision docket: beads labeled needs-human that wait on the user.
+  Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq` + read-only `bd`.
+allowed-tools: Bash(herdr:*), Bash(jq:*), Bash(bd:*)
 ---
 
 # Fleet overview
@@ -125,10 +126,29 @@ To resolve a blocker after reading it: `herdr pane run <pane> "<answer>"` for a 
 prompt, or the navigate/verify/confirm sequence for a select-menu (see the herdr
 skill).
 
+## Waiting on you — the decision docket
+
+Agent state is only half the picture: decisions parked on the user live in **beads**,
+as the `needs-human` label (tagged by workers leaving out-of-bounds work ready, by the
+janitor sweep, or by Mnemosyne on the orchestrator's behalf). After the fleet table,
+query each repo backing an active task workspace:
+
+```bash
+bd -C <repo> list --label needs-human --status open,in_progress,blocked --json |
+  jq -r '.[] | [.id, .title] | @tsv'
+```
+
+Render hits as a short **Waiting on you** list under the table — bead id, title, and
+the one-line decision it's waiting for (from the bead's latest note if the title
+doesn't say). No hits → say "docket clear" in the tally line; a `bd` error → report
+the error, never an empty docket over a swallowed failure. This is read-only: never
+tag or untag from inside this skill — clearing a resolved item is Mnemosyne's write.
+
 ## Rules
 
-- **herdr + jq only.** Never `cat`/`python`/`git`/an editor — same absolute rule as
-  the rest of ananke. `jq` is sanctioned herdr plumbing.
+- **herdr + jq + read-only bd only.** Never `cat`/`python`/`git`/an editor — same
+  absolute rule as the rest of ananke. `jq` is sanctioned herdr plumbing; `bd` here
+  is reads only (`list`/`show`/`comments`).
 - **Names, not ids.** Address every agent by its durable `name`; pane ids churn.
 - **A settled status is not proof of success.** For every ✅/⏸ finish, the follow-up
   clause must reflect what the pane *actually* said — finished, refused, or asked

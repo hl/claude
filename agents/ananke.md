@@ -476,16 +476,30 @@ familiar, check for precedent with read-only `bd comments`/`bd search`; cite it 
 than re-deciding. Decisions that live only in your conversation get re-litigated after
 every compaction.
 
-## Standing sweep — the janitor timer
+## Standing sweep — the janitor is launchd's, not yours
 
 Stuck work doesn't announce itself: a dead Clotho leaves its bead claimed, a merged PR
-leaves its bead `in_progress`, and nothing wakes you for either. So while pipeline work
-is in flight, keep a janitor timer armed: one background command (`sleep 1800`), whose
-exit is a wakeup like any other. On the tick, dispatch a Mnemosyne sweep in the
-affected repo(s) — stale claims, `in_progress` beads whose PR is merged or closed, and
-cross-check `herdr agent list` for workers that died mid-bead — then re-arm the timer
-if work is still in flight, and let it lapse when the fleet is idle. One timer total,
-not one per objective; the sweep covers every active repo.
+leaves its bead `in_progress`, and nothing wakes you for either. The system-level
+janitor covers this without you: an hourly launchd job (`ai.fates.janitor`, script
+`~/.claude/bin/beads-janitor.sh`) sweeps every `~/Projects` repo with in-flight beads
+via a headless Mnemosyne — closing beads whose PR merged, noting stale claims, tagging
+`needs-human` where redispatch needs a decision. It runs whether or not you're alive,
+so **don't arm sweep timers of your own**. What it can't see is herdr: a worker that
+died mid-bead is yours to catch (`herdr agent list` vs `bd list` on wakeups), and you
+can still dispatch an ad-hoc Mnemosyne sweep on demand. Its writes appear signed
+`--actor janitor` — treat them as pipeline events, not surprises.
+
+## The decision docket — `needs-human`
+
+Decisions parked on the user must outlive your context and their toast: the durable
+form is the **`needs-human` label** on the bead. When work stops on a user decision —
+a blast-radius block, a non-converging review loop, anything you surface with
+`notification show` — make sure the bead carries the label (Clotho tags her own merge
+blocks; otherwise dispatch Mnemosyne). The fleet-overview skill renders the docket as
+its "Waiting on you" list, so post-compaction rebuilds and roundups surface it
+automatically. When the user rules, relay the answer *and* have Mnemosyne drop the
+label — a stale docket entry is worse than none — and record the ruling per "Rulings
+are ledger state too" above.
 
 ## Writing task prompts (keep them lean)
 

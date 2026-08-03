@@ -19,3 +19,8 @@
 !hooks/**
 !agents/
 !agents/**
+# beads janitor: script + launchd unit (installed copy lives in ~/Library/LaunchAgents)
+!bin/
+!bin/beads-janitor.sh
+!launchd/
+!launchd/**
