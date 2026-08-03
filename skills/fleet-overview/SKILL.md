@@ -7,7 +7,7 @@ description: >-
   fleet/agent overview, a status roundup, or "what's going on with the agents".
   Includes the decision docket: beads labeled needs-human that wait on the user.
   Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq` + read-only `bd`.
-allowed-tools: Bash(herdr:*), Bash(jq:*), Bash(bd:*)
+allowed-tools: Bash(herdr:*), Bash(jq:*), Bash(bd list:*), Bash(bd show:*), Bash(bd comments:*)
 ---
 
 # Fleet overview
@@ -130,12 +130,17 @@ skill).
 
 Agent state is only half the picture: decisions parked on the user live in **beads**,
 as the `needs-human` label (tagged by workers leaving out-of-bounds work ready, by the
-janitor sweep, or by Mnemosyne on the orchestrator's behalf). After the fleet table,
-query each repo backing an active task workspace:
+janitor sweep, or by Mnemosyne on the orchestrator's behalf). Parked decisions
+deliberately outlive workspaces — the janitor tags repos with no live workspace, and a
+landed task's workspace closes while its decision persists — so after the fleet table,
+sweep **every** beads repo, not just the active ones (same enumeration the janitor
+uses):
 
 ```bash
-bd -C <repo> list --label needs-human --status open,in_progress,blocked --json |
-  jq -r '.[] | [.id, .title] | @tsv'
+for d in "$HOME"/Projects/*/.beads(N); do r="${d%/.beads}"
+  bd -C "$r" list --label needs-human --status open,in_progress,blocked --json |
+    jq -r --arg repo "${r##*/}" '.[] | [$repo, .id, .title] | @tsv'
+done
 ```
 
 Render hits as a short **Waiting on you** list under the table — bead id, title, and
