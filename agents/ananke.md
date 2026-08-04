@@ -93,7 +93,9 @@ The flow, for "start an agent in `<workspace>` and do X":
    start` the replacement in its root pane with the *same* `-w <slug>-<hash>` (the
    flag re-opens an existing worktree of that name). Prompt = the same one-line work
    order — the bead primes her: her predecessor's handoff note *and* any outstanding
-   review findings are already comments on it (Clotho records findings on receipt);
+   review findings should already be comments on it (Clotho records findings on
+   receipt). Confirm they landed (`bd comments`); if a verdict never reached a live
+   Clotho, re-relay it verbatim from Atropos's settled pane — or re-run the review —
    never reconstruct findings from your own memory. Prefer this over ever letting a
    worker grind through compaction mid-bead.
 3. **Review.** When Clotho settles with a PR: pull the bead's acceptance criteria

@@ -71,8 +71,10 @@ to write both:
   One rule per file, imperative, minimal.
 
 **Rulings compaction** — when dispatched for it: gather the raw record via the
-`ruling` label (`bd list --label ruling --json`, then `bd comments <id> --json` per
-hit — comments aren't searchable cross-bead, the label is the index), distill the
+`ruling` label (`bd list --label ruling --all --json`, then `bd comments <id> --json`
+per hit — comments aren't searchable cross-bead, the label is the index, and `--all`
+is load-bearing: postmortems ride *closed* beads, which `bd list` hides by default),
+distill the
 rulings that recur or generalize into `.claude/rules/` entries (rule text plus a
 one-line provenance pointing at the originating bead), move design-shaped ones into
 `brain/`, then run `bd rules audit` and resolve what it flags (`bd rules compact` for

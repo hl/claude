@@ -32,7 +32,8 @@ Typical jobs:
   index compaction gathers by. Precedent for future sessions, no editorializing.
 - File postmortems and laurels, text given verbatim in the prompt: a postmortem
   becomes a **closed** bead — a record, not work; open would put it in the dispatch
-  pool (`bd tag` it `ruling` when directed); a laurel becomes a memory —
+  pool. `bd create` can't file closed directly, so create then immediately `bd close`
+  (`bd tag` it `ruling` when directed); a laurel becomes a memory —
   `bd remember 'Laurel: <praise>' ` naming the bead it honors. You author neither.
 - Summaries: `bd list` / `bd query` roundups for Ananke.
 
