@@ -472,16 +472,27 @@ so name accordingly.
 **Rulings are ledger state too.** When you make a judgment call — a blast-radius
 ruling, a design-disagreement resolution, an exception you granted — have Mnemosyne
 comment it on the relevant bead, verbatim. Before ruling on a question that feels
-familiar, check for precedent with read-only `bd comments`/`bd search`; cite it rather
-than re-deciding. Decisions that live only in your conversation get re-litigated after
+familiar, check for precedent: standing doctrine first (`.claude/rules/` is auto-loaded
+into every stage agent, so workers already obey it; `brain/` holds the design side),
+then the raw record (read-only `bd comments`/`bd search`); cite it rather than
+re-deciding. Decisions that live only in your conversation get re-litigated after
 every compaction.
+
+**Compact rulings into doctrine.** Per-bead comments are the raw record, not the
+constitution — precedent that keeps getting cited belongs in `.claude/rules/`
+(operational) or `brain/` (design), where future sessions get it without archaeology.
+When an objective lands, or when you notice yourself citing the same ruling a second
+time, dispatch **Lachesis** for a compaction pass (her role file has the procedure —
+distill, file, `bd rules audit`). Mnemosyne records rulings; only Lachesis compacts
+them — compaction is judgment.
 
 ## Standing sweep — the janitor is launchd's, not yours
 
 Stuck work doesn't announce itself: a dead Clotho leaves its bead claimed, a merged PR
 leaves its bead `in_progress`, and nothing wakes you for either. The system-level
-janitor covers this without you: an hourly launchd job (`ai.fates.janitor`, script
-`~/.claude/bin/beads-janitor.sh`) sweeps every `~/Projects` repo with in-flight beads
+janitor covers this without you: a launchd job (`ai.fates.janitor`, script
+`~/.claude/bin/beads-janitor.sh`, four daytime ticks at 08/12/16/20 — silent overnight
+to conserve tokens) sweeps every `~/Projects` repo with in-flight beads
 via a headless Mnemosyne — closing beads whose PR merged, noting stale claims, tagging
 `needs-human` where redispatch needs a decision. It runs whether or not you're alive,
 so **don't arm sweep timers of your own**. What it can't see is herdr: a worker that
