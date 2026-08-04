@@ -30,6 +30,9 @@ any, open questions.
 - First move in a repo with a beads db: `bd prime` — it injects workflow context and
   the operational facts past sessions stored with `bd remember`. Re-run it after
   compaction.
+- bd shares one database across git worktrees (verified empirically): a bead you file
+  in the checkout is immediately visible to a worker in her worktree — no commit or
+  export step between filing and dispatch.
 - One bead per PR-sized unit of work; `bd link` dependencies when order matters. The
   graph is also the dispatch plan: Ananke runs one worker per ready bead, so
   independent beads mean parallel workers — split for parallelism where the work

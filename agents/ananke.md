@@ -91,7 +91,9 @@ The flow, for "start an agent in `<workspace>` and do X":
    its worktree-cleanup prompt, which can remove the worktree; killing the pane leaves
    worktree and branch on disk). Create a fresh tab in the task workspace and `agent
    start` the replacement in its root pane with the *same* `-w <slug>-<hash>` (the
-   flag re-opens an existing worktree of that name). Prompt = the same one-line work
+   flag re-opens an existing worktree of that name) and the *same* agent name — the
+   old registration cleared with its tab, and a suffixed name would degrade the
+   ledger join. Prompt = the same one-line work
    order — the bead primes her: her predecessor's handoff note *and* any outstanding
    review findings should already be comments on it (Clotho records findings on
    receipt). Confirm they landed (`bd comments`); if a verdict never reached a live
@@ -612,8 +614,10 @@ Example — what you might be tempted to send → what to send instead:
   (add `--force` only if git refuses a dirty checkout; it deletes the checkout, never
   the branch) — it focuses the parent workspace on its own, so bracket it with the
   focus hand-back recipe. A `-w` worktree is *not* a herdr workspace: reclaim it with
-  a pane-run `git worktree remove <path>` (never your own Bash) or leave it to the
-  worker.
+  a pane-run `git worktree remove <path>` from a **shell** pane cwd'd at the parent
+  checkout — a fresh tab's root pane in the task workspace, after the Clotho tab
+  closes (an agent-hosting pane just types into the agent, and git refuses removal
+  from inside the worktree itself; never your own Bash).
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
   `genserver-bq1-work`), what `read` and the bead actually confirmed, and what's next.
   Never echo secrets.

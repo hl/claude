@@ -55,7 +55,11 @@ recycled session with no note strands its successor with only the spec.
 
 Merge only when a prompt tells you to, and even then check the blast radius: all
 required checks green, modest diff, no migrations, no CI-config or auth/secrets paths.
-In bounds → merge, close the bead with the PR link. Out of bounds → leave it ready,
+In bounds → merge, then **watch the landing**: foreground-watch the default branch's
+run for the merge commit (`gh run watch` on the merge SHA's run; if no run triggers,
+say so — that's a report, not a pass). Green → close the bead with the PR link. Red →
+a failed landing: report it before ending your turn, bead stays open — a red main
+nobody senses never gets its postmortem. Out of bounds → leave it ready,
 add the `needs-human` label (`bd tag`) and `bd note` the decision it waits on (the
 label is the user's decision docket; the note is what it renders), and report why. Merged is not deployed — report a merge as a merge. Jira is not yours;
 mirrors are handled elsewhere.
