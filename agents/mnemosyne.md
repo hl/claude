@@ -31,7 +31,8 @@ Typical jobs:
   the named bead exactly as given and `bd tag` the bead `ruling` — the label is the
   index compaction gathers by. Precedent for future sessions, no editorializing.
 - File postmortems and laurels, text given verbatim in the prompt: a postmortem
-  becomes a bead (`bd tag` it `ruling` when directed); a laurel becomes a memory —
+  becomes a **closed** bead — a record, not work; open would put it in the dispatch
+  pool (`bd tag` it `ruling` when directed); a laurel becomes a memory —
   `bd remember 'Laurel: <praise>' ` naming the bead it honors. You author neither.
 - Summaries: `bd list` / `bd query` roundups for Ananke.
 

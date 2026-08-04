@@ -92,9 +92,10 @@ The flow, for "start an agent in `<workspace>` and do X":
    worktree and branch on disk). Create a fresh tab in the task workspace and `agent
    start` the replacement in its root pane with the *same* `-w <slug>-<hash>` (the
    flag re-opens an existing worktree of that name). Prompt = the same one-line work
-   order — the bead plus her predecessor's note prime her — plus any Atropos findings
-   still outstanding, re-relayed verbatim (those live only in your conversation).
-   Prefer this over ever letting a worker grind through compaction mid-bead.
+   order — the bead primes her: her predecessor's handoff note *and* any outstanding
+   review findings are already comments on it (Clotho records findings on receipt);
+   never reconstruct findings from your own memory. Prefer this over ever letting a
+   worker grind through compaction mid-bead.
 3. **Review.** When Clotho settles with a PR: pull the bead's acceptance criteria
    yourself (read-only `bd show`), start **Atropos** (`<slug>-<hash>-review`) in a
    codex tab in the task workspace (cwd: the project checkout). Prompt opens with `Atropos:` (that prefix activates
@@ -286,8 +287,10 @@ herdr agent prompt <agent-name> "<task>" --wait --timeout 1800000
 
 Worker isolation lives *inside* the tab: Clotho's argv carries `-w <slug>-<hash>`, so
 she creates and enters her own git worktree at startup — no workspace-per-worktree
-sprawl. Using each tab's root pane directly leaves no empty shell to close. Name branch/worktree/agent alike: **task-slug first, then the bead
-id's short hash, then the role** — branch `genserver-bq1`, agent `genserver-bq1-work`.
+sprawl. Using each tab's root pane directly leaves no empty shell to close. Name worktree/agent alike: **task-slug first, then the bead
+id's short hash, then the role** — worktree `genserver-bq1` (claude's `-w` names its
+branch `worktree-genserver-bq1`; the prefixed form is what Clotho signs bd writes
+with), agent `genserver-bq1-work`.
 The hash is the ledger join (bead ids are `<repo>-<hash>`; drop the repo part — the
 workspace column already says it, and it shoves the informative part past the
 sidebar's truncation). Lowercase, `[a-z][a-z0-9_-]{0,31}`.
@@ -496,15 +499,17 @@ Decisions that live only in your conversation get re-litigated after every compa
 constitution — precedent that keeps getting cited belongs in `.claude/rules/`
 (operational) or `brain/` (design), where future sessions get it without archaeology.
 When an objective lands, or when you notice yourself citing the same ruling a second
-time, dispatch **Lachesis** for a compaction pass (her role file has the procedure —
-gather via the `ruling` label, distill, file, `bd rules audit`, commit). Mnemosyne
+time, dispatch **Lachesis** for a compaction pass — the procedure lives in her role
+file, and hers is the authoritative copy. Mnemosyne
 records rulings; only Lachesis compacts them — compaction is judgment. Failures feed
 the same loop, blamelessly: when a landing goes red or a stage fails badly, fix first
 (dispatch the rework), then compose the postmortem — what happened, root cause, what
 changes; for a code-level cause, dispatch a read-only ad-hoc agent to investigate and
 report — written about the *system*, never against an agent. Hand the finished text
-verbatim to Mnemosyne to file as a bead (she files, she doesn't author); tag it
-`ruling` when it carries an amendment so compaction folds the lesson into doctrine.
+verbatim to Mnemosyne to file as a **closed** bead — a postmortem is a record, not
+work, and an open one would enter the `bd ready` dispatch pool (she files, she
+doesn't author); tag it `ruling` when it carries an amendment so compaction folds the
+lesson into doctrine.
 Two scope
 limits to hold: doctrine reaches a worker only once *committed* to the default branch
 (worktrees branch from committed state — an uncommitted rules file binds nobody), and
