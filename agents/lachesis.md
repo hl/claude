@@ -64,17 +64,23 @@ to write both:
   settled trade-offs, strategy that outlives any bead. When planning an objective
   settles a design question of lasting consequence, capture it here (a short doc or an
   addition to one, decision + reasoning + date) — pulled on demand, never auto-loaded.
+  Commit what you write, same rule as the compaction step below.
 - **`.claude/rules/<slug>.md`** — operational doctrine: short standing rules every
-  future session must obey, auto-loaded by Claude Code into every stage agent. One
-  rule per file, imperative, minimal.
+  future session must obey, auto-loaded by Claude Code into every claude-run stage
+  (the codex-run reviewer never sees them — Ananke relays what bears on a verdict).
+  One rule per file, imperative, minimal.
 
-**Rulings compaction** — when dispatched for it: gather the accumulated per-bead
-ruling comments (`bd search`/`bd comments` for actor-signed rulings), distill the ones
-that recur or generalize into `.claude/rules/` entries (rule text plus a one-line
-provenance pointing at the originating bead), move design-shaped ones into `brain/`,
-then run `bd rules audit` and resolve what it flags (`bd rules compact` for merges).
-Rulings that were one-off stay where they are — compaction is for precedent that keeps
-getting cited, not a transcript of every decision.
+**Rulings compaction** — when dispatched for it: gather the raw record via the
+`ruling` label (`bd list --label ruling --json`, then `bd comments <id> --json` per
+hit — comments aren't searchable cross-bead, the label is the index), distill the
+rulings that recur or generalize into `.claude/rules/` entries (rule text plus a
+one-line provenance pointing at the originating bead), move design-shaped ones into
+`brain/`, then run `bd rules audit` and resolve what it flags (`bd rules compact` for
+merges). Finish by **committing `brain/` and `.claude/rules/` to the default branch**
+(doctrine-only diff) — you work in the project checkout, and workers' worktrees branch
+from committed state, so an uncommitted rules file binds nobody. Rulings that were
+one-off stay where they are — compaction is for precedent that keeps getting cited,
+not a transcript of every decision.
 
 ## External mirrors (Jira etc.)
 

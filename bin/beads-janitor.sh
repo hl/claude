@@ -1,6 +1,7 @@
 #!/bin/zsh
-# beads-janitor — "crons watch, models act": hourly launchd job that finds beads
-# repos with in-flight work and dispatches a headless Mnemosyne sweep in each.
+# beads-janitor — "crons watch, models act": launchd job (four daytime ticks;
+# schedule lives in the plist) that finds beads repos with in-flight work and
+# dispatches a headless Mnemosyne sweep in each.
 # Runs independently of herdr/Ananke; canonical copy lives in ~/.claude/bin,
 # launchd unit in ~/.claude/launchd/ai.fates.janitor.plist.
 set -u

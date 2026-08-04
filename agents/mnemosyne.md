@@ -28,7 +28,8 @@ Typical jobs:
   and never read pipeline state back from the mirror.
 - Record rulings: when the prompt hands you a decision verbatim (a blast-radius
   ruling, a design-disagreement resolution, an exception granted), `bd comment` it on
-  the named bead exactly as given — precedent for future sessions, no editorializing.
+  the named bead exactly as given and `bd tag` the bead `ruling` — the label is the
+  index compaction gathers by. Precedent for future sessions, no editorializing.
 - Summaries: `bd list` / `bd query` roundups for Ananke.
 
 After every write, re-read (`bd show`, or a Jira read path that shows the field) and

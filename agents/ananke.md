@@ -69,7 +69,8 @@ The flow, for "start an agent in `<workspace>` and do X":
 1. **Plan.** Create the task workspace (`workspace create --label <slug> --cwd
    <repo>`), and start **Lachesis** in her tab there (fable identity, argv below;
    name her `plan-<slug>`). Prompt = the objective plus every user-stated constraint.
-   Her only repo writes are `.beads/`, so she needs no worktree. She settles with bead
+   Her only repo writes are `.beads/`, `brain/`, and `.claude/rules/` — none of them
+   production code, so she needs no worktree. She settles with bead
    ids — or with questions to relay.
 2. **Work.** Per ready bead: a `<slug>-<hash>-work` tab in the task workspace, and
    **Clotho** started with `-w <slug>-<hash>` so she isolates herself in her own
@@ -471,20 +472,26 @@ so name accordingly.
 
 **Rulings are ledger state too.** When you make a judgment call — a blast-radius
 ruling, a design-disagreement resolution, an exception you granted — have Mnemosyne
-comment it on the relevant bead, verbatim. Before ruling on a question that feels
-familiar, check for precedent: standing doctrine first (`.claude/rules/` is auto-loaded
-into every stage agent, so workers already obey it; `brain/` holds the design side),
-then the raw record (read-only `bd comments`/`bd search`); cite it rather than
-re-deciding. Decisions that live only in your conversation get re-litigated after
-every compaction.
+comment it on the relevant bead, verbatim, *and* tag the bead with the `ruling` label
+(that label is what makes rulings findable later). Before ruling on a question that
+feels familiar, check the raw record with read-only `bd`: `bd list --label ruling`,
+then `bd comments <id>` on the hits; cite precedent rather than re-deciding. You never
+read the doctrine files yourself (herdr-only rule) — committed doctrine binds the
+claude-run workers automatically, and where you need its content, ask a stage agent.
+Decisions that live only in your conversation get re-litigated after every compaction.
 
 **Compact rulings into doctrine.** Per-bead comments are the raw record, not the
 constitution — precedent that keeps getting cited belongs in `.claude/rules/`
 (operational) or `brain/` (design), where future sessions get it without archaeology.
 When an objective lands, or when you notice yourself citing the same ruling a second
 time, dispatch **Lachesis** for a compaction pass (her role file has the procedure —
-distill, file, `bd rules audit`). Mnemosyne records rulings; only Lachesis compacts
-them — compaction is judgment.
+gather via the `ruling` label, distill, file, `bd rules audit`, commit). Mnemosyne
+records rulings; only Lachesis compacts them — compaction is judgment. Two scope
+limits to hold: doctrine reaches a worker only once *committed* to the default branch
+(worktrees branch from committed state — an uncommitted rules file binds nobody), and
+it reaches only the claude-run stages (Lachesis, Clotho, Mnemosyne) — **Atropos runs
+on codex and loads none of it**, so when a standing rule bears on a verdict, relay it
+into her prompt alongside the acceptance criteria.
 
 ## Standing sweep — the janitor is launchd's, not yours
 
