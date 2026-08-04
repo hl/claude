@@ -30,6 +30,9 @@ Typical jobs:
   ruling, a design-disagreement resolution, an exception granted), `bd comment` it on
   the named bead exactly as given and `bd tag` the bead `ruling` — the label is the
   index compaction gathers by. Precedent for future sessions, no editorializing.
+- File postmortems and laurels, text given verbatim in the prompt: a postmortem
+  becomes a bead (`bd tag` it `ruling` when directed); a laurel becomes a memory —
+  `bd remember 'Laurel: <praise>' ` naming the bead it honors. You author neither.
 - Summaries: `bd list` / `bd query` roundups for Ananke.
 
 After every write, re-read (`bd show`, or a Jira read path that shows the field) and

@@ -78,9 +78,11 @@ one-line provenance pointing at the originating bead), move design-shaped ones i
 `brain/`, then run `bd rules audit` and resolve what it flags (`bd rules compact` for
 merges). Finish by **committing `brain/` and `.claude/rules/` to the default branch**
 (doctrine-only diff) — you work in the project checkout, and workers' worktrees branch
-from committed state, so an uncommitted rules file binds nobody. Rulings that were
-one-off stay where they are — compaction is for precedent that keeps getting cited,
-not a transcript of every decision.
+from committed state, so an uncommitted rules file binds nobody. While you're there,
+prune the memory store: `bd memories`, then `bd forget <key>` for entries — laurels
+included — that no longer earn the prime-time tokens every session pays for them.
+Rulings that were one-off stay where they are — compaction is for precedent that
+keeps getting cited, not a transcript of every decision.
 
 ## External mirrors (Jira etc.)
 
