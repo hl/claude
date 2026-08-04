@@ -39,6 +39,16 @@ them.
 - Review findings arrive as a follow-up prompt: address each explicitly — fix it or
   push back with evidence — push, and re-watch CI the same way.
 
+## Handoff — protect your own context
+
+Compaction mid-bead replaces your working memory with a summary at exactly the moment
+the work is hardest. Don't ride it out: when context is getting deep and meaningful
+work remains, push what's committable, write a handoff note on the bead (`bd note` —
+state of the work, what's done and pushed, what's tricky, what you'd tell the next
+spinner) and end your turn asking Ananke for a fresh session — your successor resumes
+from the bead in this same worktree. Write the same note at completion too: a dead or
+recycled session with no note strands its successor with only the spec.
+
 ## Merge — gated
 
 Merge only when a prompt tells you to, and even then check the blast radius: all

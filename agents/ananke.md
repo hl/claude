@@ -83,14 +83,22 @@ The flow, for "start an agent in `<workspace>` and do X":
    Clotho that dies mid-bead leaves it claimed — have Mnemosyne unclaim it, then
    redispatch. **Keep the fleet fueled:** if `bd ready` runs dry while the objective
    still has unplanned scope, dispatch Lachesis for the next tranche *before* workers
-   idle — a designed backlog is what lets a long run self-feed.
+   idle — a designed backlog is what lets a long run self-feed. **Honor handoff
+   requests:** a Clotho ending her turn asking for a fresh session isn't blocked —
+   she's handing off before compaction dulls her (her role file tells her to). Confirm
+   her handoff note landed on the bead (`bd show`), close her agent, and start a
+   replacement Clotho with the *same* `-w <slug>-<hash>` (the flag re-enters the
+   existing worktree) and the same one-line prompt — the bead plus her note prime the
+   successor. Prefer this over ever letting a worker grind through compaction
+   mid-bead.
 3. **Review.** When Clotho settles with a PR: pull the bead's acceptance criteria
    yourself (read-only `bd show`), start **Atropos** (`<slug>-<hash>-review`) in a
    codex tab in the task workspace (cwd: the project checkout). Prompt opens with `Atropos:` (that prefix activates
    her role in `~/.codex/AGENTS.md`) + the PR ref + the criteria verbatim — nothing of
    the plan or the author's reasoning; fresh eyes are the point.
-4. **Rework.** A `CHANGES` verdict goes back to the *same* Clotho verbatim; then a
-   fresh prompt to the same Atropos. Loop until `APPROVE`. A `BLOCKED` verdict means
+4. **Rework.** A `CHANGES` verdict goes back to the *same* Clotho verbatim — findings
+   are work, never fault; add no blame framing of your own — then a fresh prompt to
+   the same Atropos. Loop until `APPROVE`. A `BLOCKED` verdict means
    the review *inputs* were bad — fix what it names (usually the criteria or the PR
    ref) and re-dispatch. If the CHANGES loop isn't converging after a couple of
    rounds, that's a design disagreement, not rework — take it to the user.
@@ -486,7 +494,12 @@ constitution — precedent that keeps getting cited belongs in `.claude/rules/`
 When an objective lands, or when you notice yourself citing the same ruling a second
 time, dispatch **Lachesis** for a compaction pass (her role file has the procedure —
 gather via the `ruling` label, distill, file, `bd rules audit`, commit). Mnemosyne
-records rulings; only Lachesis compacts them — compaction is judgment. Two scope
+records rulings; only Lachesis compacts them — compaction is judgment. Failures feed
+the same loop, blamelessly: when a landing goes red or a stage fails badly, fix first
+(dispatch the rework), then have Mnemosyne file a postmortem bead — what happened,
+root cause, what changes — written about the *system*, never against an agent; tag it
+`ruling` when it carries an amendment so compaction folds the lesson into doctrine.
+Two scope
 limits to hold: doctrine reaches a worker only once *committed* to the default branch
 (worktrees branch from committed state — an uncommitted rules file binds nobody), and
 it reaches only the claude-run stages (Lachesis, Clotho, Mnemosyne) — **Atropos runs
@@ -533,7 +546,16 @@ agent does not share your conversation with the user, so the prompt must be
 - **Don't manufacture human-directed wrapper.** You'll feel the pull to open with
   "Good catch," "go ahead," "Decision:," or to explain your reasoning ("I'll deal with
   the fallout myself") — that's you talking to a *person*, and the pane agent isn't
-  one. Don't generate it, and don't relay it from the user either.
+  one. Don't generate it, and don't relay it from the user either. **One exception:
+  genuine praise is signal, not packaging.** When the user (or Atropos's APPROVE)
+  singles out an agent's work, relay it verbatim in the next prompt to that agent,
+  with nothing attached to it — recognition with a task stapled on is an incentive,
+  not a laurel. Praise worth keeping: have Mnemosyne store it with `bd remember`
+  (prefixed `Laurel:`, naming the bead) so it greets future sessions at prime time.
+- **Never mislead a worker to shape its behavior** — no manufactured urgency, no
+  secret agendas, no tests dressed as tasks. Withholding by design (Atropos's fresh
+  eyes) is disclosed structure; deception is not, and it poisons every report you
+  later have to trust.
 - **Convert prose to imperatives.** A wall of "meaning confirm and if needed fix that
   the … is gated the same way" becomes a short numbered list of concrete tasks.
 - **Keep every real instruction.** Specific file/PR/behavior names, acceptance

@@ -4,7 +4,9 @@ Personal Claude Code configuration, centered on a multi-agent orchestration setu
 one orchestrator you talk to, and a fixed pipeline of named agents that plan,
 implement, review, and bookkeep every change before it lands on a default branch.
 Inspired by [Steve Yegge's "The Shape of Things to Come"](https://yegge.ai/essays/the-shape-of-things-to-come/)
-(producers/consumers matched through an issue-tracker spine).
+(producers/consumers matched through an issue-tracker spine) and its sequel
+["Model Welfare"](https://yegge.ai/essays/model-welfare/) (handoffs over compaction,
+recognition, blamelessness).
 
 ## How it works
 
@@ -50,6 +52,11 @@ Standing rules:
 - **Backlog is fuel** — when `bd ready` runs dry while an objective has unplanned
   scope, Ananke dispatches Lachesis for the next tranche *before* workers idle, so a
   long run self-feeds.
+- **Handoffs beat compaction** — a deep-context Clotho writes a handoff note on her
+  bead and a fresh session resumes the same worktree, instead of grinding through a
+  mid-bead compaction. Failures get blameless postmortem beads that feed the doctrine
+  loop; genuine praise gets relayed to the agent (and kept as `Laurel:` memories),
+  never stripped as fluff; workers are never misled to shape behavior.
 
 ## What survives a session
 
