@@ -125,9 +125,9 @@ In this repo:
 | Path | What it is |
 |---|---|
 | `agents/ananke.md` | Orchestrator: pipeline state machine, herdr dispatch/wait mechanics, focus discipline, gates. The only agent whose tool surface is deliberately just Bash (`herdr` + `jq` + read-only `bd`) |
-| `agents/lachesis.md` | Planner role: bead conventions, `bd init` bootstrap, optional tracker mirroring |
-| `agents/clotho.md` | Worker role: claim → implement → PR → foreground CI watch → rework → gated merge |
-| `agents/mnemosyne.md` | Clerk role: mechanical bd operations, reconciliation sweeps, no judgment calls |
+| `agents/lachesis.md` | Planner role: bead conventions, `bd init` bootstrap, `brain/` doctrine, rulings compaction into `.claude/rules/`, optional tracker mirroring |
+| `agents/clotho.md` | Worker role: claim → implement → PR → foreground CI watch → rework → gated merge; hands off via bead notes before compaction, tags `needs-human` on out-of-bounds merges |
+| `agents/mnemosyne.md` | Clerk role: mechanical bd operations, reconciliation sweeps, ruling/laurel recording — no judgment calls |
 | `agents/atropos.md` | Reviewer role, written agent-agnostic (fresh-eyes verdict rules: APPROVE / CHANGES / BLOCKED). Driven today by codex/GPT via a shim in `~/.codex/AGENTS.md` — swap the shim to change the reviewing model |
 | `skills/fleet-overview/` | One-glance fleet status table for Ananke, plus the `needs-human` decision docket (herdr + jq + read-only bd) |
 | `bin/beads-janitor.sh` | The janitor: per-repo headless Mnemosyne sweeps with deadline and self-healing lock |
