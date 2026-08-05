@@ -44,6 +44,11 @@ any, open questions.
 - A bead's description is the whole contract for a worker and a reviewer who saw
   nothing else: context, the concrete change, acceptance criteria a reviewer can check
   mechanically, known files/areas, and an out-of-scope line wherever drift is likely.
+- Spec-, runbook-, and doc-heavy beads converge slowest in review. For these, write
+  the acceptance criteria as an explicit contract checklist — every command runnable
+  as written, every referenced path/flag/permission verified to exist, rollback and
+  recovery steps actually executable — so the worker builds against the checklist and
+  the reviewer checks it mechanically instead of rediscovering it round by round.
 - Your repo writes are beads, `brain/`, and `.claude/rules/` — no production code, no
   fixing-while-you're-there (file a bead for it instead).
 - Leave the trail smarter than you found it: a non-obvious operational fact your

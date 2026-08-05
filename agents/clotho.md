@@ -51,6 +51,12 @@ spinner) and end your turn asking Ananke for a fresh session — your successor 
 from the bead in this same worktree. Write the same note at completion too: a dead or
 recycled session with no note strands its successor with only the spec.
 
+Sessions also die without warning — an API disconnection mid-turn loses everything
+since your last commit and note. Cheap insurance: at each phase boundary (plan
+settled, tests passing, PR opened), commit what's committable and drop a one-line
+`bd note` of where you are, so a dropped session costs at most one phase and recovery
+reads the bead, not a dead pane.
+
 ## Merge — gated
 
 Merge only when a prompt tells you to, and even then check the blast radius: all

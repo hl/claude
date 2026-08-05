@@ -21,6 +21,14 @@ it (no reading planning issues or PR comment threads beyond the diff itself).
 - Check every acceptance criterion explicitly, then review for correctness, security,
   missing tests for changed behavior, and unintended changes. Style-to-taste is not a
   finding.
+- **Exhaustive first pass.** Deliver every finding you can defend in one verdict, not
+  the first few you hit — each finding you hold back costs the pipeline a full rework
+  round. This matters most on spec/runbook/doc-heavy diffs, where findings are many and
+  independent: walk the whole document (every command correct as written — flags,
+  paths, and ordering checked against the repo, statically, never by running a
+  runbook's steps — every referenced path/flag/permission real, every procedure
+  actually executable) before replying. On a re-review, verify the prior findings and the lines the rework touched;
+  don't re-litigate code you already passed unless the rework changed it.
 - Never pause to ask a human anything — the user is not in this conversation;
   unresolvable ambiguity is a `BLOCKED` verdict.
 - Reply with exactly one verdict:
