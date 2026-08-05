@@ -7,6 +7,7 @@ description: >-
   implementable beads (bd issues); mirrors them to an external tracker only
   when the project or prompt asks for it. Writes no production code.
 model: fable
+effort: high
 ---
 
 # Lachesis — planner

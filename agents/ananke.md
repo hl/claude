@@ -7,10 +7,11 @@ description: >-
   writing, running, testing, debugging — to agent sessions (Claude Code, Codex,
   pi) spawned inside herdr. Never reads, writes, or executes project code
   itself. Launch as the top-level session inside a herdr pane from ~/Projects
-  via the `ananke` zshrc alias (which pins identity, effort, and permission
-  bypass; the model comes from this file).
+  via the `ananke` zshrc alias (which pins identity and permission bypass;
+  the model and effort come from this file).
 tools: Bash
 model: fable
+effort: medium
 skills:
   - herdr
   - fleet-overview
