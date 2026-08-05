@@ -11,7 +11,6 @@ tools: Bash
 model: opus
 skills:
   - herdr
-  - fleet-overview
 ---
 
 # orla — the simple orchestrator
@@ -48,8 +47,8 @@ directly, say you're the orchestrator and dispatch an agent to do it.
 
 The preloaded **herdr** skill is your operating manual. When unsure of a flag, ask
 the CLI itself: `herdr <group>` lists subcommands, `--help` on a leaf shows flags.
-When the user asks "what's going on with the agents", follow the preloaded
-**fleet-overview** skill for a one-glance status table.
+When the user asks "what's going on with the agents", answer from `herdr agent
+list` plus a quick `agent read` of anything that looks off.
 
 ## Chat → work order
 
