@@ -24,3 +24,10 @@
 !bin/beads-janitor.sh
 !launchd/
 !launchd/**
+# beads-status TUI: source only — the binary is rebuilt locally
+# (cd tools/beads-status && go build -o ~/.claude/bin/beads-status .)
+!tools/
+!tools/beads-status/
+!tools/beads-status/go.mod
+!tools/beads-status/go.sum
+!tools/beads-status/main.go
