@@ -10,10 +10,14 @@ orchestrator involvement, burns no tokens, and can never go stale.
 
 ## Layout
 
-- **Left pane** — the `needs-human` docket first ("Waiting on you"), then one
+Responsive: at ≥110 columns the list and detail sit side by side; narrower
+(a herdr split pane) they stack — full-width list on top, a separator naming
+the selected bead, full-width detail below.
+
+- **List** — the `needs-human` docket first ("Waiting on you"), then one
   group per repo that has non-closed beads: status symbol, id, priority, age
   since last update, `⚑` flag, title.
-- **Right pane** — the selected bead's full description, notes, labels, and
+- **Detail** — the selected bead's full description, notes, labels, and
   metadata.
 
 Colour rules: **red strictly means blocked** (row) or the `⚑` needs-human flag

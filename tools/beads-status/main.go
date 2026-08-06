@@ -263,9 +263,45 @@ func (m *model) clampScroll() {
 	}
 }
 
-func (m model) listHeight() int  { return m.height - 2 } // header + footer
-func (m model) listWidth() int   { return m.width * 45 / 100 }
-func (m model) listStartY() int  { return 1 }
+// geometry — responsive layout. Wide panes get list | detail side by side;
+// narrow ones (a herdr split) stack: full-width list, separator, full-width
+// detail. All row math (scrolling, mouse hits) goes through this.
+type geom struct {
+	stacked          bool
+	listW, listH     int
+	listY            int
+	detailW, detailH int
+	detailX, detailY int
+}
+
+const stackBelow = 110 // columns
+
+func (m model) geometry() geom {
+	if m.width >= stackBelow {
+		lw := m.width * 45 / 100
+		lh := m.height - 2 // header + footer
+		return geom{listW: lw, listH: lh, listY: 1,
+			detailW: m.width - lw - 3, detailH: lh, detailX: lw + 3, detailY: 1}
+	}
+	body := m.height - 3 // header + separator + footer
+	dh := body * 2 / 5
+	if dh < 6 {
+		dh = 6
+	}
+	if dh > body-3 {
+		dh = body - 3
+	}
+	lh := body - dh
+	return geom{stacked: true, listW: m.width, listH: lh, listY: 1,
+		detailW: m.width, detailH: dh, detailX: 0, detailY: 1 + lh + 1}
+}
+
+func (m model) listHeight() int {
+	if m.height == 0 {
+		return 0
+	}
+	return m.geometry().listH
+}
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -318,29 +354,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseMsg:
+		g := m.geometry()
+		inList := func(x, y int) bool {
+			if y < g.listY || y >= g.listY+g.listH {
+				return false
+			}
+			return g.stacked || x < g.listW
+		}
 		switch msg.Action {
 		case tea.MouseActionPress:
 			switch msg.Button {
 			case tea.MouseButtonLeft:
-				if msg.X < m.listWidth() {
-					i := m.listOffset + msg.Y - m.listStartY()
+				if inList(msg.X, msg.Y) {
+					i := m.listOffset + msg.Y - g.listY
 					if i >= 0 && i < len(m.rows) && m.rows[i].kind == rowBead {
 						m.cursor = i
 						m.descOffset = 0
 					}
 				}
 			case tea.MouseButtonWheelUp:
-				if msg.X < m.listWidth() {
+				if inList(msg.X, msg.Y) {
 					m.listOffset -= 3
 					m.clampScroll()
-				} else if m.descOffset > 0 {
+				} else {
 					m.descOffset -= 3
 					if m.descOffset < 0 {
 						m.descOffset = 0
 					}
 				}
 			case tea.MouseButtonWheelDown:
-				if msg.X < m.listWidth() {
+				if inList(msg.X, msg.Y) {
 					m.listOffset += 3
 					m.clampScroll()
 				} else {
@@ -489,37 +532,63 @@ func (m model) View() string {
 	if m.width == 0 {
 		return "loading…"
 	}
-	lw := m.listWidth()
-	dw := m.width - lw - 3
-	lh := m.listHeight()
+	if m.width < 24 || m.height < 10 {
+		return stDim.Render("pane too small")
+	}
+	g := m.geometry()
 
-	head := stDim.Render(fmt.Sprintf("beads status · %s · %s",
-		m.sweptAt.Format("15:04:05"), projectsDir()))
+	head := stDim.Render(truncate(fmt.Sprintf("beads status · %s · %s",
+		m.sweptAt.Format("15:04:05"), projectsDir()), m.width))
 	if m.err != nil {
 		head += "  " + stBlocked.Render("sweep error: "+m.err.Error())
 	}
+	foot := stDim.Render(truncate("↑↓/click select · J/K scroll description · r refresh · q quit", m.width))
 
-	list := m.renderList(lw, lh)
-	detail := m.renderDetail(dw, lh)
+	list := m.renderList(g.listW, g.listH)
+	detail := m.renderDetail(g.detailW, g.detailH)
 
 	var body strings.Builder
-	sep := stDim.Render(" │ ")
-	for i := 0; i < lh; i++ {
-		l, d := "", ""
-		if i < len(list) {
-			l = list[i]
+	if g.stacked {
+		for i := 0; i < g.listH; i++ {
+			if i < len(list) {
+				body.WriteString(list[i])
+			}
+			body.WriteString("\n")
 		}
-		if i < len(detail) {
-			d = detail[i]
+		// separator names the selected bead so the detail block reads anchored
+		label := ""
+		if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].kind == rowBead {
+			label = " " + m.rows[m.cursor].bead.ID + " "
 		}
-		pad := lw - lipgloss.Width(l)
-		if pad < 0 {
-			pad = 0
+		bar := "─" + label
+		if n := m.width - lipgloss.Width(bar); n > 0 {
+			bar += strings.Repeat("─", n)
 		}
-		body.WriteString(l + strings.Repeat(" ", pad) + sep + d + "\n")
+		body.WriteString(stDim.Render(truncate(bar, m.width)) + "\n")
+		for i := 0; i < g.detailH; i++ {
+			if i < len(detail) {
+				body.WriteString(detail[i])
+			}
+			body.WriteString("\n")
+		}
+	} else {
+		sep := stDim.Render(" │ ")
+		for i := 0; i < g.listH; i++ {
+			l, d := "", ""
+			if i < len(list) {
+				l = list[i]
+			}
+			if i < len(detail) {
+				d = detail[i]
+			}
+			pad := g.listW - lipgloss.Width(l)
+			if pad < 0 {
+				pad = 0
+			}
+			body.WriteString(l + strings.Repeat(" ", pad) + sep + d + "\n")
+		}
 	}
 
-	foot := stDim.Render("↑↓/click select · J/K scroll description · r refresh · q quit")
 	return head + "\n" + body.String() + foot
 }
 
