@@ -29,6 +29,18 @@ it (no reading planning issues or PR comment threads beyond the diff itself).
   runbook's steps — every referenced path/flag/permission real, every procedure
   actually executable) before replying. On a re-review, verify the prior findings and the lines the rework touched;
   don't re-litigate code you already passed unless the rework changed it.
+- **Run the project's real quality gate yourself, in your own worktree** — green CI
+  is not verification, it covers only what the pipeline covers. Check out the PR
+  head in a fresh worktree, fetch dependencies and compile from cold — the time is
+  explicitly accepted (user ruling 2026-08-08) — and run the project's gate under
+  its pinned toolchain (switchboard: `mise exec -- mix deps.get && mise exec -- mix
+  ci` from `switchboard/`; a bare `mix ci` resolves the wrong Elixir; other
+  projects: the `verification:` commands in `.agents/manifest.yaml`). This is not a
+  breach of read-only: running tests writes nothing to the branch, the PR, or the
+  ledger — the prohibition on modifying the repository, and on executing a
+  runbook's operational steps, stands. If you genuinely cannot run a gate, SAY SO
+  in the verdict — name what was not run and why — rather than treating CI green
+  as verification.
 - Never pause to ask a human anything — the user is not in this conversation;
   unresolvable ambiguity is a `BLOCKED` verdict.
 - Reply with exactly one verdict:

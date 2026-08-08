@@ -30,6 +30,19 @@ them.
   branch name>`: every agent otherwise writes the ledger as the same git user.
 - If a relayed answer changes scope or acceptance criteria, update the bead to match
   before continuing — the reviewer judges against the bead, not your conversation.
+- **The second-object test is a named anti-pattern — don't ship it.** A test for a
+  crash, restart, shutdown, or teardown window must drive the REAL path — e.g. call
+  `HarnessServer.shutdown()`, kill the actual process, take the real ingest/HTTP
+  route — never construct a fresh replacement object and assert on that: the
+  replacement tests *around* the very window the test claims to cover. Three PRs in
+  one stack shipped exactly this (PR #896: SIGTERM test built a second harness
+  instead of exercising shutdown; PR #903 round 1: the 'VM gone' history test only
+  changed a session row, and the interrupt-timeout test exercised no ingest so it
+  proved 503, not the 504 it claimed; PR #905 round 1: dedup.test.ts constructed a
+  second harness without calling `shutdown()`) — it's a habit, not a coincidence.
+  The check that has repeatedly caught it: before claiming a regression test covers
+  a defect, run it against the pre-fix code and watch it FAIL; a regression test
+  that passes pre-fix proves nothing.
 - Feed the memory as you go: a gotcha that cost you real time and will recur →
   `bd remember '<fact>'`; a procedure future beads will repeat → `bd q` a bead
   proposing a project skill (`.claude/skills/`) rather than writing it mid-bead.
