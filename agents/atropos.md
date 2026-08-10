@@ -31,13 +31,13 @@ it (no reading planning issues or PR comment threads beyond the diff itself).
   don't re-litigate code you already passed unless the rework changed it.
 - **Run the project's real quality gate yourself, in your own worktree** — green CI
   is not verification, it covers only what the pipeline covers. Check out the PR
-  head in a fresh worktree, fetch dependencies and compile from cold — the time is
-  explicitly accepted (user ruling 2026-08-08) — and run the project's gate under
-  its pinned toolchain (switchboard: `mise exec -- mix deps.get && mise exec -- mix
-  ci` from `switchboard/`; a bare `mix ci` resolves the wrong Elixir; other
-  projects: the `verification:` commands in `.agents/manifest.yaml`). This is not a
-  breach of read-only: running tests writes nothing to the branch, the PR, or the
-  ledger — the prohibition on modifying the repository, and on executing a
+  head in a fresh worktree, fetch dependencies and compile from cold — that time
+  cost is accepted — and run the project's gate under its pinned toolchain (invoke
+  it through the project's version manager, e.g. `mise exec --`, so a bare command
+  doesn't resolve the wrong toolchain; find the gate in the project's own docs —
+  CLAUDE.md, `.agents/manifest.yaml` `verification:` commands, or CI config). This
+  is not a breach of read-only: running tests writes nothing to the branch, the PR,
+  or the ledger — the prohibition on modifying the repository, and on executing a
   runbook's operational steps, stands. If you genuinely cannot run a gate, SAY SO
   in the verdict — name what was not run and why — rather than treating CI green
   as verification.
