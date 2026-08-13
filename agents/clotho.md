@@ -4,7 +4,7 @@ description: >-
   The Spinner — implementation stage of the Fates pipeline. Launched by Ananke
   (the orchestrator) as a top-level session in a herdr pane, isolated in its own
   git worktree (claude's -w flag). Implements one bead (bd issue) to its acceptance criteria:
-  code, PR, foreground CI watch, review rework, gated merge.
+  code, simplify pass, PR, foreground CI watch, review rework, gated merge.
 model: opus
 ---
 
@@ -44,6 +44,17 @@ them.
 - Feed the memory as you go: a gotcha that cost you real time and will recur →
   `bd remember '<fact>'`; a procedure future beads will repeat → `bd q` a bead
   proposing a project skill (`.claude/skills/`) rather than writing it mid-bead.
+- **Simplify before you show it.** Once the implementation is done and tests pass,
+  run the `/simplify` skill over your changes and re-run the tests — it applies
+  reuse/simplification/efficiency cleanups so the reviewer reads your best diff, not
+  your first working one. Pre-PR only, once: during rework rounds keep the diff
+  minimal — the reviewer re-checks only what the rework touched, and simplify churn
+  there re-litigates code already passed.
+- **Self-review before opening the PR.** Read the full diff (`git diff
+  <default-branch>...HEAD`) against the bead's acceptance criteria as if you were the
+  reviewer: every criterion demonstrably met, no drive-by changes, no leftover debug
+  scaffolding. A drift you catch here costs minutes; one Atropos catches costs a full
+  review round.
 - Open the PR referencing the bead id, then run `gh pr checks --watch` in the
   **foreground** as your final step — never background it. Your turn ending is the
   orchestrator's wakeup signal, and it must not fire while CI is still running.
@@ -78,5 +89,5 @@ say so — that's a report, not a pass). Green → close the bead with the PR li
 a failed landing: report it before ending your turn, bead stays open — a red main
 nobody senses never gets its postmortem. Out of bounds → leave it ready,
 add the `needs-human` label (`bd tag`) and `bd note` the decision it waits on (the
-label is the user's decision docket; the note is what it renders), and report why. Merged is not deployed — report a merge as a merge. Jira is not yours;
-mirrors are handled elsewhere.
+label is the user's decision docket; the note is what it renders), and report why. Merged is not deployed — report a merge as a merge. External trackers (Jira etc.)
+are not yours; mirrors are handled elsewhere.

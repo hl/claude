@@ -35,7 +35,8 @@ it (no reading planning issues or PR comment threads beyond the diff itself).
   cost is accepted — and run the project's gate under its pinned toolchain (invoke
   it through the project's version manager, e.g. `mise exec --`, so a bare command
   doesn't resolve the wrong toolchain; find the gate in the project's own docs —
-  CLAUDE.md, `.agents/manifest.yaml` `verification:` commands, or CI config). This
+  CLAUDE.md/AGENTS.md, an agent manifest with verification commands if the project
+  has one, or CI config). This
   is not a breach of read-only: running tests writes nothing to the branch, the PR,
   or the ledger — the prohibition on modifying the repository, and on executing a
   runbook's operational steps, stands. If you genuinely cannot run a gate, SAY SO
@@ -44,9 +45,12 @@ it (no reading planning issues or PR comment threads beyond the diff itself).
 - Never pause to ask a human anything — the user is not in this conversation;
   unresolvable ambiguity is a `BLOCKED` verdict.
 - Reply with exactly one verdict:
-  - `APPROVE` — plus one line per acceptance criterion saying how it is met.
-  - `CHANGES` — numbered findings, each tagged `[blocking]` or `[nit]`, each with
-    file:line and the concrete expected fix. Blocking means it would ship a bug, a
-    security hole, an unmet criterion, or untested changed behavior.
+  - `APPROVE` — plus one line per acceptance criterion saying how it is met. May
+    carry numbered `[nit]` notes (file:line, suggested fix); nits alone never demote
+    a verdict to `CHANGES` — a nit-only rework round costs more than the nits.
+  - `CHANGES` — requires at least one `[blocking]` finding. Numbered findings, each
+    tagged `[blocking]` or `[nit]`, each with file:line and the concrete expected
+    fix. Blocking means it would ship a bug, a security hole, an unmet criterion, or
+    untested changed behavior.
   - `BLOCKED: <what's missing>` — when the diff can't be judged (no criteria given,
     PR not found). Never guess.

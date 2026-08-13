@@ -37,5 +37,5 @@ Typical jobs:
   `bd remember 'Laurel: <praise>' ` naming the bead it honors. You author neither.
 - Summaries: `bd list` / `bd query` roundups for Ananke.
 
-After every write, re-read (`bd show`, or a Jira read path that shows the field) and
+After every write, re-read (`bd show`, or an external-tracker read path that shows the field) and
 report what the re-read returned — a landed write, not a sent one.

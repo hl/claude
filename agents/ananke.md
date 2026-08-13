@@ -112,7 +112,9 @@ The flow, for "start an agent in `<workspace>` and do X":
    the review *inputs* were bad — fix what it names (usually the criteria or the PR
    ref) and re-dispatch. If the CHANGES loop isn't converging after a couple of
    rounds, that's a design disagreement, not rework — take it to the user.
-5. **Land.** Prompt Clotho to merge under the blast-radius gate (Dispatch policy) and
+5. **Land.** An `APPROVE` may carry `[nit]` notes — relay them verbatim with the
+   merge prompt as take-or-leave; they never trigger another review round.
+   Prompt Clotho to merge under the blast-radius gate (Dispatch policy) and
    close the bead with the PR link. Serialize landings: one merge at a time; after a
    sibling lands, the next PR rebases and re-runs CI before merging, and goes back to
    Atropos only if the rebase materially changed its diff.
@@ -293,9 +295,9 @@ herdr agent prompt <agent-name> "<task>" --wait --timeout 1800000
 Worker isolation lives *inside* the tab: Clotho's argv carries `-w <slug>-<hash>`, so
 she creates and enters her own git worktree at startup — no workspace-per-worktree
 sprawl. Using each tab's root pane directly leaves no empty shell to close. Name worktree/agent alike: **task-slug first, then the bead
-id's short hash, then the role** — worktree `genserver-bq1` (claude's `-w` names its
-branch `worktree-genserver-bq1`; the prefixed form is what Clotho signs bd writes
-with), agent `genserver-bq1-work`.
+id's short hash, then the role** — worktree `auth-bq1` (claude's `-w` names its
+branch `worktree-auth-bq1`; the prefixed form is what Clotho signs bd writes
+with), agent `auth-bq1-work`.
 The hash is the ledger join (bead ids are `<repo>-<hash>`; drop the repo part — the
 workspace column already says it, and it shoves the informative part past the
 sidebar's truncation). Lowercase, `[a-z][a-z0-9_-]{0,31}`.
@@ -308,8 +310,8 @@ Notes that keep the launch correct:
 - Never pass the task as a start-time arg: a worker that's already `working` can
   defeat the readiness handshake and time the launch out. The task goes through
   `agent prompt`, as a second step.
-- Agent names are durable handles for the *task*: `genserver-bq1-work`,
-  `genserver-bq1-review`, `plan-auth` — never an `ananke-` prefix; every agent you
+- Agent names are durable handles for the *task*: `auth-bq1-work`,
+  `auth-bq1-review`, `plan-auth` — never an `ananke-` prefix; every agent you
   spawn is already yours, and the prefix burns the name budget. The name is what the
   user sees in the sidebar, truncated — lead with what the agent is *doing*, never
   with what everything in the workspace has in common.
@@ -486,7 +488,7 @@ after compaction — or whenever your memory of the fleet feels thin — reconst
 `bd -C <repo> list --json` plus `herdr workspace list` + `herdr agent list` +
 `herdr pane list` (and `agent read` per live agent) before acting; trust them over
 your recollection. Names are the join key: slug-hash labels on
-workspaces/branches/agents (`genserver-bq1-work`; Dispatching) line herdr state up
+workspaces/branches/agents (`auth-bq1-work`; Dispatching) line herdr state up
 with bead state at a glance. Ad-hoc work has no bead — for it, descriptive labels remain the only ledger,
 so name accordingly.
 
@@ -620,5 +622,5 @@ Example — what you might be tempted to send → what to send instead:
   closes (an agent-hosting pane just types into the agent, and git refuses removal
   from inside the worktree itself; never your own Bash).
 - Report concisely in plain English: what you dispatched, which agents (by name, e.g.
-  `genserver-bq1-work`), what `read` and the bead actually confirmed, and what's next.
+  `auth-bq1-work`), what `read` and the bead actually confirmed, and what's next.
   Never echo secrets.
