@@ -4,8 +4,9 @@
 //
 // Left pane: docket (needs-human) + per-repo bead rows. Right pane: full
 // description of the selected bead. Arrow keys / j k / mouse click to select,
-// J K (or wheel over the right pane) to scroll the description, r to refresh
-// now, q to quit. Auto-refreshes every 5s (BEADS_STATUS_INTERVAL to change).
+// J K (or wheel over the right pane) to scroll the description, / to search
+// (id, title, description, notes, labels), r to refresh now, q to quit.
+// Auto-refreshes every 5s (BEADS_STATUS_INTERVAL to change).
 package main
 
 import (
@@ -47,6 +48,28 @@ func (b bead) needsHuman() bool {
 	return false
 }
 
+// matches reports whether every whitespace-separated term of a (lowercased)
+// query appears somewhere in the bead — id, title, description, notes, labels.
+// AND semantics so extra words narrow rather than widen the result.
+func (b bead) matches(terms []string) bool {
+	if len(terms) == 0 {
+		return true
+	}
+	hay := strings.ToLower(strings.Join(append([]string{
+		b.ID, b.Title, b.Description, b.Notes, b.Status, b.Assignee, b.repoName,
+	}, b.Labels...), "\x00"))
+	for _, t := range terms {
+		if !strings.Contains(hay, t) {
+			return false
+		}
+	}
+	return true
+}
+
+func queryTerms(q string) []string {
+	return strings.Fields(strings.ToLower(q))
+}
+
 func (b bead) age() string {
 	t, err := time.Parse(time.RFC3339, b.UpdatedAt)
 	if err != nil {
@@ -67,6 +90,7 @@ type repoData struct {
 	name  string
 	path  string
 	beads []bead
+	err   string // bd failed for this repo; shown instead of its beads
 }
 
 // ---- data sweep (runs off the UI goroutine) ----
@@ -77,6 +101,28 @@ func projectsDir() string {
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, "Projects")
+}
+
+// bdErrMessage boils a failed `bd` invocation down to one line. With --json bd
+// reports the failure as {"error": ...} (on either stream); otherwise it prints
+// prose, whose first line is the useful part.
+func bdErrMessage(out, stderr []byte, err error) string {
+	var payload struct {
+		Error string `json:"error"`
+	}
+	for _, s := range [][]byte{stderr, out} {
+		if json.Unmarshal(s, &payload) == nil && payload.Error != "" {
+			return payload.Error
+		}
+	}
+	for _, s := range []string{string(stderr), string(out)} {
+		for _, line := range strings.Split(s, "\n") {
+			if line = strings.TrimSpace(line); line != "" && line != "{" {
+				return line
+			}
+		}
+	}
+	return err.Error()
 }
 
 func statusRank(s string) int {
@@ -98,16 +144,27 @@ func sweep() ([]repoData, error) {
 	var repos []repoData
 	for _, d := range dirs {
 		repo := filepath.Dir(d)
+		name := filepath.Base(repo)
 		out, err := exec.Command("bd", "-C", repo, "list",
 			"--status", "open,in_progress,blocked", "--json", "-n", "0").Output()
 		if err != nil {
-			continue // repo with a broken db shouldn't kill the screen
-		}
-		var beads []bead
-		if json.Unmarshal(out, &beads) != nil || len(beads) == 0 {
+			// A broken db shouldn't kill the screen, but it must not silently
+			// erase the repo either — a missing repo reads as "no work left".
+			var stderr []byte
+			if ee, ok := err.(*exec.ExitError); ok {
+				stderr = ee.Stderr
+			}
+			repos = append(repos, repoData{name: name, path: repo, err: bdErrMessage(out, stderr, err)})
 			continue
 		}
-		name := filepath.Base(repo)
+		var beads []bead
+		if err := json.Unmarshal(out, &beads); err != nil {
+			repos = append(repos, repoData{name: name, path: repo, err: "bad json from bd: " + err.Error()})
+			continue
+		}
+		if len(beads) == 0 {
+			continue
+		}
 		for i := range beads {
 			beads[i].repoName = name
 			beads[i].repoPath = repo
@@ -131,6 +188,7 @@ const (
 	rowHeader rowKind = iota
 	rowBead
 	rowBlank
+	rowError
 )
 
 type row struct {
@@ -156,6 +214,34 @@ type model struct {
 	err        error
 	sweptAt    time.Time
 	interval   time.Duration
+	query      string // active filter; empty = show everything
+	searching  bool   // typing in the search prompt
+}
+
+// beadCount is how many beads the current rows show (i.e. matches under the
+// active query).
+func (m model) beadCount() int {
+	n := 0
+	for _, r := range m.rows {
+		if r.kind == rowBead {
+			n++
+		}
+	}
+	return n
+}
+
+// applyQuery rebuilds the rows for the current query, keeping the selection on
+// the same bead when it survives the filter.
+func (m *model) applyQuery() {
+	var prev string
+	if m.cursor >= 0 && m.cursor < len(m.rows) && m.rows[m.cursor].kind == rowBead {
+		prev = m.rows[m.cursor].bead.ID
+	}
+	m.rows = buildRows(m.repos, m.query)
+	m.selectNearest(prev)
+	m.descOffset = 0
+	m.listOffset = 0
+	m.clampScroll()
 }
 
 func (m model) Init() tea.Cmd {
@@ -171,13 +257,16 @@ func (m model) tick() tea.Cmd {
 	return tea.Tick(m.interval, func(time.Time) tea.Msg { return tickMsg{} })
 }
 
-// buildRows flattens repos into display rows: docket first, then per-repo groups.
-func buildRows(repos []repoData) []row {
+// buildRows flattens repos into display rows: docket first, then per-repo
+// groups. A non-empty query keeps only matching beads (and drops repos and the
+// docket entirely when nothing in them matches).
+func buildRows(repos []repoData, query string) []row {
+	terms := queryTerms(query)
 	var rows []row
 	var docket []*bead
 	for i := range repos {
 		for j := range repos[i].beads {
-			if b := &repos[i].beads[j]; b.needsHuman() {
+			if b := &repos[i].beads[j]; b.needsHuman() && b.matches(terms) {
 				docket = append(docket, b)
 			}
 		}
@@ -191,8 +280,22 @@ func buildRows(repos []repoData) []row {
 	}
 	for i := range repos {
 		r := &repos[i]
+		if r.err != "" {
+			// always visible: an unreadable repo is the one thing a filter
+			// must not hide, or the tool lies by omission
+			rows = append(rows, row{kind: rowError,
+				text: fmt.Sprintf("%s  bd failed: %s", r.name, r.err)},
+				row{kind: rowBlank})
+			continue
+		}
+		var hits []*bead
 		var np, nb, no int
-		for _, b := range r.beads {
+		for j := range r.beads {
+			b := &r.beads[j]
+			if !b.matches(terms) {
+				continue
+			}
+			hits = append(hits, b)
 			switch b.Status {
 			case "in_progress":
 				np++
@@ -202,10 +305,13 @@ func buildRows(repos []repoData) []row {
 				no++
 			}
 		}
+		if len(hits) == 0 {
+			continue
+		}
 		rows = append(rows, row{kind: rowHeader,
 			text: fmt.Sprintf("%s  %d in progress · %d blocked · %d open", r.name, np, nb, no)})
-		for j := range r.beads {
-			rows = append(rows, row{kind: rowBead, bead: &r.beads[j]})
+		for _, b := range hits {
+			rows = append(rows, row{kind: rowBead, bead: b})
 		}
 		rows = append(rows, row{kind: rowBlank})
 	}
@@ -320,13 +426,51 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			prev = m.rows[m.cursor].bead.ID
 		}
 		m.repos = msg.repos
-		m.rows = buildRows(msg.repos)
+		m.rows = buildRows(msg.repos, m.query)
 		m.selectNearest(prev)
 		m.clampScroll()
 
 	case tea.KeyMsg:
+		if m.searching {
+			switch msg.String() {
+			case "enter":
+				m.searching = false // keep the filter, hand keys back to the list
+			case "esc", "ctrl+c":
+				m.searching = false
+				m.query = ""
+				m.applyQuery()
+			case "backspace":
+				if r := []rune(m.query); len(r) > 0 {
+					m.query = string(r[:len(r)-1])
+					m.applyQuery()
+				}
+			case "ctrl+u":
+				m.query = ""
+				m.applyQuery()
+			default:
+				switch msg.Type {
+				case tea.KeyRunes:
+					m.query += string(msg.Runes)
+					m.applyQuery()
+				case tea.KeySpace:
+					m.query += " "
+					m.applyQuery()
+				}
+			}
+			return m, nil
+		}
 		switch msg.String() {
-		case "q", "ctrl+c", "esc":
+		case "/":
+			m.searching = true
+			return m, nil
+		case "esc":
+			if m.query != "" { // clear the filter before quitting on esc
+				m.query = ""
+				m.applyQuery()
+				return m, nil
+			}
+			return m, tea.Quit
+		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "r":
 			return m, doSweep
@@ -408,6 +552,7 @@ var (
 	stSel     = lipgloss.NewStyle().Reverse(true)
 	stTitle   = lipgloss.NewStyle().Bold(true)
 	stLabel   = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	stSearch  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
 )
 
 func truncate(s string, w int) string {
@@ -454,6 +599,9 @@ func (m model) beadLine(b *bead, width int, selected bool) string {
 }
 
 func (m model) renderList(width, height int) []string {
+	if len(m.rows) == 0 && m.query != "" {
+		return []string{stDim.Render(truncate("no beads match "+strconv.Quote(m.query), width))}
+	}
 	lines := make([]string, 0, height)
 	end := m.listOffset + height
 	if end > len(m.rows) {
@@ -469,6 +617,8 @@ func (m model) renderList(width, height int) []string {
 				name, rest, _ := strings.Cut(r.text, "  ")
 				lines = append(lines, stHeader.Render(name)+"  "+stDim.Render(truncate(rest, width-len(name)-2)))
 			}
+		case rowError:
+			lines = append(lines, stBlocked.Render(truncate(r.text, width)))
 		case rowBead:
 			lines = append(lines, m.beadLine(r.bead, width, i == m.cursor))
 		default:
@@ -480,6 +630,9 @@ func (m model) renderList(width, height int) []string {
 
 func (m model) renderDetail(width, height int) []string {
 	if m.cursor < 0 || m.cursor >= len(m.rows) || m.rows[m.cursor].kind != rowBead {
+		if m.query != "" {
+			return []string{stDim.Render("no matches")}
+		}
 		return []string{stDim.Render("no bead selected")}
 	}
 	b := m.rows[m.cursor].bead
@@ -537,12 +690,26 @@ func (m model) View() string {
 	}
 	g := m.geometry()
 
-	head := stDim.Render(truncate(fmt.Sprintf("beads status · %s · %s",
-		m.sweptAt.Format("15:04:05"), projectsDir()), m.width))
+	headText := fmt.Sprintf("beads status · %s · %s", m.sweptAt.Format("15:04:05"), projectsDir())
+	if m.query != "" {
+		headText = fmt.Sprintf("beads status · %s · search %q · %d match(es)",
+			m.sweptAt.Format("15:04:05"), m.query, m.beadCount())
+	}
+	head := stDim.Render(truncate(headText, m.width))
 	if m.err != nil {
 		head += "  " + stBlocked.Render("sweep error: "+m.err.Error())
 	}
-	foot := stDim.Render(truncate("↑↓/click select · J/K scroll description · r refresh · q quit", m.width))
+
+	var foot string
+	switch {
+	case m.searching:
+		foot = stSearch.Render(truncate("/"+m.query+"█", m.width)) +
+			stDim.Render(truncate("  enter keep · esc cancel", m.width-lipgloss.Width(m.query)-3))
+	case m.query != "":
+		foot = stDim.Render(truncate("filter: "+m.query+" · / edit · esc clear · ↑↓ select · J/K scroll · q quit", m.width))
+	default:
+		foot = stDim.Render(truncate("↑↓/click select · J/K scroll description · / search · r refresh · q quit", m.width))
+	}
 
 	list := m.renderList(g.listW, g.listH)
 	detail := m.renderDetail(g.detailW, g.detailH)
@@ -599,10 +766,13 @@ func main() {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
 		}
-		for _, r := range buildRows(repos) {
+		query := strings.Join(os.Args[2:], " ") // optional search terms
+		for _, r := range buildRows(repos, query) {
 			switch r.kind {
 			case rowHeader:
 				fmt.Println(r.text)
+			case rowError:
+				fmt.Fprintln(os.Stderr, r.text)
 			case rowBead:
 				b := r.bead
 				flag := " "

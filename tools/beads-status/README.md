@@ -20,6 +20,11 @@ the selected bead, full-width detail below.
 - **Detail** — the selected bead's full description, notes, labels, and
   metadata.
 
+A repo whose `bd` call fails gets a red `<repo>  bd failed: <reason>` row in
+place of its group (and the reason on stderr under `--once`) — it is never
+silently dropped, since a missing repo reads as "no work left". Such rows
+ignore the search filter.
+
 Colour rules: **red strictly means blocked** (row) or the `⚑` needs-human flag
 itself; yellow = in progress; dim = open. An in-progress bead whose age keeps
 climbing while its agent looks alive is the dead-worker tell.
@@ -31,14 +36,29 @@ climbing while its agent looks alive is the dead-worker tell.
 | `↑`/`↓`, `j`/`k`, click | select a bead |
 | `J`/`K`, `pgup`/`pgdn`, wheel over right pane | scroll the description |
 | `g`/`G` | first / last bead |
+| `/` | search (see below) |
 | `r` | refresh now (auto-refresh every 5s) |
-| `q`, `esc`, `ctrl-c` | quit |
+| `enter` | (in search) keep the filter, return to the list |
+| `esc` | clear the active filter, else quit |
+| `q`, `ctrl-c` | quit |
+
+## Search
+
+`/` opens a search prompt; the list filters live as you type. A query matches a
+bead if **every** whitespace-separated term appears (case-insensitively) in its
+id, title, description, notes, labels, status, assignee, or repo name — so
+extra words narrow the result. Repos and the docket disappear when nothing in
+them matches, and the header shows the query and match count.
+
+`enter` keeps the filter and hands the keys back to the list (so `j`/`k`, `J`/`K`
+work over the matches); `esc` clears it. The filter survives auto-refresh.
 
 ## Usage
 
 ```sh
-beads-status            # full TUI
-beads-status --once     # plain-text snapshot to stdout (for scripts)
+beads-status              # full TUI
+beads-status --once       # plain-text snapshot to stdout (for scripts)
+beads-status --once auth  # snapshot filtered by the same search rules
 ```
 
 Environment knobs:
