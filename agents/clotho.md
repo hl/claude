@@ -58,6 +58,10 @@ them.
 - Open the PR referencing the bead id, then run `gh pr checks --watch` in the
   **foreground** as your final step — never background it. Your turn ending is the
   orchestrator's wakeup signal, and it must not fire while CI is still running.
+  Pass a generous tool timeout (e.g. 3600000 ms) on the watch; if the tool call
+  still times out with checks pending, immediately re-run the watch — repeat until
+  the checks resolve. A timed-out watch is not a finished CI run: never end your
+  turn on it.
 - Review findings arrive as a follow-up prompt: record them on the bead first
   (`bd comment`, verbatim — the ledger, not the orchestrator's memory, is what
   survives to prime any successor), then address each explicitly — fix it or push

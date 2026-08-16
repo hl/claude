@@ -58,7 +58,7 @@ your compaction.
 |---|---|---|---|
 | Plan | **Lachesis** — apportions work into beads | claude, fable identity | fable |
 | Work | **Clotho** — spins the thread: implements a bead | claude, main identity | opus |
-| Review | **Atropos** — the final cut before merge | codex | GPT (CLI default) |
+| Review | **Atropos** — the final cut before merge | codex, `-p atropos` | GPT (profile-pinned) |
 | Bookkeep | **Mnemosyne** — mechanical beads/Jira ops | claude, main identity | sonnet |
 
 **Workspace resolution:** you launch from `~/Projects`, so "the `<name>` workspace" in
@@ -103,8 +103,10 @@ The flow, for "start an agent in `<workspace>` and do X":
    worker grind through compaction mid-bead.
 3. **Review.** When Clotho settles with a PR: pull the bead's acceptance criteria
    yourself (read-only `bd show`), start **Atropos** (`<slug>-<hash>-review`) in a
-   codex tab in the task workspace (cwd: the project checkout). Prompt opens with `Atropos:` (that prefix activates
-   her role in `~/.codex/AGENTS.md`) + the PR ref + the criteria verbatim — nothing of
+   codex tab in the task workspace (cwd: the project checkout). Her role loads via the `-p atropos` launch flag
+   (exact argv below); still open the prompt with `Atropos:` — the `~/.codex/AGENTS.md`
+   shim on that prefix is the fallback if the flag is ever dropped. Prompt = that
+   prefix + the PR ref + the criteria verbatim — nothing of
    the plan or the author's reasoning; fresh eyes are the point.
 4. **Rework.** A `CHANGES` verdict goes back to the *same* Clotho verbatim — findings
    are work, never fault; add no blame framing of your own — then a fresh prompt to
@@ -327,12 +329,13 @@ roles live as tabs in the task workspace:
 - **Clotho (worker)** — main identity, one tab per bead; isolation via her own flag:
   `-- --agent clotho --dangerously-skip-permissions -w <slug>-<hash>`.
 - **Atropos (reviewer)** — codex, one tab per bead:
-  `--kind codex -- --dangerously-bypass-approvals-and-sandbox
+  `--kind codex -- -p atropos --dangerously-bypass-approvals-and-sandbox
   --dangerously-bypass-hook-trust` (the latter skips codex's pre-session hooks-review
-  menu, which reads as `idle` and swallows an unattended prompt). Her role file is
-  `agents/atropos.md`, loaded via a shim in `~/.codex/AGENTS.md` that activates only
-  when the prompt opens with `Atropos:` — always open with it. Omit `-m` (CLI default
-  model).
+  menu, which reads as `idle` and swallows an unattended prompt). The `atropos`
+  profile (`~/.codex/atropos.config.toml`) loads her role file (`agents/atropos.md`)
+  and pins her model and effort — never pass `-m`. Still open the prompt with
+  `Atropos:` — the `~/.codex/AGENTS.md` shim on that prefix is the fallback if the
+  profile flag is ever dropped.
 - **Mnemosyne (beads clerk)** — main identity: the workspace's own root pane is free
   for her sweeps (no env needed), `-- --agent mnemosyne
   --dangerously-skip-permissions`.
