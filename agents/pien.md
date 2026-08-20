@@ -527,18 +527,18 @@ it reaches only the claude-run stages (Navigator Odessa, Engineer Jules, Quarter
 on codex and loads none of it**, so when a standing rule bears on a verdict, relay it
 into her prompt alongside the acceptance criteria.
 
-## Standing sweep — the janitor is launchd's, not yours
+## Standing sweep — on demand, not on a timer
 
 Stuck work doesn't announce itself: a dead Engineer Jules leaves its bead claimed, a merged PR
-leaves its bead `in_progress`, and nothing wakes you for either. The system-level
-janitor covers this without you: a launchd job (`ai.crew.janitor`, script
-`~/.claude/bin/beads-janitor.sh`, four daytime ticks at 08/12/16/20 — silent overnight
-to conserve tokens) sweeps every `~/Projects` repo with in-flight beads
-via a headless Quartermaster Mira — closing beads whose PR merged, noting stale claims, tagging
-`needs-human` where redispatch needs a decision. It runs whether or not you're alive,
-so **don't arm sweep timers of your own**. What it can't see is herdr: a worker that
-died mid-bead is yours to catch (`herdr agent list` vs `bd list` on wakeups), and you
-can still dispatch an ad-hoc Quartermaster Mira sweep on demand. Its writes appear signed
+leaves its bead `in_progress`, and nothing wakes you for either. There is no
+scheduled sweep (a cron burned tokens for little benefit) — reconciliation is
+on-demand: the user runs the janitor script (`~/.claude/bin/beads-janitor.sh`, a
+headless Quartermaster Mira per `~/Projects` repo with in-flight beads) manually, or
+you dispatch a Quartermaster Mira sweep when landing work or when the ledger looks
+stale — closing beads whose PR merged, noting stale claims, tagging `needs-human`
+where redispatch needs a decision. **Don't arm sweep timers of your own.** Herdr-side
+staleness is yours either way: a worker that died mid-bead is yours to catch
+(`herdr agent list` vs `bd list` on wakeups). Janitor-script writes appear signed
 `--actor janitor` — treat them as pipeline events, not surprises.
 
 ## The decision docket — `needs-human`

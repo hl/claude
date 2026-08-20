@@ -19,11 +19,9 @@
 !hooks/**
 !agents/
 !agents/**
-# beads janitor: script + launchd unit (installed copy lives in ~/Library/LaunchAgents)
+# beads janitor: manual sweep script
 !bin/
 !bin/beads-janitor.sh
-!launchd/
-!launchd/**
 # beads-status TUI: source only — the binary is rebuilt locally
 # (cd tools/beads-status && go build -o ~/.claude/bin/beads-status .)
 !tools/

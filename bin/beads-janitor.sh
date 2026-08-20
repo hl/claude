@@ -1,9 +1,7 @@
 #!/bin/zsh
-# beads-janitor — "crons watch, models act": launchd job (four daytime ticks;
-# schedule lives in the plist) that finds beads repos with in-flight work and
-# dispatches a headless Mira sweep in each.
-# Runs independently of herdr/Pien; canonical copy lives in ~/.claude/bin,
-# launchd unit in ~/.claude/launchd/ai.crew.janitor.plist.
+# beads-janitor — run manually (no scheduler): finds beads repos with
+# in-flight work and dispatches a headless Mira sweep in each.
+# Runs independently of herdr/Pien; canonical copy lives in ~/.claude/bin.
 set -u
 
 PROJECTS="${JANITOR_PROJECTS:-$HOME/Projects}"

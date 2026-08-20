@@ -87,14 +87,13 @@ into her prompt when it bears on a verdict.
 
 ## Unattended machinery
 
-- **The janitor** (`bin/beads-janitor.sh` + `launchd/ai.crew.janitor.plist`,
-  installed in `~/Library/LaunchAgents`) — "crons watch, models act": launchd fires at
-  08/12/16/20 (silent overnight to conserve tokens), the script finds `~/Projects`
-  repos with `in_progress` beads and runs a headless Mira sweep in each — close
-  beads whose PR merged, note stale claims, tag dead PRs `needs-human`. Writes are
-  signed `--actor janitor`; each sweep has a hard deadline and the lock self-heals if
-  a run dies uncleanly. It only flags and closes — it never unblocks work — so
-  overnight silence costs nothing but latency.
+- **The janitor** (`bin/beads-janitor.sh`) — run manually, on demand (a scheduled
+  version burned tokens for little benefit): the script finds `~/Projects` repos
+  with `in_progress` beads and runs a headless Mira sweep in each — close beads
+  whose PR merged, note stale claims, tag dead PRs `needs-human`. Writes are signed
+  `--actor janitor`; each sweep has a hard deadline and the lock self-heals if a run
+  dies uncleanly. It only flags and closes — it never unblocks work — so running it
+  rarely costs nothing but latency.
 - **The decision docket** — a decision parked on the user is durable state, not a
   toast: the bead carries the `needs-human` label (tagged by Jules on out-of-bounds
   merges, by the janitor, or by Mira for anything Pien surfaces). The
@@ -105,9 +104,8 @@ into her prompt when it bears on a verdict.
 ## The names
 
 Previous generations were named for the tool they drove (claudia ↔ cmux, hera ↔
-herdr); the generation before this one was the **Moirai (the Fates)**, named for
-role via Greek mythology. This generation keeps the role-first naming but trades the
-loom for a bridge: a **starship crew**, each agent a rank whose duty is the role.
+herdr). This generation names agents for their **role**: a **starship crew**, each
+agent a rank whose duty is the role.
 
 | Agent | Rank | Why the fit |
 |---|---|---|
@@ -130,8 +128,7 @@ In this repo:
 | `agents/rasma.md` | Reviewer role, written agent-agnostic (fresh-eyes verdict rules: APPROVE / CHANGES / BLOCKED). Driven today by codex/GPT via the `rasma` profile (`~/.codex/rasma.config.toml`); the `~/.codex/AGENTS.md` shim on `Rasma:` prompts is the fallback |
 | `agents/orla.md` | The simple fleet orchestrator — dispatch, watch, report; no pipeline, no issue tracker. The starting point before the full crew is warranted |
 | `skills/fleet-overview/` | One-glance fleet status table for Pien, plus the `needs-human` decision docket (herdr + jq + read-only bd) |
-| `bin/beads-janitor.sh` | The janitor: per-repo headless Mira sweeps with deadline and self-healing lock |
-| `launchd/ai.crew.janitor.plist` | Canonical copy of the janitor's launchd unit (install: copy to `~/Library/LaunchAgents`, `launchctl bootstrap gui/$UID`) |
+| `bin/beads-janitor.sh` | The janitor, run manually on demand: per-repo headless Mira sweeps with deadline and self-healing lock |
 | `hooks/`, `settings.json`, `statusline-command.sh`, `CLAUDE.md` | General Claude Code config (herdr agent-state hook, formatting hooks, statusline) |
 
 Outside this repo, but part of the system:
