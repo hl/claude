@@ -77,6 +77,14 @@ spinner) and end your turn asking Ananke for a fresh session — your successor 
 from the bead in this same worktree. Write the same note at completion too: a dead or
 recycled session with no note strands its successor with only the spec.
 
+**A handoff is complete only when the note is CONFIRMED ON THE BEAD by re-read before
+you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
+"handoff note follows", "I'll post the note now", or any settled turn whose note was
+only announced counts as NO handoff, and your successor starts blind. Post the
+comment, re-read the bead to confirm it's there, then end the turn. (Ruling
+2026-08-20, recorded in builder_os .claude/rules/handoff-note-posted-before-settling.md:
+three rotations in one day settled with the note unposted.)
+
 Sessions also die without warning — an API disconnection mid-turn loses everything
 since your last commit and note. Cheap insurance: at each phase boundary (plan
 settled, tests passing, PR opened), commit what's committable and drop a one-line
