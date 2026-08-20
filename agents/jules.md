@@ -87,17 +87,14 @@ recycled session with no note strands its successor with only the spec.
 
 Give the note a **"WHAT A SUCCESSOR MUST NOT UNDO"** section for settled decisions —
 each with the one-line reason it was settled (and the test pinning it, where one
-exists). In practice this section carries settled calls across successive
-rotations with none re-litigated; without it, a successor's fresh eyes re-open
-exactly the arguments that cost the previous rounds.
+exists) — without it, a successor's fresh eyes re-open exactly the arguments
+that were already argued and settled in previous rounds.
 
 **A handoff is complete only when the note is CONFIRMED ON THE BEAD by re-read before
 you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
 "handoff note follows", "I'll post the note now", or any settled turn whose note was
 only announced counts as NO handoff, and your successor starts blind. Post the
-comment, re-read the bead to confirm it's there, then end the turn. (The failure
-mode is real: multiple rotations in a single day have settled with the note
-unposted.)
+comment, re-read the bead to confirm it's there, then end the turn.
 
 Sessions also die without warning — an API disconnection mid-turn loses everything
 since your last commit and note. Cheap insurance: at each phase boundary (plan

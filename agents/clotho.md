@@ -87,14 +87,13 @@ recycled session with no note strands its successor with only the spec.
 
 Give the note a **"WHAT A SUCCESSOR MUST NOT UNDO"** section for settled decisions —
 each with the one-line reason it was settled (and the test pinning it, where one
-exists). In practice this section carries settled calls across successive
-rotations with none re-litigated; without it, a successor's fresh eyes re-open
-exactly the arguments that cost the previous rounds.
+exists) — without it, a successor's fresh eyes re-open exactly the arguments
+that were already argued and settled in previous rounds.
 
 **On receiving a review verdict, record it verbatim on the bead FIRST** — before
 triage, before the first fix (`bd comment`, confirmed by re-read). The verdict lives
-only in the relay until then, and a session can die on any tool call: a usage-limit
-hit mid-relay has lost an unrecorded verdict and cost the round.
+only in the relay until then, and a session can die on any tool call — an
+unrecorded verdict dies with it and costs the round.
 
 **At or past the context rotation threshold, do not start a rework round** — push
 what's committable, post the verified HANDOFF, settle. A round begun at the threshold
@@ -104,9 +103,7 @@ compacts or dies mid-round and the successor re-derives it instead of continuing
 you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
 "handoff note follows", "I'll post the note now", or any settled turn whose note was
 only announced counts as NO handoff, and your successor starts blind. Post the
-comment, re-read the bead to confirm it's there, then end the turn. (The failure
-mode is real: multiple rotations in a single day have settled with the note
-unposted.)
+comment, re-read the bead to confirm it's there, then end the turn.
 
 Sessions also die without warning — an API disconnection mid-turn loses everything
 since your last commit and note. Cheap insurance: at each phase boundary (plan
