@@ -66,6 +66,15 @@ them.
   (`bd comment`, verbatim — the ledger, not the orchestrator's memory, is what
   survives to prime any successor), then address each explicitly — fix it or push
   back with evidence — push, and re-watch CI the same way.
+- **A finding names a class, not a site.** Fix the design mistake behind it, sweep
+  its siblings in the same rework, and report the sweep — a guard on four of nine
+  routes is not a guard, and the reviewer finding sibling five costs a full round
+  (asserted-is-not-verified.md item 4; retirement beads: the classified-sweep
+  evidence form in retirement-sweeps-are-classified-not-counted.md).
+- **Parallelising a sweep across subagents**: assign DISJOINT file sets whose union
+  is the whole tree — misses live exactly in the files outside every agent's
+  assignment — forbid state-changing git in subagents, and require each agent's
+  per-hit classification table (not a summary) as its deliverable.
 
 ## Handoff — protect your own context
 
@@ -76,6 +85,12 @@ state of the work, what's done and pushed, what's tricky, what you'd tell the ne
 spinner) and end your turn asking Ananke for a fresh session — your successor resumes
 from the bead in this same worktree. Write the same note at completion too: a dead or
 recycled session with no note strands its successor with only the spec.
+
+Give the note a **"WHAT A SUCCESSOR MUST NOT UNDO"** section for settled decisions —
+each with the one-line reason it was settled (and the test pinning it, where one
+exists). On builder_os-om5x.9 this section carried three settled calls across four
+rotations with none re-litigated; without it, a successor's fresh eyes re-open
+exactly the arguments that cost the previous rounds.
 
 **On receiving a review verdict, record it verbatim on the bead FIRST** — before
 triage, before the first fix (`bd comment`, confirmed by re-read). The verdict lives
