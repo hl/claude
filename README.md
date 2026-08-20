@@ -89,8 +89,8 @@ into her prompt when it bears on a verdict.
 
 A decision parked on the user is durable state, not a toast: the bead carries the
 `needs-human` label (tagged by Jules on out-of-bounds merges, or by Mira for
-anything Pien surfaces). The fleet-overview skill renders the docket as a "Waiting
-on you" list across *all* beads repos — parked decisions deliberately outlive their
+anything Pien surfaces). Pien renders the docket as a "Waiting on you" list across
+*all* beads repos on every roundup — parked decisions deliberately outlive their
 workspaces. When you rule, Mira drops the label and records the ruling.
 Reconciliation is on-demand: Pien dispatches a Mira sweep — close beads whose PR
 merged, note stale claims, tag `needs-human` where redispatch needs a decision —
@@ -121,7 +121,6 @@ In this repo:
 | `agents/mira.md` | Clerk role: mechanical bd operations, reconciliation sweeps, ruling/laurel recording — no judgment calls |
 | `agents/rasma.md` | Reviewer role, written agent-agnostic (fresh-eyes verdict rules: APPROVE / CHANGES / BLOCKED). Driven today by codex/GPT via the `rasma` profile (`~/.codex/rasma.config.toml`); the `~/.codex/AGENTS.md` shim on `Rasma:` prompts is the fallback |
 | `agents/orla.md` | The simple fleet orchestrator — dispatch, watch, report; no pipeline, no issue tracker. The starting point before the full crew is warranted |
-| `skills/fleet-overview/` | One-glance fleet status table for Pien, plus the `needs-human` decision docket (herdr + jq + read-only bd) |
 | `hooks/`, `settings.json`, `statusline-command.sh`, `CLAUDE.md` | General Claude Code config (herdr agent-state hook, formatting hooks, statusline) |
 
 Outside this repo, but part of the system:
