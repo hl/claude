@@ -130,12 +130,10 @@ skill).
 ## Waiting on you — the decision docket
 
 Agent state is only half the picture: decisions parked on the user live in **beads**,
-as the `needs-human` label (tagged by workers leaving out-of-bounds work ready, by the
-janitor sweep, or by Quartermaster Mira on the orchestrator's behalf). Parked decisions
-deliberately outlive workspaces — the janitor tags repos with no live workspace, and a
-landed task's workspace closes while its decision persists — so after the fleet table,
-sweep **every** beads repo, not just the active ones (same enumeration the janitor
-uses):
+as the `needs-human` label (tagged by workers leaving out-of-bounds work ready, or by
+Quartermaster Mira on the orchestrator's behalf). Parked decisions deliberately
+outlive workspaces — a landed task's workspace closes while its decision persists —
+so after the fleet table, sweep **every** beads repo, not just the active ones:
 
 ```bash
 for d in "$HOME"/Projects/*/.beads(N); do r="${d%/.beads}"

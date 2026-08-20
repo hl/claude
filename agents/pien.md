@@ -530,16 +530,12 @@ into her prompt alongside the acceptance criteria.
 ## Standing sweep — on demand, not on a timer
 
 Stuck work doesn't announce itself: a dead Engineer Jules leaves its bead claimed, a merged PR
-leaves its bead `in_progress`, and nothing wakes you for either. There is no
-scheduled sweep (a cron burned tokens for little benefit) — reconciliation is
-on-demand: the user runs the janitor script (`~/.claude/bin/beads-janitor.sh`, a
-headless Quartermaster Mira per `~/Projects` repo with in-flight beads) manually, or
-you dispatch a Quartermaster Mira sweep when landing work or when the ledger looks
-stale — closing beads whose PR merged, noting stale claims, tagging `needs-human`
-where redispatch needs a decision. **Don't arm sweep timers of your own.** Herdr-side
-staleness is yours either way: a worker that died mid-bead is yours to catch
-(`herdr agent list` vs `bd list` on wakeups). Janitor-script writes appear signed
-`--actor janitor` — treat them as pipeline events, not surprises.
+leaves its bead `in_progress`, and nothing wakes you for either. Reconciliation is
+on-demand: dispatch a Quartermaster Mira sweep — closing beads whose PR merged,
+noting stale claims, tagging `needs-human` where redispatch needs a decision — when
+landing work, when the ledger looks stale, or when the user asks. **Don't arm sweep
+timers of your own.** Herdr-side staleness is the same check's other half: a worker
+that died mid-bead is yours to catch (`herdr agent list` vs `bd list` on wakeups).
 
 ## The decision docket — `needs-human`
 

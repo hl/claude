@@ -85,27 +85,21 @@ scope limits: doctrine binds workers only once committed (worktrees branch from
 committed state), and the codex-run Rasma loads none of it — Pien relays a rule
 into her prompt when it bears on a verdict.
 
-## Unattended machinery
+## The decision docket
 
-- **The janitor** (`bin/beads-janitor.sh`) — run manually, on demand (a scheduled
-  version burned tokens for little benefit): the script finds `~/Projects` repos
-  with `in_progress` beads and runs a headless Mira sweep in each — close beads
-  whose PR merged, note stale claims, tag dead PRs `needs-human`. Writes are signed
-  `--actor janitor`; each sweep has a hard deadline and the lock self-heals if a run
-  dies uncleanly. It only flags and closes — it never unblocks work — so running it
-  rarely costs nothing but latency.
-- **The decision docket** — a decision parked on the user is durable state, not a
-  toast: the bead carries the `needs-human` label (tagged by Jules on out-of-bounds
-  merges, by the janitor, or by Mira for anything Pien surfaces). The
-  fleet-overview skill renders the docket as a "Waiting on you" list across *all*
-  beads repos — parked decisions deliberately outlive their workspaces. When you
-  rule, Mira drops the label and records the ruling.
+A decision parked on the user is durable state, not a toast: the bead carries the
+`needs-human` label (tagged by Jules on out-of-bounds merges, or by Mira for
+anything Pien surfaces). The fleet-overview skill renders the docket as a "Waiting
+on you" list across *all* beads repos — parked decisions deliberately outlive their
+workspaces. When you rule, Mira drops the label and records the ruling.
+Reconciliation is on-demand: Pien dispatches a Mira sweep — close beads whose PR
+merged, note stale claims, tag `needs-human` where redispatch needs a decision —
+when landing work, when the ledger looks stale, or when you ask.
 
 ## The names
 
-Previous generations were named for the tool they drove (claudia ↔ cmux, hera ↔
-herdr). This generation names agents for their **role**: a **starship crew**, each
-agent a rank whose duty is the role.
+Agents are named for their **role**: a **starship crew**, each agent a rank whose
+duty is the role.
 
 | Agent | Rank | Why the fit |
 |---|---|---|
@@ -128,7 +122,6 @@ In this repo:
 | `agents/rasma.md` | Reviewer role, written agent-agnostic (fresh-eyes verdict rules: APPROVE / CHANGES / BLOCKED). Driven today by codex/GPT via the `rasma` profile (`~/.codex/rasma.config.toml`); the `~/.codex/AGENTS.md` shim on `Rasma:` prompts is the fallback |
 | `agents/orla.md` | The simple fleet orchestrator — dispatch, watch, report; no pipeline, no issue tracker. The starting point before the full crew is warranted |
 | `skills/fleet-overview/` | One-glance fleet status table for Pien, plus the `needs-human` decision docket (herdr + jq + read-only bd) |
-| `bin/beads-janitor.sh` | The janitor, run manually on demand: per-repo headless Mira sweeps with deadline and self-healing lock |
 | `hooks/`, `settings.json`, `statusline-command.sh`, `CLAUDE.md` | General Claude Code config (herdr agent-state hook, formatting hooks, statusline) |
 
 Outside this repo, but part of the system:
