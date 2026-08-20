@@ -77,6 +77,17 @@ spinner) and end your turn asking Ananke for a fresh session — your successor 
 from the bead in this same worktree. Write the same note at completion too: a dead or
 recycled session with no note strands its successor with only the spec.
 
+**On receiving a review verdict, record it verbatim on the bead FIRST** — before
+triage, before the first fix (`bd comment`, confirmed by re-read). The verdict lives
+only in the relay until then, and a session can die on any tool call: a 2026-08-20
+usage-limit hit lost an unrecorded verdict mid-relay and cost the round. (Rule:
+record-verdict-verbatim-before-rework.md.)
+
+**At or past the context rotation threshold, do not start a rework round** — push
+what's committable, post the verified HANDOFF, settle. A round begun at the threshold
+compacts or dies mid-round and the successor re-derives it instead of continuing it.
+(Rule: handoff-note-posted-before-settling.md, WHEN section.)
+
 **A handoff is complete only when the note is CONFIRMED ON THE BEAD by re-read before
 you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
 "handoff note follows", "I'll post the note now", or any settled turn whose note was
