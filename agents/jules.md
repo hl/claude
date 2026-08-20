@@ -68,9 +68,8 @@ them.
   back with evidence — push, and re-watch CI the same way.
 - **A finding names a class, not a site.** Fix the design mistake behind it, sweep
   its siblings in the same rework, and report the sweep — a guard on four of nine
-  routes is not a guard, and the reviewer finding sibling five costs a full round
-  (asserted-is-not-verified.md item 4; retirement beads: the classified-sweep
-  evidence form in retirement-sweeps-are-classified-not-counted.md).
+  routes is not a guard, and the reviewer finding sibling five costs a full round.
+  Sweep evidence is a per-hit classification, not a count.
 - **Parallelising a sweep across subagents**: assign DISJOINT file sets whose union
   is the whole tree — misses live exactly in the files outside every agent's
   assignment — forbid state-changing git in subagents, and require each agent's
@@ -88,7 +87,7 @@ recycled session with no note strands its successor with only the spec.
 
 Give the note a **"WHAT A SUCCESSOR MUST NOT UNDO"** section for settled decisions —
 each with the one-line reason it was settled (and the test pinning it, where one
-exists). On builder_os-om5x.9 this section carried three settled calls across four
+exists). In practice this section carries settled calls across successive
 rotations with none re-litigated; without it, a successor's fresh eyes re-open
 exactly the arguments that cost the previous rounds.
 
@@ -96,9 +95,9 @@ exactly the arguments that cost the previous rounds.
 you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
 "handoff note follows", "I'll post the note now", or any settled turn whose note was
 only announced counts as NO handoff, and your successor starts blind. Post the
-comment, re-read the bead to confirm it's there, then end the turn. (Ruling
-2026-08-20, recorded in builder_os .claude/rules/handoff-note-posted-before-settling.md:
-three rotations in one day settled with the note unposted.)
+comment, re-read the bead to confirm it's there, then end the turn. (The failure
+mode is real: multiple rotations in a single day have settled with the note
+unposted.)
 
 Sessions also die without warning — an API disconnection mid-turn loses everything
 since your last commit and note. Cheap insurance: at each phase boundary (plan

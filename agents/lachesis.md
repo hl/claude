@@ -39,8 +39,7 @@ any, open questions.
   normative mini-spec is landed in the owning project's docs/specs — point the bead
   at the spec section by requirement number, or file the spec bead as a blocker.
   Never "the worker will spec it as they go": without the contract, every review
-  round re-derives the invariants and finds a fresh race (PR #1047 rounds 1–4;
-  builder_os rule spec-before-dispatch-for-invariant-heavy-beads.md, 2026-08-20).
+  round re-derives the invariants and finds a fresh race.
 - One bead per PR-sized unit of work; `bd link` dependencies when order matters. The
   graph is also the dispatch plan: Ananke runs one worker per ready bead, so
   independent beads mean parallel workers — split for parallelism where the work
