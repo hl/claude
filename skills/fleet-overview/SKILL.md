@@ -3,7 +3,7 @@ name: fleet-overview
 description: >-
   Render a single-glance status table of every agent in the herdr fleet — agent
   name, current state, and a consolidated activity/blocker/follow-up column. For
-  the ananke orchestrator (or any session running inside herdr) when asked for a
+  the pien orchestrator (or any session running inside herdr) when asked for a
   fleet/agent overview, a status roundup, or "what's going on with the agents".
   Includes the decision docket: beads labeled needs-human that wait on the user.
   Requires HERDR_ENV=1 and the `herdr` CLI; uses only `herdr` + `jq` + read-only `bd`.
@@ -48,8 +48,9 @@ herdr agent list | jq -r --arg self "${HERDR_PANE_ID:-}" '
                                                             #   the kind, "claude"; it collides)
       .agent_status,                                        # 2 idle|working|blocked|done|unknown
       (.tokens.summary // .terminal_title_stripped // "-"), # 3 what it is doing (.tokens is
-                                                            #   absent in herdr 0.7.5 — the
-                                                            #   title is the live source)
+                                                            #   a metadata-token map only
+                                                            #   reporting integrations fill —
+                                                            #   the title is the fallback)
       ((.launch_pending // false)
         or ((.interactive_ready // true) | not)),           # startup-stuck? (for reads below)
       (.state_change_seq | tostring)                        # progress counter (stall check)
@@ -130,7 +131,7 @@ skill).
 
 Agent state is only half the picture: decisions parked on the user live in **beads**,
 as the `needs-human` label (tagged by workers leaving out-of-bounds work ready, by the
-janitor sweep, or by Mnemosyne on the orchestrator's behalf). Parked decisions
+janitor sweep, or by Quartermaster Mira on the orchestrator's behalf). Parked decisions
 deliberately outlive workspaces — the janitor tags repos with no live workspace, and a
 landed task's workspace closes while its decision persists — so after the fleet table,
 sweep **every** beads repo, not just the active ones (same enumeration the janitor
@@ -147,12 +148,12 @@ Render hits as a short **Waiting on you** list under the table — bead id, titl
 the one-line decision it's waiting for (from the bead's latest note if the title
 doesn't say). No hits → say "docket clear" in the tally line; a `bd` error → report
 the error, never an empty docket over a swallowed failure. This is read-only: never
-tag or untag from inside this skill — clearing a resolved item is Mnemosyne's write.
+tag or untag from inside this skill — clearing a resolved item is Mira's write.
 
 ## Rules
 
 - **herdr + jq + read-only bd only.** Never `cat`/`python`/`git`/an editor — same
-  absolute rule as the rest of ananke. `jq` is sanctioned herdr plumbing; `bd` here
+  absolute rule as the rest of the orchestrator. `jq` is sanctioned herdr plumbing; `bd` here
   is reads only (`list`/`show`/`comments`).
 - **Names, not ids.** Address every agent by its durable `name`; pane ids churn.
 - **A settled status is not proof of success.** For every ✅/⏸ finish, the follow-up

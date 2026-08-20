@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>ai.fates.janitor</string>
+	<string>ai.crew.janitor</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/zsh</string>

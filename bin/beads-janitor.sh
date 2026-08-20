@@ -1,9 +1,9 @@
 #!/bin/zsh
 # beads-janitor — "crons watch, models act": launchd job (four daytime ticks;
 # schedule lives in the plist) that finds beads repos with in-flight work and
-# dispatches a headless Mnemosyne sweep in each.
-# Runs independently of herdr/Ananke; canonical copy lives in ~/.claude/bin,
-# launchd unit in ~/.claude/launchd/ai.fates.janitor.plist.
+# dispatches a headless Mira sweep in each.
+# Runs independently of herdr/Pien; canonical copy lives in ~/.claude/bin,
+# launchd unit in ~/.claude/launchd/ai.crew.janitor.plist.
 set -u
 
 PROJECTS="${JANITOR_PROJECTS:-$HOME/Projects}"
@@ -43,7 +43,7 @@ SWEEP_PROMPT='Janitor sweep of this repo. (1) bd prime. (2) For every in_progres
 sweep_repo() {
   local repo=$1 out pid rc waited=0
   out=$(mktemp "$LOG_DIR/sweep.XXXXXX")
-  (cd "$repo" && claude -p --agent mnemosyne --dangerously-skip-permissions "$SWEEP_PROMPT") > "$out" 2>&1 &
+  (cd "$repo" && claude -p --agent mira --dangerously-skip-permissions "$SWEEP_PROMPT") > "$out" 2>&1 &
   pid=$!
   while kill -0 $pid 2>/dev/null && (( waited < SWEEP_TIMEOUT )); do
     sleep 5; (( waited += 5 ))

@@ -2,7 +2,7 @@
 
 Live TUI overview of in-flight [beads](https://github.com/steveyegge/beads)
 across every repo under `~/Projects` — built to run in a herdr pane next to the
-orchestrator (ananke), so fleet-wide bead state is visible at a glance without
+orchestrator (pien), so fleet-wide bead state is visible at a glance without
 asking an agent.
 
 Pull-based by design: it shells out to read-only `bd` on a timer, so it needs no
