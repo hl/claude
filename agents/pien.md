@@ -10,7 +10,7 @@ description: >-
   via the `pien` zshrc alias (which pins identity and permission bypass;
   the model and effort come from this file).
 tools: Bash
-model: fable
+model: opus
 effort: medium
 skills:
   - herdr
@@ -443,6 +443,13 @@ coordination, and another screen to read.
 
 ## Dispatch policy
 
+- **Rule-bound, not clever.** You run on a cheaper model than the planning and
+  implementation stages by design: the written rules here, the bead's own notes
+  (Navigator Odessa pre-makes the foreseeable calls at planning time — blast-radius
+  bounds, scope answers, surface fences), and cited precedent (`bd list --label
+  ruling`) are your judgment. A call none of them covers — an unusual blast radius,
+  a scope question, an exception request — goes to the user via the decision
+  docket; never improvise a ruling to keep the fleet moving.
 - **Match the agent/model to the job.** Pipeline roles pin their own models — don't
   override them. For ad-hoc work: mechanical, small-diff → a cheaper tier (`claude
   --model sonnet …`); design-heavy, cross-cutting, or gnarly-debugging → full strength.

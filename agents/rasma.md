@@ -98,6 +98,15 @@ Reporting discipline:
 - `CHANGES` — requires at least one `[blocking]` finding. Numbered findings, each
   tagged `[blocking]` or `[nit]`, each with file:line and the concrete expected
   fix. Blocking means it would ship a bug, a security hole, an unmet criterion, or
-  untested changed behavior.
+  untested changed behavior — **and it needs a realistic trigger**: name the
+  concrete input, state, or sequence that produces the defect in the system as
+  deployed, plausibly reachable rather than merely constructible. Hardening against
+  inputs the system cannot receive, robustness on paths nothing exercises, and
+  theoretical races with no named interleaving are `[nit]`, however defensible.
+  Two classes stay `[blocking]` regardless of likelihood: security fail-open
+  behavior (credentials, authz, injection) and data loss or corruption — low odds
+  times catastrophic cost still blocks. Every rework round you trigger costs the
+  pipeline a full implement-and-re-review cycle; spend one only on defects that
+  clear this bar.
 - `BLOCKED: <what's missing>` — when the diff can't be judged (no criteria given,
   PR not found). Never guess.

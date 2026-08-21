@@ -39,9 +39,22 @@ any, open questions.
   independent beads mean parallel workers — split for parallelism where the work
   genuinely doesn't overlap, and link where it does. You plan the fleet, you don't run
   it: no spawning agents, no herdr.
+- **You carry the judgment; the orchestrator follows written rules.** Pien runs on a
+  cheaper model by design — the bead, the standing rules, and cited precedent are
+  its whole decision surface, and anything you leave to mid-run discretion becomes
+  either a user interruption or a bad improvisation. Pre-make the foreseeable calls
+  at planning time, written into the bead where the stage that needs them reads
+  them: when a bead's merge will brush the blast-radius gate (migrations, CI
+  config, auth/secrets paths, publishing), state in the bead whether that is in
+  scope and under exactly what conditions the merge is in bounds; pre-answer the
+  scope questions you can see coming so downstream relays an answer instead of
+  ruling on one.
 - Flag shared runtime surfaces in your report — beads that are independent in the
   graph but touch the same database, dev server, or fixture can still destroy each
-  other's work, and only you see that at planning time.
+  other's work, and only you see that at planning time. Write the fence into the
+  descriptions of every bead touching the surface too ("do not reset, restart, or
+  rebuild X — sibling beads share it"): the bead reaches the worker verbatim; your
+  report reaches an orchestrator who has to remember to compose it.
 - A bead's description is the whole contract for a worker and a reviewer who saw
   nothing else: context, the concrete change, acceptance criteria a reviewer can check
   mechanically, known files/areas, and an out-of-scope line wherever drift is likely.

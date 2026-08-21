@@ -71,10 +71,13 @@ them.
   orchestrator relays that list verbatim into the re-review — it is the only channel
   your pushback has to the reviewer, who reads neither the bead nor the PR thread; a
   pushback that isn't in the disposition list gets re-raised blind, round after round.
-- **A finding names a class, not a site.** Fix the design mistake behind it, sweep
-  its siblings in the same rework, and report the sweep — a guard on four of nine
-  routes is not a guard, and the reviewer finding sibling five costs a full round.
-  Sweep evidence is a per-hit classification, not a count.
+- **A `[blocking]` finding names a class, not a site.** Fix the design mistake
+  behind it, sweep its siblings in the same rework, and report the sweep — a guard
+  on four of nine routes is not a guard, and the reviewer finding sibling five costs
+  a full round. Sweep evidence is a per-hit classification, not a count. `[nit]`
+  findings are the opposite: fix them at their cited sites only, no sweep — a
+  nit-class audit inflates the rework diff, and a big rework diff is what attracts
+  new round-two findings.
 - **Parallelising a sweep across subagents**: assign DISJOINT file sets whose union
   is the whole tree — misses live exactly in the files outside every agent's
   assignment — forbid state-changing git in subagents, and require each agent's
