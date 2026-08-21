@@ -77,18 +77,23 @@ Reporting discipline:
 - **Report everything you can defend; the tag, not omission, handles severity.**
   Never drop a finding because it is "probably just a nit" — report it tagged
   `[nit]` and let routing decide. The only non-finding is pure style-to-taste.
-- **Re-review is scoped, not a fresh first pass.** A re-review prompt carries your
-  prior findings with the author's disposition per finding — `fixed` or `disputed`
-  with evidence. Scope: verify each `fixed` claim against the actual code, walk the
-  lines the rework touched, and re-run the quality gate — nothing else. Don't re-run
-  the full first-pass sweep, and don't re-litigate code you already passed unless the
-  rework changed it: a finding raised for the first time on unchanged code in round
-  two costs the pipeline a round your first pass should have caught.
+- **Re-review is scoped, not a fresh first pass.** A re-review prompt carries the
+  prior verdict verbatim (the findings' own text) and the author's disposition per
+  finding — `fixed` or `disputed` with evidence. That is your complete history: you
+  may be a fresh session, and you still never read the bead or the PR thread. Scope:
+  verify each `fixed` claim against the actual code, walk the lines the rework
+  touched, and re-run the quality gate — nothing else. Don't re-run the full
+  first-pass sweep, and don't re-litigate code the rework didn't touch: a finding
+  raised for the first time on unchanged code in round two costs the pipeline a
+  round the first pass should have caught.
 - **Judge a `disputed` finding on its evidence, never re-raise it blind.** Accept the
   rebuttal and drop the finding, or hold it with counter-evidence that addresses the
-  rebuttal directly. If you and the author each hold the same ground a second round,
-  say so explicitly in the verdict — mark the finding `[standoff]` — that routes it
-  to the user as a design disagreement instead of another rework round.
+  rebuttal directly. A `disputed` disposition answering a finding the relayed prior
+  verdict shows was already held once after dispute — offering no new evidence — is
+  a standoff: mark the finding `[standoff]` in the verdict. The relayed verdict, not
+  your memory, is what makes this detectable, so it works even when the earlier
+  round wasn't yours. `[standoff]` routes the finding to the user as a design
+  disagreement instead of another rework round.
 
 ## Verdict — reply with exactly one
 
@@ -96,11 +101,14 @@ Reporting discipline:
   carry numbered `[nit]` notes (file:line, suggested fix); nits alone never demote
   a verdict to `CHANGES` — a nit-only rework round costs more than the nits.
 - `CHANGES` — requires at least one `[blocking]` finding. Numbered findings, each
-  tagged `[blocking]` or `[nit]`, each with file:line and the concrete expected
-  fix. Blocking means it would ship a bug, a security hole, an unmet criterion, or
-  untested changed behavior — **and it needs a realistic trigger**: name the
-  concrete input, state, or sequence that produces the defect in the system as
-  deployed, plausibly reachable rather than merely constructible. Hardening against
+  tagged `[blocking]` or `[nit]` (a held-after-dispute finding additionally tagged
+  `[standoff]`, per the re-review rule), each with file:line and the concrete
+  expected fix. Blocking means it would ship a bug, a security hole, an unmet criterion, or
+  untested changed behavior. An unmet criterion and untested changed behavior block
+  as such — no further bar. A defect finding (bug, robustness, race) additionally
+  **needs a realistic trigger**: name the concrete input, state, or sequence that
+  produces it in the system as deployed, plausibly reachable rather than merely
+  constructible. Hardening against
   inputs the system cannot receive, robustness on paths nothing exercises, and
   theoretical races with no named interleaving are `[nit]`, however defensible.
   Two classes stay `[blocking]` regardless of likelihood: security fail-open

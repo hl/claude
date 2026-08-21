@@ -67,10 +67,12 @@ them.
   survives to prime any successor), then address each explicitly — fix it or push
   back with evidence — push, and re-watch CI the same way. End the rework settle
   report with a **per-finding disposition list**: each finding numbered as given,
-  marked `fixed` (with the commit) or `disputed` (with the concrete evidence). The
-  orchestrator relays that list verbatim into the re-review — it is the only channel
-  your pushback has to the reviewer, who reads neither the bead nor the PR thread; a
-  pushback that isn't in the disposition list gets re-raised blind, round after round.
+  marked `fixed` (with the commit) or `disputed` (with the concrete evidence) — and
+  `bd comment` that same list on the bead before you settle: like the findings, it
+  must survive you and the orchestrator's compaction. The orchestrator relays the
+  list verbatim into the re-review — it is the only channel your pushback has to the
+  reviewer, who reads neither the bead nor the PR thread; a pushback that isn't in
+  the disposition list gets re-raised blind, round after round.
 - **A `[blocking]` finding names a class, not a site.** Fix the design mistake
   behind it, sweep its siblings in the same rework, and report the sweep — a guard
   on four of nine routes is not a guard, and the reviewer finding sibling five costs
@@ -89,7 +91,9 @@ Compaction mid-bead replaces your working memory with a summary at exactly the m
 the work is hardest. Don't ride it out: when context is getting deep and meaningful
 work remains, push what's committable, write a handoff note on the bead (`bd note` —
 state of the work, what's done and pushed, what's tricky, what you'd tell the next
-engineer) and end your turn asking Pien for a fresh session — your successor resumes
+engineer — and, mid-rework, the disposition-so-far per review finding, so a
+successor doesn't re-dispute what you fixed or silently drop what you disputed) and
+end your turn asking Pien for a fresh session — your successor resumes
 from the bead in this same worktree. Write the same note at completion too: a dead or
 recycled session with no note strands its successor with only the spec.
 
