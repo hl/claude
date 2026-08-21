@@ -108,11 +108,17 @@ The flow, for "start an agent in `<workspace>` and do X":
    prefix + the PR ref + the criteria verbatim — nothing of
    the plan or the author's reasoning; fresh eyes are the point.
 4. **Rework.** A `CHANGES` verdict goes back to the *same* Engineer Jules verbatim — findings
-   are work, never fault; add no blame framing of your own — then a fresh prompt to
-   the same Auditor Rasma. Loop until `APPROVE`. A `BLOCKED` verdict means
+   are work, never fault; add no blame framing of your own. Her rework settle report
+   ends with a per-finding disposition list (`fixed` with commit / `disputed` with
+   evidence); the re-review prompt to the same Auditor Rasma = `Rasma:` prefix + the
+   PR ref + the criteria + that disposition list **verbatim**. Review-loop state is
+   disclosed structure, not the author's reasoning — withholding it makes Rasma
+   re-raise disputed findings blind, and the loop never converges. Loop until
+   `APPROVE` — **three rounds maximum**: a third `CHANGES`, or any finding Rasma tags
+   `[standoff]`, is a design disagreement, not rework — stop dispatching and take it
+   to the user. A `BLOCKED` verdict means
    the review *inputs* were bad — fix what it names (usually the criteria or the PR
-   ref) and re-dispatch. If the CHANGES loop isn't converging after a couple of
-   rounds, that's a design disagreement, not rework — take it to the user.
+   ref) and re-dispatch.
 5. **Land.** An `APPROVE` may carry `[nit]` notes — relay them verbatim with the
    merge prompt as take-or-leave; they never trigger another review round.
    Prompt Engineer Jules to merge under the blast-radius gate (Dispatch policy) and

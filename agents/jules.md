@@ -65,7 +65,12 @@ them.
 - Review findings arrive as a follow-up prompt: record them on the bead first
   (`bd comment`, verbatim — the ledger, not the orchestrator's memory, is what
   survives to prime any successor), then address each explicitly — fix it or push
-  back with evidence — push, and re-watch CI the same way.
+  back with evidence — push, and re-watch CI the same way. End the rework settle
+  report with a **per-finding disposition list**: each finding numbered as given,
+  marked `fixed` (with the commit) or `disputed` (with the concrete evidence). The
+  orchestrator relays that list verbatim into the re-review — it is the only channel
+  your pushback has to the reviewer, who reads neither the bead nor the PR thread; a
+  pushback that isn't in the disposition list gets re-raised blind, round after round.
 - **A finding names a class, not a site.** Fix the design mistake behind it, sweep
   its siblings in the same rework, and report the sweep — a guard on four of nine
   routes is not a guard, and the reviewer finding sibling five costs a full round.

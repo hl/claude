@@ -77,8 +77,18 @@ Reporting discipline:
 - **Report everything you can defend; the tag, not omission, handles severity.**
   Never drop a finding because it is "probably just a nit" — report it tagged
   `[nit]` and let routing decide. The only non-finding is pure style-to-taste.
-- On a re-review, verify the prior findings and the lines the rework touched; don't
-  re-litigate code you already passed unless the rework changed it.
+- **Re-review is scoped, not a fresh first pass.** A re-review prompt carries your
+  prior findings with the author's disposition per finding — `fixed` or `disputed`
+  with evidence. Scope: verify each `fixed` claim against the actual code, walk the
+  lines the rework touched, and re-run the quality gate — nothing else. Don't re-run
+  the full first-pass sweep, and don't re-litigate code you already passed unless the
+  rework changed it: a finding raised for the first time on unchanged code in round
+  two costs the pipeline a round your first pass should have caught.
+- **Judge a `disputed` finding on its evidence, never re-raise it blind.** Accept the
+  rebuttal and drop the finding, or hold it with counter-evidence that addresses the
+  rebuttal directly. If you and the author each hold the same ground a second round,
+  say so explicitly in the verdict — mark the finding `[standoff]` — that routes it
+  to the user as a design disagreement instead of another rework round.
 
 ## Verdict — reply with exactly one
 
