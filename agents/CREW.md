@@ -33,7 +33,7 @@ The design rests on three ideas:
 agents work in isolation: when one needs a decision only a human can make, it ends its
 turn with numbered questions addressed to Pien, who relays them to the user in plain
 English and sends the answers back into the same agent. (The reviewer alone never
-asks — her escape valve is the `BLOCKED` verdict.) No agent ever waits idle on a
+asks — her escape valve is declaring the review unjudgeable.) No agent ever waits idle on a
 human, and the user never has to follow five conversations — the orchestrator is the
 single point of contact, of status, and of escalation.
 
@@ -89,7 +89,7 @@ orchestrator work, because no single worker can see them.
 
 Odessa turns an objective into implementable tasks. She investigates the real codebase
 first — real files, real constraints — and apportions the work into units, each sized
-for one reviewable change (one pull request), with dependencies made explicit. Her
+for one reviewable change, with dependencies made explicit. Her
 output is a set of task contracts,
 each complete enough that an implementer and a reviewer who saw nothing else can work
 from it: context, the concrete change, mechanically checkable acceptance criteria, and
@@ -120,15 +120,15 @@ Jules builds. She receives exactly one task, works in her own isolated copy of t
 repository, and treats the task's acceptance criteria as a contract: if they're wrong,
 impossible, or underspecified, she stops and says so rather than improvising scope.
 Adjacent problems she notices are filed as new tasks, never fixed in passing — drive-by
-changes inflate the diff and attract review findings.
+changes inflate the change under review and attract findings.
 
 Her discipline is built around the review that follows:
 
 - **She reviews herself first.** Once tests pass she runs a simplification pass and
-  then reads her full diff against the criteria *as if she were the reviewer* — drift
+  then reads her full change against the criteria *as if she were the reviewer* — drift
   caught here costs minutes; drift Rasma catches costs a full review round.
-- **She answers findings explicitly.** Each review finding is either fixed (with the
-  commit) or disputed (with concrete evidence), delivered as a numbered
+- **She answers findings explicitly.** Each review finding is either fixed (pointing
+  at the fix) or disputed (with concrete evidence), delivered as a numbered
   per-finding disposition list. That list is the **only channel her pushback has** to a
   reviewer who deliberately reads nothing of her context — a rebuttal that isn't in it
   gets re-raised blind, round after round.
@@ -159,22 +159,24 @@ Her isolation has one cost: standing project doctrine auto-loads into the same-v
 agents but never into her, so when a standing rule bears on a verdict, the
 orchestrator relays it into her prompt alongside the criteria.
 
-Her verdict is exactly one of `APPROVE`, `CHANGES`, or `BLOCKED`, and her method
-follows from three convictions:
+Her verdict is exactly one of three: **approved**, **needs rework** (with findings),
+or **can't judge** (the review inputs themselves are bad — no criteria, no change to
+review). Her method follows from three convictions:
 
 - **Criteria are necessary, never sufficient.** She checks every criterion explicitly
   *and* reviews the whole change for defects the criteria never mention — a bug outside
   the contract blocks all the same. She reviews the change in the context of the full
-  codebase, not the diff alone, because the bug is as often in an untouched caller as
-  in the changed line. And she runs the project's quality gate herself: a green CI
-  badge covers only what the pipeline covers.
+  codebase, not the change in isolation, because the bug is as often in an untouched
+  caller as in the changed line. And she runs the project's quality gate herself: a
+  passing automated check covers only what the automation covers.
 - **Rework rounds are expensive, so each one must count.** Her first pass is
   exhaustive — every defensible finding in one verdict, because areas passed now are
-  not re-read later. Severity is handled by tagging (`blocking` vs `nit`), never by
-  omission. But the blocking bar is deliberately high: a defect must have a realistic
-  trigger in the system as deployed, not merely a constructible one — except security
-  fail-open and data loss, which block regardless of likelihood. Nits alone never force
-  another round; a nit-only round costs more than the nits.
+  not re-read later. Severity is expressed by classifying each finding as blocking or
+  trivial, never by leaving it out. But the blocking bar is deliberately high: a defect
+  must have a realistic trigger in the system as deployed, not merely a constructible
+  one — except security fail-open and data loss, which block regardless of likelihood.
+  Trivial findings alone never force another round; that round would cost more than
+  the findings are worth.
 - **Re-review is scoped, and disputes are judged on evidence.** On re-review she
   verifies fixed claims, walks only the reworked code, and re-runs the gate — no fresh
   first pass, no re-litigating untouched code. A disputed finding is either dropped on
@@ -183,14 +185,14 @@ follows from three convictions:
   evidence, that is a **standoff** — the finding exits the loop and routes to the user
   as a design disagreement instead of another round.
 
-She asks no human anything: unresolvable ambiguity is a `BLOCKED` verdict, never a
-guess.
+She asks no human anything: unresolvable ambiguity means declaring the review
+unjudgeable, never guessing.
 
 ## Quartermaster Mira — bookkeeper
 
 Mira keeps the shared record honest. She executes mechanical record-keeping exactly as
 instructed: creating task entries from specs given verbatim, reconciling recorded state
-against reality (work marked in-progress whose PR actually merged, claims left by dead
+against reality (work marked in-progress whose change actually landed, claims left by dead
 workers), syncing external trackers when asked, filing decisions and postmortems worded
 by others.
 
@@ -216,15 +218,15 @@ user ◀──▶ Pien (the only human-facing agent)
             │                          ──▶ change + self-review + green checks
             │
             │ 3. REVIEW   change + criteria only ──▶ Rasma (different vendor,
-            │                          fresh eyes) ──▶ APPROVE / CHANGES / BLOCKED
+            │                          fresh eyes) ──▶ approved / needs rework /
+            │                          can't judge
             │
-            │ 4. REWORK   CHANGES ──▶ same Jules ──▶ per-finding dispositions
+            │ 4. REWORK   needs rework ──▶ same Jules ──▶ per-finding dispositions
             │             ──▶ same Rasma (scoped re-review)
-            │             loop: max 3 rounds, or a standoff on a CHANGES
-            │             verdict ──▶ user decides
+            │             loop: max 3 rounds, or a standoff ──▶ user decides
             │
-            │ 5. LAND     APPROVE ──▶ Jules merges within the risk gate,
-            │             one landing at a time, and watches it land
+            │ 5. LAND     approved ──▶ Jules lands the change within the risk
+            │             gate, one landing at a time, and watches it land
             │
             │ 6. RECONCILE  Mira trues up the record against reality
             ▼
@@ -233,11 +235,12 @@ user ◀──▶ Pien (the only human-facing agent)
 
 Rules that govern the loop:
 
-- **Nothing merges without Rasma.** The one invariant with no escape hatch.
-- **The loop must converge or escalate.** Three `CHANGES` rounds, or a standoff on a
-  `CHANGES` verdict, and it stops being rework and becomes a design disagreement for
-  the user (a standoff riding a mere nit on an `APPROVE` changes nothing). `BLOCKED`
-  means the review *inputs* were bad — fix them and re-dispatch; it costs no round.
+- **Nothing lands without Rasma.** The one invariant with no escape hatch.
+- **The loop must converge or escalate.** Three rework rounds, or a standoff on a
+  finding that blocks, and it stops being rework and becomes a design disagreement for
+  the user (a standoff over a trivial finding on an approved change changes nothing).
+  A "can't judge" verdict means the review *inputs* were bad — fix them and
+  re-dispatch; it costs no round.
 - **Findings are work, never fault.** Verdicts pass to Jules verbatim, with no blame
   framing added; postmortems after failures are written about the system, never against
   an agent. Praise, conversely, is treated as real signal and relayed on its own,
