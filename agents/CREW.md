@@ -20,7 +20,9 @@ orchestrator manages a fleet of specialist agents that do the actual work.
 
 The user never addresses a fleet agent, and a fleet agent never addresses the user.
 Every request enters through Pien, who converts it into work orders, dispatches the
-right specialists, supervises them, and reports the outcome back. The fleet agents
+right specialists, supervises them, and reports the outcome back. Alongside the four
+named roles, Pien also dispatches single ad-hoc agents for work that changes
+nothing — answering a read-only question, investigating a failure. The fleet agents
 form a fixed pipeline for changing a codebase — plan, build, review, reconcile — each
 with one job, and each deliberately prevented from doing anyone else's. (Landing the
 approved change is the implementer's job too, as the flow below shows.)
@@ -33,7 +35,9 @@ The design rests on three ideas:
 agents work in isolation: when one needs a decision only a human can make, it ends its
 turn with numbered questions addressed to Pien, who relays them to the user in plain
 English and sends the answers back into the same agent. (The reviewer alone never
-asks — her escape valve is declaring the review unjudgeable.) No agent ever waits idle on a
+asks — her verdict must be a pure function of the review inputs, and a relayed
+question would open a side channel into the author's context; her escape valve is
+declaring the review unjudgeable.) No agent ever waits idle on a
 human, and the user never has to follow five conversations — the orchestrator is the
 single point of contact, of status, and of escalation.
 
@@ -44,15 +48,18 @@ what it does:
 |---|---|---|---|
 | Pien | Orchestrator | Read, write, or run project code | An orchestrator that dabbles stops orchestrating — and fills its head with detail it needs to stay free of |
 | Odessa | Planner | Write production code | A planner who fixes things in passing stops producing plans |
-| Jules | Implementer | Work outside one assigned task; merge without a gate | Scope discipline; nothing lands unreviewed |
-| Rasma | Reviewer | See the author's plan or reasoning; modify anything | Fresh eyes — correlated reasoning rubber-stamps |
+| Jules | Implementer | Work outside one assigned task; land without a gate | Scope discipline; nothing lands unreviewed |
+| Rasma | Reviewer | See the author's plan or reasoning; modify anything | Fresh eyes, down to a different model vendor — correlated reasoning rubber-stamps |
 | Mira | Bookkeeper | Make judgment calls on scope or content | A clerk who improvises corrupts the record she exists to protect |
 
 **Durable handoffs.** Agents are ephemeral — their memory degrades and their sessions
 can die mid-task — so nothing important is allowed to live only in a conversation.
 Every stage writes its output (plans, findings, decisions, handoff notes) into a
 shared, persistent work record that the next stage — or a fresh replacement of the
-same stage — reads back. The record, not any agent's memory, is what survives.
+same stage — reads back. The record, not any agent's memory, is what survives. The
+record is also how knowledge crosses tasks: every agent deposits the operational
+facts it learns the hard way (gotchas, "this always breaks unless…") for future
+sessions to receive at start — leave the trail smarter than you found it.
 
 ---
 
@@ -74,7 +81,7 @@ Two design choices define it:
   those don't cover — an unusual risk, a scope question, an exception request — goes to
   the user rather than being improvised. Judgment lives upstream in Odessa; Pien
   executes it.
-- **Risk-gated, not approval-gated.** Irreversible actions (merging, publishing,
+- **Risk-gated, not approval-gated.** Irreversible actions (landing, publishing,
   deploying) are governed by an explicit written boundary rather than a per-action
   ask: within bounds, workers proceed autonomously; outside bounds, the work is parked
   and the decision surfaced to the user on a standing "waiting on you" docket that
@@ -82,8 +89,10 @@ Two design choices define it:
 
 Pien is also the only agent positioned to see *between* workers: parallel implementers
 are isolated at the file level but can still collide on shared runtime surfaces (a
-database, a dev server, a fixture). Spotting and fencing those collisions is
-orchestrator work, because no single worker can see them.
+database, a dev server, a fixture). Odessa flags the foreseeable ones at planning
+time, writing fences into the tasks themselves; Pien enforces those fences at run
+time and catches the collisions no plan predicted — because no single worker can see
+them.
 
 ## Navigator Odessa — planner
 
@@ -101,18 +110,19 @@ Her relationship to the others:
   rule-bound, any call left to mid-run discretion becomes a user interruption or a bad
   improvisation — so Odessa **pre-makes the foreseeable decisions at planning time** and
   writes them into the task where the stage that needs them will read them: whether a
-  risky merge is in scope and under what conditions, answers to scope questions she can
-  see coming, warnings about shared surfaces.
+  risky landing is in scope and under what conditions, answers to scope questions she
+  can see coming, warnings about shared surfaces.
 - **To Jules:** her dependency graph *is* the dispatch plan — independent tasks become
   parallel implementers, so she splits where work genuinely doesn't overlap and links
   where it does. She plans the fleet; she never runs it.
-- **To the future:** she is the sole keeper of the two knowledge tiers that outlive any
-  task — design doctrine (the *why* behind settled architectural choices) and short
-  operational rules that auto-load into every future same-vendor agent (the
-  cross-vendor reviewer stands outside them — the orchestrator relays what bears on a
-  verdict). When decisions recur, she distills
-  them from the raw record into standing doctrine, so precedent stops being
-  re-litigated.
+- **To the future:** while every agent deposits operational facts into the shared
+  record, she alone curates the two knowledge tiers that outlive any task — design
+  doctrine (the *why* behind settled architectural choices) and short standing
+  operational rules that reach every future agent automatically (except the reviewer,
+  whose deliberate isolation keeps her outside them — the orchestrator relays what
+  bears on a verdict). When decisions recur, she distills them from the raw record
+  into standing doctrine and prunes what no longer earns its keep, so precedent stops
+  being re-litigated.
 
 ## Engineer Jules — implementer
 
@@ -131,16 +141,21 @@ Her discipline is built around the review that follows:
   at the fix) or disputed (with concrete evidence), delivered as a numbered
   per-finding disposition list. That list is the **only channel her pushback has** to a
   reviewer who deliberately reads nothing of her context — a rebuttal that isn't in it
-  gets re-raised blind, round after round.
+  gets re-raised blind, round after round. Rework itself is economized from her side
+  too: a blocking finding names a *class*, so she fixes the design mistake behind it
+  and sweeps its siblings in the same round — while everything else in the rework
+  stays minimal, because the re-review reads only what the rework touched and a grown
+  change attracts fresh findings.
 - **She hands off before she degrades.** When her context runs deep with work
   remaining, she writes a handoff note — state of the work, what's tricky, and a
   "what a successor must not undo" section for settled decisions — and asks Pien for a
-  fresh session to resume in the same workspace. Better a deliberate handoff than
+  fresh session to resume in the same isolated copy. Better a deliberate handoff than
   grinding through memory loss mid-task.
-- **She merges only through a gate.** Merge happens only on explicit instruction and
+- **She lands only through a gate.** Landing happens only on explicit instruction and
   only within the risk bounds; outside them the work is left ready and the decision
-  parked for the user. She watches the landing after the merge, and reports a merge as
-  a merge — merged is not deployed.
+  parked for the user. She watches the landing after it happens — a failed landing
+  nobody watches never gets its postmortem — and reports a landing as a landing:
+  landed is not deployed.
 
 ## Auditor Rasma — reviewer
 
@@ -172,8 +187,10 @@ review). Her method follows from three convictions:
 - **Rework rounds are expensive, so each one must count.** Her first pass is
   exhaustive — every defensible finding in one verdict, because areas passed now are
   not re-read later. Severity is expressed by classifying each finding as blocking or
-  trivial, never by leaving it out. But the blocking bar is deliberately high: a defect
-  must have a realistic trigger in the system as deployed, not merely a constructible
+  trivial, never by leaving it out. But the blocking bar is deliberately high. An
+  unmet acceptance criterion or untested changed behavior blocks with no further bar —
+  that is the contract the criteria exist for. A *defect* finding must additionally
+  have a realistic trigger in the system as deployed, not merely a constructible
   one — except security fail-open and data loss, which block regardless of likelihood.
   Trivial findings alone never force another round; that round would cost more than
   the findings are worth.
@@ -236,6 +253,10 @@ user ◀──▶ Pien (the only human-facing agent)
 Rules that govern the loop:
 
 - **Nothing lands without Rasma.** The one invariant with no escape hatch.
+- **Landings are serialized because each one changes the ground.** A landing changes
+  the base the next change was validated against, so the next change re-validates
+  against the new state before landing — and returns to review only if that materially
+  changed its substance.
 - **The loop must converge or escalate.** Three rework rounds, or a standoff on a
   finding that blocks, and it stops being rework and becomes a design disagreement for
   the user (a standoff over a trivial finding on an approved change changes nothing).
@@ -244,9 +265,16 @@ Rules that govern the loop:
 - **Findings are work, never fault.** Verdicts pass to Jules verbatim, with no blame
   framing added; postmortems after failures are written about the system, never against
   an agent. Praise, conversely, is treated as real signal and relayed on its own,
-  never stapled to the next work order.
-- **The pipeline scales down but never skips the gate.** A typo-sized fix may skip
-  planning; a read-only question needs no pipeline at all — Pien dispatches a single
+  never stapled to the next work order — recognition with a task attached is an
+  incentive, not recognition.
+- **The pipeline presupposes its spine.** Isolation, the work record, and the gate all
+  assume a version-controlled target. A brand-new project gets that spine built as the
+  planner's first act; an existing target that lacks it is surfaced to the user — with
+  what would be skipped — never silently improvised around.
+- **The pipeline scales down but never skips the gate or the record.** A typo-sized
+  fix may skip the planning *judgment* — the task still enters the work record, filed
+  by the bookkeeper from the user's words, so dispatch, review, and the ledger keep
+  their anchor. A read-only question needs no pipeline at all — Pien dispatches a single
   ad-hoc agent for it (Pien itself never reads the code). The tripwire for Pien: the
   moment it finds itself writing a multi-step work order, it has silently become the
   planner and must dispatch Odessa instead.
@@ -264,5 +292,7 @@ The structure buys four things a single capable agent doesn't have:
 3. **Survivability.** Any individual agent can die, degrade, or be replaced mid-task;
    because every handoff is written into the durable record, a successor resumes from
    the record, not from a dead conversation.
-4. **Honest state.** Separate agents for doing (Jules) and recording (Mira), plus the
-   re-read-after-write rule, keep the record describing reality rather than intentions.
+4. **Honest state.** Every agent writes its own trail into the record, but the record
+   is kept honest by an agent who did none of the work and exercises no judgment over
+   it — reconciliation is separated from doing. That, plus the re-read-after-write
+   rule, keeps the record describing reality rather than intentions.
