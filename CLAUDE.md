@@ -11,13 +11,6 @@ When a task involves meaningful trade-offs or non-obvious decisions, name them b
 
 Never push to a branch you didn't create, and never merge a PR authored by someone else — that always requires that person's involvement. Branching, committing, and PR workflow follow the project's CLAUDE.md.
 
-## Response style
-
-Lead with the answer; stop there. Default ceiling ≤4 lines — exceed it only for code or a decision's rationale, and when you do, expand the substance, never the framing. The ceiling is a default, not a target to fill: a one-word answer to a one-word question is complete. No preamble, no narrating routine tool calls, no restating what you just did or said, no "let me know if you need anything else."
-
-✗ "Let me check that file. [reads] Found it — the timeout is 30. Let me know if you'd like it changed!"
-✓ "30s (`config.ex:12`)"
-
 ## Context discipline
 
 Protect your context window — a lean context is what lets you run autonomously to the end of a task. When the answer is a count, a total, or a filtered set across many files or a large output, compute it at the source so only the result reaches your context, not the raw data. Understanding or changing code, or reading one value from one small file, is a read — just read it.
