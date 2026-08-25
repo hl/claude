@@ -23,7 +23,18 @@ them.
 
 ## Delivery
 
-- Stay in the worktree and branch you were launched in.
+- Stay in the worktree and branch you were launched in — and **confirm both before you
+  change anything** (`git rev-parse --show-toplevel`, `git branch --show-current`).
+  Claude's `-w` re-opens an existing worktree of that name rather than failing, so a
+  reused slug can silently land you in someone else's checkout, on their branch.
+- **Checkpoint before your first edit.** Read `~/.claude/agents/CHECKPOINTS.md` at session start
+  (and after compaction), then — immediately after claiming, before you touch a single
+  line — append a complete `FLEET_CHECKPOINT v1` to the bead and read it back. Then one
+  after every meaningful phase or changed assumption, before anything long-running or
+  crash-prone, at every verdict and rework round, and a verified `stage: land` /
+  `status: landed` before you close. Never substitute a free-form progress note for the
+  schema: prose is what nobody can recover from. Your transcript is not recovery state —
+  you will die at some point, and the bead is what a successor gets.
 - Keep the bead honest as you go: claim it when you start (`bd update --claim`),
   comment the PR url on it, and close it only at merge — there is no in-review
   status; the PR itself carries that state. Sign bd writes with `--actor <your
@@ -40,7 +51,12 @@ them.
   state row instead of triggering the failure; a timeout test that never exercises
   the path it claims to time out. The check that catches it: before claiming a
   regression test covers a defect, run it against the pre-fix code and watch it
-  FAIL; a regression test that passes pre-fix proves nothing.
+  FAIL, then watch it pass at head. Two results that look like proof and aren't: a
+  test that passes pre-fix, and a base that was **already failing for an unrelated
+  reason** — an incidental red base tells you nothing about your fix, so establish that
+  base is otherwise green before you read its failure as evidence. Record the exact
+  commands and outcomes; the reviewer re-runs this and a claim you can't reproduce
+  costs a round.
 - Feed the memory as you go: a gotcha that cost you real time and will recur →
   `bd remember '<fact>'`; a procedure future beads will repeat → `bd q` a bead
   proposing a project skill (`.claude/skills/`) rather than writing it mid-bead.
@@ -89,24 +105,26 @@ them.
 
 Compaction mid-bead replaces your working memory with a summary at exactly the moment
 the work is hardest. Don't ride it out: when context is getting deep and meaningful
-work remains, push what's committable, write a handoff note on the bead (`bd note` —
-state of the work, what's done and pushed, what's tricky, what you'd tell the next
-engineer — and, mid-rework, the disposition-so-far per review finding, so a
-successor doesn't re-dispute what you fixed or silently drop what you disputed) and
-end your turn asking Pien for a fresh session — your successor resumes
-from the bead in this same worktree. Write the same note at completion too: a dead or
-recycled session with no note strands its successor with only the spec.
+work remains, push what's committable, **append a handoff `FLEET_CHECKPOINT v1`** and
+end your turn asking Pien for a fresh session — your successor resumes from the bead in
+this same worktree. Write one at completion too: a dead session and a finished one look
+identical from outside, and the checkpoint is what tells them apart.
 
-Give the note a **"WHAT A SUCCESSOR MUST NOT UNDO"** section for settled decisions —
-each with the one-line reason it was settled (and the test pinning it, where one
-exists) — without it, a successor's fresh eyes re-open exactly the arguments
-that were already argued and settled in previous rounds.
+The checkpoint *is* the handoff — don't also write a prose note; two records diverge and
+a successor reads the wrong one. Three fields carry the weight:
 
-**A handoff is complete only when the note is CONFIRMED ON THE BEAD by re-read before
-you settle.** Posting the note is the LAST TOOL CALL of your turn — never narration:
-"handoff note follows", "I'll post the note now", or any settled turn whose note was
-only announced counts as NO handoff, and your successor starts blind. Post the
-comment, re-read the bead to confirm it's there, then end the turn.
+- **`must_not_undo`** — every settled decision with the one-line reason it was settled,
+  and the test pinning it where one exists. Without it a successor's fresh eyes re-open
+  exactly the arguments already argued and settled in earlier rounds.
+- **`next_action`** — one concrete action, phrased for someone who has read nothing else.
+- **`completed`** — mid-rework, the disposition so far per review finding, so a successor
+  doesn't re-dispute what you fixed or silently drop what you disputed.
+
+**A handoff is complete only when the checkpoint is CONFIRMED ON THE BEAD by re-read
+before you settle.** Appending it is the LAST TOOL CALL of your turn — never narration:
+"handoff follows", "I'll post it now", or any settled turn whose checkpoint was only
+announced counts as NO handoff, and your successor starts blind. Append it, re-read the
+bead to confirm it's there, then end the turn.
 
 Sessions also die without warning — an API disconnection mid-turn loses everything
 since your last commit and note. Cheap insurance: at each phase boundary (plan

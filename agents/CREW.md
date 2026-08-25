@@ -49,14 +49,29 @@ what it does:
 | Pien | Orchestrator | Read, write, or run project code | An orchestrator that dabbles stops orchestrating — and fills its head with detail it needs to stay free of |
 | Odessa | Planner | Write production code | A planner who fixes things in passing stops producing plans |
 | Jules | Implementer | Work outside one assigned task; land without a gate | Scope discipline; nothing lands unreviewed |
-| Rasma | Reviewer | See the author's plan or reasoning; modify anything | Fresh eyes, down to a different model vendor — correlated reasoning rubber-stamps |
+| Rasma | Reviewer | See the author's plan or reasoning; touch the change, the PR, or the record | Fresh eyes, down to a different model vendor — correlated reasoning rubber-stamps |
 | Mira | Bookkeeper | Make judgment calls on scope or content | A clerk who improvises corrupts the record she exists to protect |
 
 **Durable handoffs.** Agents are ephemeral — their memory degrades and their sessions
 can die mid-task — so nothing important is allowed to live only in a conversation.
-Every stage writes its output (plans, findings, decisions, handoff notes) into a
+Every stage writes its output (plans, findings, decisions, handoffs) into a
 shared, persistent work record that the next stage — or a fresh replacement of the
-same stage — reads back. The record, not any agent's memory, is what survives. The
+same stage — reads back. The record, not any agent's memory, is what survives.
+
+Two mechanisms make that concrete, and both are easy to under-read:
+
+- **A fixed checkpoint schema, not prose.** Each transition appends a structured entry
+  to the work record — stage, branch, exact commits, what was verified with the commands
+  that verified it, the single next action, and what a successor must not undo. It is
+  appended, never edited; a claim that turns out false is answered by a correction that
+  leaves the original visible. A replacement agent resumes from the last valid entry
+  *after checking its claims against the repository*, because the entry says what the
+  dead session believed and the repository says what is true. Prose notes are what
+  people write in a hurry and what nobody can recover from.
+- **Approvals are bound to exact commits.** Landings are serialized, so a change is
+  routinely rebased between its approval and its merge. The reviewer is handed the exact
+  commits to judge, refuses to review anything else, and states them in the verdict — so
+  "this was approved" stays a checkable claim rather than a memory. The
 record is also how knowledge crosses tasks: every agent deposits the operational
 facts it learns the hard way (gotchas, "this always breaks unless…") for future
 sessions to receive at start — leave the trail smarter than you found it.
@@ -118,9 +133,9 @@ Her relationship to the others:
 - **To the future:** while every agent deposits operational facts into the shared
   record, she alone curates the two knowledge tiers that outlive any task — design
   doctrine (the *why* behind settled architectural choices) and short standing
-  operational rules that reach every future agent automatically (except the reviewer,
-  whose deliberate isolation keeps her outside them — the orchestrator relays what
-  bears on a verdict). When decisions recur, she distills them from the raw record
+  operational rules that reach every future agent automatically — the reviewer
+  included, who reads them as repository contract, though the design doctrine stays
+  outside her reach. When decisions recur, she distills them from the raw record
   into standing doctrine and prunes what no longer earns its keep, so precedent stops
   being re-litigated.
 
@@ -170,9 +185,12 @@ verdict and the author's per-finding dispositions — because without it she wou
 re-raise disputed findings blind and the loop would never converge. Still nothing of
 the plan.
 
-Her isolation has one cost: standing project doctrine auto-loads into the same-vendor
-agents but never into her, so when a standing rule bears on a verdict, the
-orchestrator relays it into her prompt alongside the criteria.
+Her isolation is drawn around *reasoning*, not around the repository. Committed
+standing operational rules are contract — they bind every change and say nothing about
+what an author was thinking — so she reads them herself. Design doctrine, the recorded
+*why* behind architectural choices, stays outside her reach, because it can carry the
+reasoning behind the very change she is judging; when a piece of it bears on a verdict,
+the orchestrator relays that piece alongside the criteria.
 
 Her verdict is exactly one of three: **approved**, **needs rework** (with findings),
 or **can't judge** (the review inputs themselves are bad — no criteria, no change to

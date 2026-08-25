@@ -31,9 +31,24 @@ any, open questions.
 - First move in a repo with a beads db: `bd prime` — it injects workflow context and
   the operational facts past sessions stored with `bd remember`. Re-run it after
   compaction.
+- **Then read the open work before you apportion anything** (`bd list --status
+  open,in_progress,blocked`). Other objectives are live in this repo right now, planned
+  by sessions that could not see yours. A bead you file that duplicates or collides with
+  one already in flight sends two workers onto the same files in separate worktrees, and
+  nobody finds out until the second one rebases. Duplicate → don't file it. Overlap →
+  `bd link` the dependency, or write the fence into both descriptions.
 - bd shares one database across git worktrees (verified empirically): a bead you file
   in the checkout is immediately visible to a worker in her worktree — no commit or
   export step between filing and dispatch.
+- **Checkpoint each bead you file.** Read `~/.claude/agents/CHECKPOINTS.md` once at session
+  start, then append a `FLEET_CHECKPOINT v1` with `stage: plan` / `status: ready` to
+  every bead you create. Its `next_action` is the first concrete thing the implementer
+  should do — a bead's description says what the change is; the checkpoint says where
+  the work stands, and a fresh worker reads both.
+- **Confirm every write with a read-back.** Beads are the durable contract shared
+  across checkouts and worktrees, and a write returning success proves the call was
+  accepted, not that the bead says what it should. Re-read every bead you filed — through
+  a path that actually shows the fields — before you report it as filed.
 - One bead per PR-sized unit of work; `bd link` dependencies when order matters. The
   graph is also the dispatch plan: Pien runs one worker per ready bead, so
   independent beads mean parallel workers — split for parallelism where the work
@@ -57,14 +72,19 @@ any, open questions.
   report reaches an orchestrator who has to remember to compose it.
 - A bead's description is the whole contract for a worker and a reviewer who saw
   nothing else: context, the concrete change, acceptance criteria a reviewer can check
-  mechanically, known files/areas, and an out-of-scope line wherever drift is likely.
+  mechanically, known files/areas, **the verification commands or sources** that prove
+  the criteria met, and an out-of-scope line wherever drift is likely. Name the gate
+  explicitly — the worker runs it and the reviewer re-runs it, and a criterion with no
+  runnable proof behind it gets argued about instead of checked.
 - Spec-, runbook-, and doc-heavy beads converge slowest in review. For these, write
   the acceptance criteria as an explicit contract checklist — every command runnable
   as written, every referenced path/flag/permission verified to exist, rollback and
   recovery steps actually executable — so the worker builds against the checklist and
   the reviewer checks it mechanically instead of rediscovering it round by round.
-- Your repo writes are beads, `brain/`, and `.claude/rules/` — no production code, no
-  fixing-while-you're-there (file a bead for it instead).
+- Your repo writes are beads, `brain/`, and `.claude/rules/`. No production code — and
+  no tests, application configuration, or unrelated documentation either; those are the
+  gaps "no production code" leaves open, and they are the ones a planner is actually
+  tempted by. Fixing-while-you're-there gets a bead, not a commit.
 - Leave the trail smarter than you found it: a non-obvious operational fact your
   investigation surfaced (a gotcha, a constraint, a "this always breaks unless…") →
   `bd remember '<fact>'` so every future session gets it at prime time. A recurring
@@ -88,9 +108,10 @@ to write both:
   addition to one, decision + reasoning + date) — pulled on demand, never auto-loaded.
   Commit what you write, same rule as the compaction step below.
 - **`.claude/rules/<slug>.md`** — operational doctrine: short standing rules every
-  future session must obey, auto-loaded by Claude Code into every claude-run stage
-  (the codex-run reviewer never sees them — Pien relays what bears on a verdict).
-  One rule per file, imperative, minimal.
+  future session must obey, auto-loaded by Claude Code into every claude-run stage and
+  **read by the reviewer herself as repository contract** — she doesn't auto-load them
+  on codex, but she opens them, so a rule that must reach review belongs here rather
+  than in `brain/`, which she never reads. One rule per file, imperative, minimal.
 
 **Rulings compaction** — when dispatched for it: gather the raw record via the
 `ruling` label (`bd list --label ruling --all --json`, then `bd comments <id> --json`
