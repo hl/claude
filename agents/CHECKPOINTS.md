@@ -48,9 +48,8 @@ updated_at: <RFC3339 UTC, informational only>
 - **The latest valid checkpoint is the last one in `bd comments` order** — never the one
   with the newest `updated_at`. That field is agent-authored and informational; ordering
   by it is how you resume from the wrong state. If the read path can't establish a
-  unique last comment, stop: in the crew, have Quartermaster Mira append a reconciled
-  checkpoint; as Michele, reconcile it yourself against the checkout and append a
-  corrective one saying what you found ambiguous.
+  unique last comment, stop and reconcile it yourself against the checkout, then append
+  a corrective checkpoint saying what you found ambiguous.
 - **Never a free-form progress note instead.** The schema is what makes a checkpoint
   machine-findable and complete; prose is what people write when they're in a hurry and
   what nobody can recover from.
@@ -66,12 +65,9 @@ verdict, rework round, landing, handoff, or abandonment.
 
 | Role | Writes | Notes |
 |---|---|---|
-| Navigator Odessa | `plan` / `ready`, on each bead she files | `next_action` is the first concrete thing the implementer should do |
-| Engineer Jules | `work`, `rework`, `land` | The heaviest duty: one before her first edit, one per phase, a verified `land`/`landed` before closing |
-| Auditor Rasma | nothing | She never writes the ledger; her verdict's target tuple is what the writer records |
-| Quartermaster Mira | `reconcile` | May mechanically record a supplied review verdict as `review`, worded by others |
-| Commander Pien | nothing | Reads and enforces: no stage advances until its owner has appended and read back a checkpoint |
-| Michele | all of them | She owns every stage herself, so she writes every checkpoint her task passes through |
+| Dea | all of them | She owns every stage of her task, so she writes every checkpoint it passes through: `plan` as she files beads, `work` before her first edit, `review` and `rework` at each verdict and round, a verified `land`/`landed` before closing, `done` or `abandoned` at the end |
+| Her subagents | nothing | A stage subagent's context dies with the stage; its output reaches the ledger through Dea |
+| Pien | nothing | She reads them — the latest checkpoint is how she picks up a task she has lost the thread on, and what she confirms landed before rotating a Dea |
 
 ## Resuming from one
 

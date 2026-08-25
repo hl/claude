@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Second-opinion plan critique",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["findings"],
+  "properties": {
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "detail", "evidence"],
+        "properties": {
+          "kind": {
+            "enum": [
+              "unsupported_assumption",
+              "collision",
+              "missing_criterion",
+              "unfalsifiable_criterion",
+              "mis_sized_bead",
+              "missing_work"
+            ]
+          },
+          "bead": { "type": "string", "description": "Bead id or title the finding lands on; omit for plan-wide findings." },
+          "detail": { "type": "string" },
+          "evidence": { "type": "string", "description": "The file, path, symbol, or open bead that shows it — never a hunch." }
+        }
+      }
+    },
+    "notes": { "type": "string", "description": "Optional; anything that fits no finding kind." }
+  }
+}

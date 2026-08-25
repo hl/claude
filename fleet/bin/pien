@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+
+# Pien — the claude-side fleet console. Launches the top-level session that
+# dispatches one Dea per task into herdr panes.
+#
+# Deliberately separate from ~/.codex/fleet/bin/pien, which launches the codex
+# implementation of the same role. The two stacks read different role files and
+# spawn different workers; don't cross them.
+#
+# NOTE: ~/.zshrc sources this file after ~/.codex/fleet/pien.zsh, so the `pien`
+# command in an interactive shell resolves HERE and shadows the codex one. Reach
+# the codex console by its path (~/.codex/fleet/bin/pien) or reorder the sources.
+
+if [ "${HERDR_ENV:-}" != "1" ]; then
+  printf '%s\n' "Pien must be launched inside a Herdr-managed pane (HERDR_ENV=1)." >&2
+  exit 1
+fi
+
+for command_name in herdr claude; do
+  command -v "$command_name" >/dev/null 2>&1 || {
+    printf '%s\n' "Pien requires $command_name on PATH." >&2
+    exit 1
+  }
+done
+
+projects_root=${PIEN_PROJECTS_ROOT:-"$HOME/Projects"}
+[ -d "$projects_root" ] || {
+  printf '%s\n' "Projects root does not exist: $projects_root (set PIEN_PROJECTS_ROOT)" >&2
+  exit 1
+}
+cd "$projects_root"
+
+# Pien runs on fable, and fable is billed to the API console account — so the console
+# launches under that identity. Its agents/ and skills/ symlink back into ~/.claude, so
+# the role files resolve the same either way. Dea is the opposite case: she runs on opus
+# and belongs on the claude.ai enterprise account, so her role file has Pien pin
+# CLAUDE_CONFIG_DIR at pane creation rather than letting her inherit this one.
+export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude-api}"
+
+# Model and reasoning effort come from the agent's frontmatter — never pass --model.
+exec claude \
+  --agent pien \
+  --dangerously-skip-permissions \
+  "$@"
