@@ -13,6 +13,8 @@
 !hooks/**
 !agents/
 !agents/**
+!fleet/
+!fleet/**
 # beads-status TUI: source only — the binary is rebuilt locally
 # (cd tools/beads-status && go build -o ~/.claude/bin/beads-status .)
 !tools/
