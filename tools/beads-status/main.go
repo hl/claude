@@ -37,6 +37,7 @@ type bead struct {
 
 	repoName string
 	repoPath string
+	hay      string // lowercased search haystack, built once by sweep
 }
 
 func (b bead) needsHuman() bool {
@@ -48,6 +49,22 @@ func (b bead) needsHuman() bool {
 	return false
 }
 
+// flagSymbol is the marker shown when a bead needs a human's attention.
+func (b bead) flagSymbol() string {
+	if b.needsHuman() {
+		return "⚑"
+	}
+	return " "
+}
+
+// buildHay lowercases the fields matches searches into one haystack, done
+// once per bead in sweep() rather than on every keystroke of a search.
+func (b bead) buildHay() string {
+	return strings.ToLower(strings.Join(append([]string{
+		b.ID, b.Title, b.Description, b.Notes, b.Status, b.Assignee, b.repoName,
+	}, b.Labels...), "\x00"))
+}
+
 // matches reports whether every whitespace-separated term of a (lowercased)
 // query appears somewhere in the bead — id, title, description, notes, labels.
 // AND semantics so extra words narrow rather than widen the result.
@@ -55,11 +72,8 @@ func (b bead) matches(terms []string) bool {
 	if len(terms) == 0 {
 		return true
 	}
-	hay := strings.ToLower(strings.Join(append([]string{
-		b.ID, b.Title, b.Description, b.Notes, b.Status, b.Assignee, b.repoName,
-	}, b.Labels...), "\x00"))
 	for _, t := range terms {
-		if !strings.Contains(hay, t) {
+		if !strings.Contains(b.hay, t) {
 			return false
 		}
 	}
@@ -133,15 +147,39 @@ func bdErrMessage(out, stderr []byte, err error) string {
 	return err.Error()
 }
 
-func statusRank(s string) int {
-	switch s {
-	case "blocked":
-		return 0
-	case "in_progress":
-		return 1
-	default:
-		return 2
+// statusMeta is the single source of truth for the status taxonomy: sort
+// rank, list symbol/style, and the label used in per-repo header counts.
+// A new status is one row here, not a switch edited in three places.
+var statusMeta = map[string]struct {
+	rank  int
+	sym   string
+	style lipgloss.Style
+	label string
+}{
+	"blocked":     {0, "✗", stBlocked, "blocked"},
+	"in_progress": {1, "●", stProg, "in progress"},
+	"deferred":    {3, "⏸", stDim, "deferred"},
+}
+
+// statusOpen is the fallback for any status not named in statusMeta (chiefly
+// "open").
+var statusOpen = struct {
+	rank  int
+	sym   string
+	style lipgloss.Style
+	label string
+}{2, "○", stOpen, "open"}
+
+func lookupStatus(s string) (rank int, sym string, style lipgloss.Style, label string) {
+	if m, ok := statusMeta[s]; ok {
+		return m.rank, m.sym, m.style, m.label
 	}
+	return statusOpen.rank, statusOpen.sym, statusOpen.style, statusOpen.label
+}
+
+func statusRank(s string) int {
+	rank, _, _, _ := lookupStatus(s)
+	return rank
 }
 
 // sweep reads the beads of the one repo in scope. It returns a slice so the
@@ -155,7 +193,7 @@ func sweep() ([]repoData, error) {
 		return []repoData{{name: name, path: repo, err: "no .beads directory here"}}, nil
 	}
 	out, err := exec.Command("bd", "-C", repo, "list",
-		"--status", "open,in_progress,blocked", "--json", "-n", "0").Output()
+		"--status", "open,in_progress,blocked,deferred", "--json", "-n", "0").Output()
 	if err != nil {
 		// A broken db shouldn't kill the screen, but it must not silently
 		// erase the repo either — a missing repo reads as "no work left".
@@ -175,6 +213,7 @@ func sweep() ([]repoData, error) {
 	for i := range beads {
 		beads[i].repoName = name
 		beads[i].repoPath = repo
+		beads[i].hay = beads[i].buildHay()
 	}
 	sort.SliceStable(beads, func(i, j int) bool {
 		if a, b := statusRank(beads[i].Status), statusRank(beads[j].Status); a != b {
@@ -221,6 +260,10 @@ type model struct {
 	interval   time.Duration
 	query      string // active filter; empty = show everything
 	searching  bool   // typing in the search prompt
+
+	splitH    float64 // side-by-side: fraction of width given to the list pane
+	splitV    float64 // stacked: fraction of body height given to the detail pane
+	dragging  bool    // mouse button down on the divider
 }
 
 // beadCount is how many beads the current rows show (i.e. matches under the
@@ -294,27 +337,21 @@ func buildRows(repos []repoData, query string) []row {
 			continue
 		}
 		var hits []*bead
-		var np, nb, no int
+		counts := map[string]int{}
 		for j := range r.beads {
 			b := &r.beads[j]
 			if !b.matches(terms) {
 				continue
 			}
 			hits = append(hits, b)
-			switch b.Status {
-			case "in_progress":
-				np++
-			case "blocked":
-				nb++
-			default:
-				no++
-			}
+			_, _, _, label := lookupStatus(b.Status)
+			counts[label]++
 		}
 		if len(hits) == 0 {
 			continue
 		}
-		rows = append(rows, row{kind: rowHeader,
-			text: fmt.Sprintf("%s  %d in progress · %d blocked · %d open", r.name, np, nb, no)})
+		rows = append(rows, row{kind: rowHeader, text: fmt.Sprintf("%s  %d in progress · %d blocked · %d open · %d deferred",
+			r.name, counts["in progress"], counts["blocked"], counts["open"], counts["deferred"])})
 		for _, b := range hits {
 			rows = append(rows, row{kind: rowBead, bead: b})
 		}
@@ -366,12 +403,7 @@ func (m *model) clampScroll() {
 			m.listOffset = m.cursor - visible + 1
 		}
 	}
-	if max := len(m.rows) - visible; m.listOffset > max {
-		m.listOffset = max
-	}
-	if m.listOffset < 0 {
-		m.listOffset = 0
-	}
+	m.listOffset = clampInt(m.listOffset, 0, len(m.rows)-visible)
 }
 
 // geometry — responsive layout. Wide panes get list | detail side by side;
@@ -385,23 +417,44 @@ type geom struct {
 	detailX, detailY int
 }
 
-const stackBelow = 110 // columns
+const (
+	stackBelow  = 110 // columns
+	minPaneSide = 12  // narrowest either pane gets, side-by-side (columns)
+	minPaneStk  = 3   // shortest either pane gets, stacked (lines)
+)
+
+// clampInt keeps v within [lo, hi], collapsing to lo if the range is degenerate.
+func clampInt(v, lo, hi int) int {
+	if hi < lo {
+		return lo
+	}
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// clampSplit clamps a pane size v to leave at least min for it and min for
+// whatever shares total after gutter is subtracted. Used for both the
+// side-by-side (gutter=3) and stacked (gutter=0, since it's absorbed into
+// the caller's body) layouts, and shared with the drag handler in Update so
+// the divider's draggable range can never drift from geometry()'s layout.
+func clampSplit(v, total, gutter, min int) int {
+	return clampInt(v, min, total-gutter-min)
+}
 
 func (m model) geometry() geom {
 	if m.width >= stackBelow {
-		lw := m.width * 45 / 100
+		lw := clampSplit(int(float64(m.width)*m.splitH), m.width, 3, minPaneSide)
 		lh := m.height - 2 // header + footer
 		return geom{listW: lw, listH: lh, listY: 1,
 			detailW: m.width - lw - 3, detailH: lh, detailX: lw + 3, detailY: 1}
 	}
 	body := m.height - 3 // header + separator + footer
-	dh := body * 2 / 5
-	if dh < 6 {
-		dh = 6
-	}
-	if dh > body-3 {
-		dh = body - 3
-	}
+	dh := clampSplit(int(float64(body)*m.splitV), body, 0, minPaneStk)
 	lh := body - dh
 	return geom{stacked: true, listW: m.width, listH: lh, listY: 1,
 		detailW: m.width, detailH: dh, detailX: 0, detailY: 1 + lh + 1}
@@ -494,10 +547,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.move(-1)
 			m.clampScroll()
 		case "K", "pgup":
-			m.descOffset -= m.listHeight() / 2
-			if m.descOffset < 0 {
-				m.descOffset = 0
-			}
+			m.descOffset = max(0, m.descOffset-m.listHeight()/2)
 		case "J", "pgdown":
 			m.descOffset += m.listHeight() / 2
 		}
@@ -510,11 +560,36 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return g.stacked || x < g.listW
 		}
+		onDivider := func(x, y int) bool {
+			if g.stacked {
+				return y == g.listY+g.listH
+			}
+			return y >= g.listY && y < g.listY+g.listH && x >= g.listW && x < g.listW+3
+		}
+		if m.dragging {
+			switch msg.Action {
+			case tea.MouseActionMotion, tea.MouseActionPress:
+				if g.stacked {
+					body := m.height - 3
+					dh := clampSplit(g.listY+g.listH-msg.Y, body, 0, minPaneStk)
+					m.splitV = float64(dh) / float64(body)
+				} else {
+					lw := clampSplit(msg.X, m.width, 3, minPaneSide)
+					m.splitH = float64(lw) / float64(m.width)
+				}
+				m.clampScroll()
+			case tea.MouseActionRelease:
+				m.dragging = false
+			}
+			return m, nil
+		}
 		switch msg.Action {
 		case tea.MouseActionPress:
 			switch msg.Button {
 			case tea.MouseButtonLeft:
-				if inList(msg.X, msg.Y) {
+				if onDivider(msg.X, msg.Y) {
+					m.dragging = true
+				} else if inList(msg.X, msg.Y) {
 					i := m.listOffset + msg.Y - g.listY
 					if i >= 0 && i < len(m.rows) && m.rows[i].kind == rowBead {
 						m.cursor = i
@@ -526,10 +601,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.listOffset -= 3
 					m.clampScroll()
 				} else {
-					m.descOffset -= 3
-					if m.descOffset < 0 {
-						m.descOffset = 0
-					}
+					m.descOffset = max(0, m.descOffset-3)
 				}
 			case tea.MouseButtonWheelDown:
 				if inList(msg.X, msg.Y) {
@@ -575,17 +647,8 @@ func truncate(s string, w int) string {
 }
 
 func (m model) beadLine(b *bead, width int, selected bool) string {
-	sym, style := "○", stOpen
-	switch b.Status {
-	case "in_progress":
-		sym, style = "●", stProg
-	case "blocked":
-		sym, style = "✗", stBlocked
-	}
-	flag := " "
-	if b.needsHuman() {
-		flag = "⚑"
-	}
+	_, sym, style, _ := lookupStatus(b.Status)
+	flag := b.flagSymbol()
 	id := truncate(b.ID, 18)
 	pre := fmt.Sprintf(" %s %-18s P%d %4s ", sym, id, b.Priority, b.age())
 	title := truncate(b.Title, width-lipgloss.Width(pre)-2)
@@ -665,17 +728,8 @@ func (m model) renderDetail(width, height int) []string {
 	}
 
 	all := strings.Split(strings.Join(parts, "\n"), "\n")
-	off := m.descOffset
-	if off > len(all)-1 {
-		off = len(all) - 1
-	}
-	if off < 0 {
-		off = 0
-	}
-	endI := off + height
-	if endI > len(all) {
-		endI = len(all)
-	}
+	off := clampInt(m.descOffset, 0, len(all)-1)
+	endI := min(off+height, len(all))
 	out := all[off:endI]
 	if off > 0 {
 		out[0] = stDim.Render("↑ " + strconv.Itoa(off) + " more")
@@ -780,12 +834,8 @@ func main() {
 				fmt.Fprintln(os.Stderr, r.text)
 			case rowBead:
 				b := r.bead
-				flag := " "
-				if b.needsHuman() {
-					flag = "⚑"
-				}
 				fmt.Printf("  %-11s %-18s P%d %4s %s %s\n",
-					b.Status, b.ID, b.Priority, b.age(), flag, b.Title)
+					b.Status, b.ID, b.Priority, b.age(), b.flagSymbol(), b.Title)
 			default:
 				fmt.Println()
 			}
@@ -799,7 +849,7 @@ func main() {
 			interval = time.Duration(n) * time.Second
 		}
 	}
-	m := model{cursor: -1, interval: interval}
+	m := model{cursor: -1, interval: interval, splitH: 0.45, splitV: 0.4}
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
