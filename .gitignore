@@ -13,8 +13,9 @@
 !hooks/**
 !agents/
 !agents/**
-# beads-status TUI: source only — the binary is rebuilt locally
-# (cd tools/beads-status && go build -o ~/.claude/bin/beads-status .)
+# beads-status TUI: source only — the binary is rebuilt locally.
+# bin/beads-status is a symlink to tools/beads-status/beads-status, so one
+# build updates both: cd tools/beads-status && go build -o beads-status .
 !tools/
 !tools/beads-status/
 !tools/beads-status/README.md

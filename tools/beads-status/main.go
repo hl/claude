@@ -72,8 +72,15 @@ func (b bead) matches(terms []string) bool {
 	if len(terms) == 0 {
 		return true
 	}
+	hay := b.hay
+	if hay == "" {
+		// sweep() normally precomputes this; fall back for a bead built any
+		// other way (tests, callers that skip sweep) so matches() is never
+		// silently wrong just because the cache wasn't warmed.
+		hay = b.buildHay()
+	}
 	for _, t := range terms {
-		if !strings.Contains(b.hay, t) {
+		if !strings.Contains(hay, t) {
 			return false
 		}
 	}
@@ -244,6 +251,7 @@ type row struct {
 type dataMsg struct {
 	repos []repoData
 	err   error
+	seq   int // matches the sweepSeq in flight when this sweep was dispatched
 }
 type tickMsg struct{}
 
@@ -261,9 +269,9 @@ type model struct {
 	query      string // active filter; empty = show everything
 	searching  bool   // typing in the search prompt
 
-	splitH    float64 // side-by-side: fraction of width given to the list pane
-	splitV    float64 // stacked: fraction of body height given to the detail pane
-	dragging  bool    // mouse button down on the divider
+	sweepSeq int // bumped each time a sweep is dispatched; a bd list can run
+	// long enough to overlap the next tick, and a slow sweep landing after a
+	// fresher one would otherwise snap the list back to stale data
 }
 
 // beadCount is how many beads the current rows show (i.e. matches under the
@@ -293,12 +301,14 @@ func (m *model) applyQuery() {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(doSweep, m.tick())
+	return tea.Batch(doSweep(m.sweepSeq), m.tick())
 }
 
-func doSweep() tea.Msg {
-	repos, err := sweep()
-	return dataMsg{repos: repos, err: err}
+func doSweep(seq int) tea.Cmd {
+	return func() tea.Msg {
+		repos, err := sweep()
+		return dataMsg{repos: repos, err: err, seq: seq}
+	}
 }
 
 func (m model) tick() tea.Cmd {
@@ -417,11 +427,7 @@ type geom struct {
 	detailX, detailY int
 }
 
-const (
-	stackBelow  = 110 // columns
-	minPaneSide = 12  // narrowest either pane gets, side-by-side (columns)
-	minPaneStk  = 3   // shortest either pane gets, stacked (lines)
-)
+const stackBelow = 110 // columns
 
 // clampInt keeps v within [lo, hi], collapsing to lo if the range is degenerate.
 func clampInt(v, lo, hi int) int {
@@ -437,24 +443,15 @@ func clampInt(v, lo, hi int) int {
 	return v
 }
 
-// clampSplit clamps a pane size v to leave at least min for it and min for
-// whatever shares total after gutter is subtracted. Used for both the
-// side-by-side (gutter=3) and stacked (gutter=0, since it's absorbed into
-// the caller's body) layouts, and shared with the drag handler in Update so
-// the divider's draggable range can never drift from geometry()'s layout.
-func clampSplit(v, total, gutter, min int) int {
-	return clampInt(v, min, total-gutter-min)
-}
-
 func (m model) geometry() geom {
 	if m.width >= stackBelow {
-		lw := clampSplit(int(float64(m.width)*m.splitH), m.width, 3, minPaneSide)
+		lw := m.width * 45 / 100
 		lh := m.height - 2 // header + footer
 		return geom{listW: lw, listH: lh, listY: 1,
 			detailW: m.width - lw - 3, detailH: lh, detailX: lw + 3, detailY: 1}
 	}
 	body := m.height - 3 // header + separator + footer
-	dh := clampSplit(int(float64(body)*m.splitV), body, 0, minPaneStk)
+	dh := clampInt(body*2/5, 6, body-3)
 	lh := body - dh
 	return geom{stacked: true, listW: m.width, listH: lh, listY: 1,
 		detailW: m.width, detailH: dh, detailX: 0, detailY: 1 + lh + 1}
@@ -474,9 +471,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.clampScroll()
 
 	case tickMsg:
-		return m, tea.Batch(doSweep, m.tick())
+		m.sweepSeq++
+		return m, tea.Batch(doSweep(m.sweepSeq), m.tick())
 
 	case dataMsg:
+		if msg.seq != m.sweepSeq {
+			return m, nil // superseded by a newer sweep already in flight
+		}
 		m.err = msg.err
 		m.sweptAt = time.Now()
 		var prev string
@@ -531,7 +532,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "r":
-			return m, doSweep
+			m.sweepSeq++
+			return m, doSweep(m.sweepSeq)
 		case "up", "k":
 			m.move(-1)
 			m.clampScroll()
@@ -560,36 +562,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return g.stacked || x < g.listW
 		}
-		onDivider := func(x, y int) bool {
-			if g.stacked {
-				return y == g.listY+g.listH
-			}
-			return y >= g.listY && y < g.listY+g.listH && x >= g.listW && x < g.listW+3
-		}
-		if m.dragging {
-			switch msg.Action {
-			case tea.MouseActionMotion, tea.MouseActionPress:
-				if g.stacked {
-					body := m.height - 3
-					dh := clampSplit(g.listY+g.listH-msg.Y, body, 0, minPaneStk)
-					m.splitV = float64(dh) / float64(body)
-				} else {
-					lw := clampSplit(msg.X, m.width, 3, minPaneSide)
-					m.splitH = float64(lw) / float64(m.width)
-				}
-				m.clampScroll()
-			case tea.MouseActionRelease:
-				m.dragging = false
-			}
-			return m, nil
-		}
 		switch msg.Action {
 		case tea.MouseActionPress:
 			switch msg.Button {
 			case tea.MouseButtonLeft:
-				if onDivider(msg.X, msg.Y) {
-					m.dragging = true
-				} else if inList(msg.X, msg.Y) {
+				if inList(msg.X, msg.Y) {
 					i := m.listOffset + msg.Y - g.listY
 					if i >= 0 && i < len(m.rows) && m.rows[i].kind == rowBead {
 						m.cursor = i
@@ -849,7 +826,7 @@ func main() {
 			interval = time.Duration(n) * time.Second
 		}
 	}
-	m := model{cursor: -1, interval: interval, splitH: 0.45, splitV: 0.4}
+	m := model{cursor: -1, interval: interval}
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
