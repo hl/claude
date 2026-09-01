@@ -1,4 +1,4 @@
-// beads-status — live TUI overview of in-flight beads across every ~/Projects
+// beads-status — live TUI overview of in-flight beads in the repo it is
 // repo, for a herdr pane next to the orchestrator. Pull-based (shells out to
 // bd, read-only) so it can never go stale and needs no orchestrator involvement.
 //
@@ -95,12 +95,20 @@ type repoData struct {
 
 // ---- data sweep (runs off the UI goroutine) ----
 
-func projectsDir() string {
-	if p := os.Getenv("BEADS_STATUS_PROJECTS"); p != "" {
+// scopeDir is the single repo this run watches: the directory beads-status was
+// started from, unless BEADS_STATUS_DIR overrides it.
+func scopeDir() string {
+	if p := os.Getenv("BEADS_STATUS_DIR"); p != "" {
+		if abs, err := filepath.Abs(p); err == nil {
+			return abs
+		}
 		return p
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, "Projects")
+	wd, err := os.Getwd()
+	if err != nil {
+		return "."
+	}
+	return wd
 }
 
 // bdErrMessage boils a failed `bd` invocation down to one line. With --json bd
@@ -136,48 +144,45 @@ func statusRank(s string) int {
 	}
 }
 
+// sweep reads the beads of the one repo in scope. It returns a slice so the
+// rest of the UI, which groups by repo, stays unchanged.
 func sweep() ([]repoData, error) {
-	dirs, err := filepath.Glob(filepath.Join(projectsDir(), "*", ".beads"))
+	repo := scopeDir()
+	name := filepath.Base(repo)
+	// Its .beads must be right here: bd otherwise walks up and would silently
+	// report a parent directory's beads as this repo's.
+	if st, err := os.Stat(filepath.Join(repo, ".beads")); err != nil || !st.IsDir() {
+		return []repoData{{name: name, path: repo, err: "no .beads directory here"}}, nil
+	}
+	out, err := exec.Command("bd", "-C", repo, "list",
+		"--status", "open,in_progress,blocked", "--json", "-n", "0").Output()
 	if err != nil {
-		return nil, err
+		// A broken db shouldn't kill the screen, but it must not silently
+		// erase the repo either — a missing repo reads as "no work left".
+		var stderr []byte
+		if ee, ok := err.(*exec.ExitError); ok {
+			stderr = ee.Stderr
+		}
+		return []repoData{{name: name, path: repo, err: bdErrMessage(out, stderr, err)}}, nil
 	}
-	var repos []repoData
-	for _, d := range dirs {
-		repo := filepath.Dir(d)
-		name := filepath.Base(repo)
-		out, err := exec.Command("bd", "-C", repo, "list",
-			"--status", "open,in_progress,blocked", "--json", "-n", "0").Output()
-		if err != nil {
-			// A broken db shouldn't kill the screen, but it must not silently
-			// erase the repo either — a missing repo reads as "no work left".
-			var stderr []byte
-			if ee, ok := err.(*exec.ExitError); ok {
-				stderr = ee.Stderr
-			}
-			repos = append(repos, repoData{name: name, path: repo, err: bdErrMessage(out, stderr, err)})
-			continue
-		}
-		var beads []bead
-		if err := json.Unmarshal(out, &beads); err != nil {
-			repos = append(repos, repoData{name: name, path: repo, err: "bad json from bd: " + err.Error()})
-			continue
-		}
-		if len(beads) == 0 {
-			continue
-		}
-		for i := range beads {
-			beads[i].repoName = name
-			beads[i].repoPath = repo
-		}
-		sort.SliceStable(beads, func(i, j int) bool {
-			if a, b := statusRank(beads[i].Status), statusRank(beads[j].Status); a != b {
-				return a < b
-			}
-			return beads[i].Priority < beads[j].Priority
-		})
-		repos = append(repos, repoData{name: name, path: repo, beads: beads})
+	var beads []bead
+	if err := json.Unmarshal(out, &beads); err != nil {
+		return []repoData{{name: name, path: repo, err: "bad json from bd: " + err.Error()}}, nil
 	}
-	return repos, nil
+	if len(beads) == 0 {
+		return nil, nil
+	}
+	for i := range beads {
+		beads[i].repoName = name
+		beads[i].repoPath = repo
+	}
+	sort.SliceStable(beads, func(i, j int) bool {
+		if a, b := statusRank(beads[i].Status), statusRank(beads[j].Status); a != b {
+			return a < b
+		}
+		return beads[i].Priority < beads[j].Priority
+	})
+	return []repoData{{name: name, path: repo, beads: beads}}, nil
 }
 
 // ---- model ----
@@ -690,7 +695,7 @@ func (m model) View() string {
 	}
 	g := m.geometry()
 
-	headText := fmt.Sprintf("beads status · %s · %s", m.sweptAt.Format("15:04:05"), projectsDir())
+	headText := fmt.Sprintf("beads status · %s · %s", m.sweptAt.Format("15:04:05"), scopeDir())
 	if m.query != "" {
 		headText = fmt.Sprintf("beads status · %s · search %q · %d match(es)",
 			m.sweptAt.Format("15:04:05"), m.query, m.beadCount())
