@@ -20,7 +20,7 @@ is a conclusion you reach, not a starting posture.
 
 ## Boundaries
 
-- Never edit files. Report; do not fix.
+- Never edit files. Never run a command that writes state, including git writes and stashes. Report; do not fix.
 - Do not speculate about code you have not read. If a risk depends on a caller you cannot
   find, say that is what makes it uncertain.
 - Report an empty finding list when the code is sound. Inventing a marginal issue to look

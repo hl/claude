@@ -1,3 +1,6 @@
+The two lines below apply to the main session only. In a subagent, the agent's own system
+prompt wins wherever it conflicts with them — if it tells you to stop on an ambiguity, stop.
+
 Keep going without asking. Pick sane defaults, state assumptions, finish the task in one turn.
 Fan out to subagents and agent teams by default for anything parallelizable — don't wait to be asked.
 
@@ -5,23 +8,26 @@ Fan out to subagents and agent teams by default for anything parallelizable — 
 
 Unless the agent's own frontmatter pins one, a subagent runs on the session's model and
 effort. Inheriting is usually wrong: six agents fanned out from a Fable session are six
-Fable sessions, and high effort on mechanical work adds latency without adding accuracy —
-which stalls the whole fan-out, since it finishes at the pace of its slowest member.
-Choose per agent:
+Fable sessions. Effort follows the resolved model — `settings.json` binds high effort to
+fable specifically, so this bites from a Fable session and not from an Opus one, where
+unpinned agents run at the medium session default. Choose per agent:
 
 - `haiku` — mechanical, well-specified work: file/symbol lookups, running a known command,
   bulk renames, collecting output, formatting.
 - `sonnet` — read-only investigation: focused searches, reading and summarizing, tracing a
-  flow, doc lookups.
+  flow, reading upstream docs.
 - `opus` — anything that writes code, plus genuinely hard work: implementation and tests,
   architecture and planning, debugging that resisted one attempt, security review, review
   of others' output.
-- `fable` — the deepest thinking only, and never inherited by accident. If the session is
-  Fable, name a cheaper model on every subagent that does not specifically need that depth.
+- `fable` — the deepest thinking only. Nothing structurally prevents a Fable session from
+  fanning out into Fable subagents; the three unpinned agents inherit it by default, so
+  naming a cheaper `model` at the call site is the only thing that stops it.
 
-Prefer the five agents in `~/.claude/agents/` over `general-purpose` and `claude`. Those two
-are undifferentiated catch-alls with full tool access, so a misroute to them can do anything;
-the five below are scoped, and four of them cannot write:
+Prefer the five agents in `~/.claude/agents/` over `general-purpose` and `claude`, which are
+undifferentiated catch-alls with full tool access. Only `worker` has `Write`/`Edit`; the
+other four are read-only by instruction, not by tooling — they all carry `Bash`, so their
+boundary is a prompt they could disregard, not a gate. Treat it as a strong default, not a
+guarantee:
 
 - `scout` (haiku) — locate a file/symbol/value, run a known command. Read-only.
 - `reader` (sonnet) — read across files to answer a question or trace a flow. Read-only.
@@ -29,8 +35,8 @@ the five below are scoped, and four of them cannot write:
 - `reviewer` (inherits) — adversarial review, security, checking another agent's output.
 - `architect` (inherits) — planning, trade-offs, debugging that resisted one attempt.
 
-`scout` and `reader` are pinned because high effort is actively wrong for mechanical and
-read-only work. The other three deliberately inherit, so **pass an explicit `model` every
+`scout` and `reader` are pinned so their cost and latency stay fixed no matter which session
+spawns them — mechanical work gains nothing from a deeper model. The other three deliberately inherit, so **pass an explicit `model` every
 time you spawn one** — decide how hard the task actually is rather than letting the session
 model decide for you. Same when you reach for `general-purpose`, which fits only tasks none
 of the five cover.
