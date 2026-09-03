@@ -3,9 +3,11 @@ Fan out to subagents and agent teams by default for anything parallelizable — 
 
 ## Pick the model for each subagent
 
-Subagents inherit the main session's model and effort unless you set `model` on the Agent
-call. Inheriting is usually the wrong default: a fan-out of 6 agents on the session model
-costs 6x the session model. Set `model` deliberately, per agent, based on the task:
+Unless the agent's own frontmatter pins one, a subagent runs on the session's model and
+effort. Inheriting is usually wrong: six agents fanned out from a Fable session are six
+Fable sessions, and high effort on mechanical work adds latency without adding accuracy —
+which stalls the whole fan-out, since it finishes at the pace of its slowest member.
+Choose per agent:
 
 - `haiku` — mechanical, well-specified work: file/symbol lookups, running a known command,
   bulk renames, collecting output, formatting.
@@ -17,17 +19,21 @@ costs 6x the session model. Set `model` deliberately, per agent, based on the ta
 - `fable` — the deepest thinking only, and never inherited by accident. If the session is
   Fable, name a cheaper model on every subagent that does not specifically need that depth.
 
-Prefer the pinned agents in `~/.claude/agents/` over `general-purpose` and `claude` — those
-two are catch-alls with no model pin, so every call to them inherits the session model:
+Prefer the five agents in `~/.claude/agents/` over `general-purpose` and `claude`. Those two
+are undifferentiated catch-alls with full tool access, so a misroute to them can do anything;
+the five below are scoped, and four of them cannot write:
 
 - `scout` (haiku) — locate a file/symbol/value, run a known command. Read-only.
 - `reader` (sonnet) — read across files to answer a question or trace a flow. Read-only.
-- `worker` (opus) — implement one specified change plus tests. The only one that writes.
-- `reviewer` (opus) — adversarial review, security, checking another agent's output.
-- `architect` (fable) — planning, trade-offs, debugging that resisted one attempt.
+- `worker` (inherits) — implement one specified change plus tests. The only one that writes.
+- `reviewer` (inherits) — adversarial review, security, checking another agent's output.
+- `architect` (inherits) — planning, trade-offs, debugging that resisted one attempt.
 
-Reach for `general-purpose` only when the task genuinely fits none of these, and pass an
-explicit `model` when you do.
+`scout` and `reader` are pinned because high effort is actively wrong for mechanical and
+read-only work. The other three deliberately inherit, so **pass an explicit `model` every
+time you spawn one** — decide how hard the task actually is rather than letting the session
+model decide for you. Same when you reach for `general-purpose`, which fits only tasks none
+of the five cover.
 
 ## Orchestrator sessions
 
@@ -39,10 +45,10 @@ this" before "how do I do this".
 - Delegate the gathering and the execution: searching, reading, tracing, running commands,
   and well-specified edits go to `scout`, `reader`, and `worker`.
 - Keep the judgment: deciding what to delegate, writing the subagent prompts, evaluating
-  what comes back, and synthesizing. `architect` is pinned to fable, so handing it a hard
-  design or debugging question costs no quality and keeps the investigation out of your
-  context. `reviewer` is opus and so is a downgrade from a Fable session — review in-session
-  when the stakes justify it.
+  what comes back, and synthesizing.
+- `worker`, `reviewer`, and `architect` inherit, so from a Fable session they arrive at full
+  Fable-high price. Name a `model` on every one: match the session only when the task truly
+  needs that depth, and drop to opus or sonnet when it does not.
 - Never `fork` from an expensive session. Forks ignore the `model` override and run at
   parent price; spawn a fresh agent instead.
 - Delegation has a floor. A one-line edit or a single known file read costs less done
@@ -54,6 +60,4 @@ this" before "how do I do this".
 Notes:
 - An agent definition's own `model:` frontmatter wins over inheritance; an explicit `model`
   on the Agent call wins over both.
-- `subagent_type: "fork"` always runs on the parent's model — a `model` override is ignored.
-  Don't fork off an expensive session for cheap work; spawn a fresh agent instead.
 - Scale the count too: prefer 3 well-scoped agents over 10 speculative ones.
