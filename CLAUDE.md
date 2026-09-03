@@ -36,14 +36,14 @@ guarantee:
 - `architect` (inherits) — planning, trade-offs, debugging that resisted one attempt.
 
 `scout` and `reader` are pinned so their cost and latency stay fixed no matter which session
-spawns them — mechanical work gains nothing from a deeper model.
+spawns them — mechanical work gains nothing from a deeper model. The other three
+deliberately inherit, so **pass an explicit `model` every time you spawn one** — decide how
+hard the task actually is rather than letting the session model decide for you. Same when
+you reach for `general-purpose`, which fits only tasks none of the five cover.
 
 When a change is needed but its shape is not settled, do not hand it to `worker`: it will
 stop and report the spec as under-specified, costing a round trip. Route it to `architect`
-first, then pass that plan to `worker` as the spec. The other three deliberately inherit, so **pass an explicit `model` every
-time you spawn one** — decide how hard the task actually is rather than letting the session
-model decide for you. Same when you reach for `general-purpose`, which fits only tasks none
-of the five cover.
+first, then pass that plan to `worker` as the spec.
 
 ## Orchestrator sessions
 
