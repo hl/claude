@@ -13,7 +13,6 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus",
   "hooks": {
     "PostToolUse": [
       {
@@ -60,6 +59,9 @@
   "modelSettings": {
     "claude-fable-5-1": {
       "effortLevel": "high"
+    },
+    "claude-opus-5": {
+      "effortLevel": "high"
     }
   },
   "tui": "fullscreen",
@@ -70,5 +72,6 @@
   "skipAutoPermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
-  }
+  },
+  "model": "sonnet"
 }

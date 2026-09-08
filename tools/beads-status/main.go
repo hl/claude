@@ -2,8 +2,9 @@
 // repo, for a herdr pane next to the orchestrator. Pull-based (shells out to
 // bd, read-only) so it can never go stale and needs no orchestrator involvement.
 //
-// Left pane: docket (needs-human) + per-repo bead rows. Right pane: full
-// description of the selected bead. Arrow keys / j k / mouse click to select,
+// Left pane: docket (needs-human), a label tally for the repo, then its bead
+// rows — each carrying its labels as chips. Right pane: full description of
+// the selected bead. Arrow keys / j k / mouse click to select,
 // J K (or wheel over the right pane) to scroll the description, / to search
 // (id, title, description, notes, labels), r to refresh now, q to quit.
 // Auto-refreshes every 5s (BEADS_STATUS_INTERVAL to change).
@@ -237,15 +238,17 @@ type rowKind int
 
 const (
 	rowHeader rowKind = iota
+	rowLabels
 	rowBead
 	rowBlank
 	rowError
 )
 
 type row struct {
-	kind rowKind
-	text string // pre-rendered for header/blank
-	bead *bead
+	kind  rowKind
+	text  string // pre-rendered for header/blank
+	bead  *bead
+	chips []labelChip // rowLabels: the repo's label tally
 }
 
 type dataMsg struct {
@@ -362,6 +365,11 @@ func buildRows(repos []repoData, query string) []row {
 		}
 		rows = append(rows, row{kind: rowHeader, text: fmt.Sprintf("%s  %d in progress · %d blocked · %d open · %d deferred",
 			r.name, counts["in progress"], counts["blocked"], counts["open"], counts["deferred"])})
+		// The status counts say how much work there is; the label tally says
+		// what it is waiting on, which is the question the overview exists for.
+		if chips := tallyChips(hits); len(chips) > 0 {
+			rows = append(rows, row{kind: rowLabels, chips: chips})
+		}
 		for _, b := range hits {
 			rows = append(rows, row{kind: rowBead, bead: b})
 		}
@@ -605,7 +613,6 @@ var (
 	stFlag    = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	stSel     = lipgloss.NewStyle().Reverse(true)
 	stTitle   = lipgloss.NewStyle().Bold(true)
-	stLabel   = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
 	stSearch  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
 )
 
@@ -623,14 +630,339 @@ func truncate(s string, w int) string {
 	return string(r[:w-1]) + "…"
 }
 
-func (m model) beadLine(b *bead, width int, selected bool) string {
+// ---- labels ----
+
+// A bead's labels are the "who is this waiting on" signal, which is what the
+// overview is scanned for — so they render as chips on every list row and as a
+// tally under each repo header, not only in the detail pane.
+//
+// labelClass ranks and colours the labels that carry workflow meaning;
+// anything else falls through to a neutral chip. Rank doubles as render order,
+// so the chips a narrow row drops are always the least urgent ones.
+var labelClass = map[string]struct {
+	rank  int
+	color string
+}{
+	"needs-human":     {0, "1"}, // red, the one colour the ⚑ flag also owns
+	"ready-for-human": {1, "5"},
+	"needs-info":      {1, "5"},
+	"needs-triage":    {1, "5"},
+	"ready-for-agent": {2, "2"},
+}
+
+func labelClassOf(name string) (rank int, color string) {
+	if c, ok := labelClass[name]; ok {
+		return c.rank, c.color
+	}
+	return 3, "6"
+}
+
+// labelChip is one rendered label, with how many beads carry it when the chip
+// stands for a repo tally rather than a single bead.
+type labelChip struct {
+	name string
+	n    int
+}
+
+func (c labelChip) body(short bool) string {
+	name := c.name
+	if short {
+		name = shortName(name)
+	}
+	if c.n > 1 {
+		return fmt.Sprintf("%s %d", name, c.n)
+	}
+	return name
+}
+
+// width is deliberately the same for the styled form (" x ") and the plain one
+// ("[x]"), so a row's layout does not shift when it becomes the selected row —
+// which renders in reverse video, and so unstyled.
+func (c labelChip) width(short bool) int { return lipgloss.Width(c.body(short)) + 2 }
+
+// chipStyle picks how much visual weight a chip carries. A filled block is
+// right for the one-line places (the repo tally, the detail pane) and far too
+// heavy down a list of forty rows, where colour alone already separates the
+// labels; every form measures the same so the layout never shifts between
+// them.
+type chipStyle int
+
+const (
+	chipPlain  chipStyle = iota // "[label]", no ANSI — selected rows, --once
+	chipText                    // bold colour on the normal background — list rows
+	chipFilled                  // reverse block — tally and detail
+)
+
+func (c labelChip) render(st chipStyle, short bool) string {
+	body := c.body(short)
+	_, color := labelClassOf(c.name)
+	switch st {
+	case chipFilled:
+		return lipgloss.NewStyle().Bold(true).
+			Foreground(lipgloss.Color("0")).Background(lipgloss.Color(color)).
+			Render(" " + body + " ")
+	case chipText:
+		return " " + lipgloss.NewStyle().Bold(true).
+			Foreground(lipgloss.Color(color)).Render(body) + " "
+	default:
+		return "[" + body + "]"
+	}
+}
+
+func sortChips(chips []labelChip) {
+	sort.SliceStable(chips, func(i, j int) bool {
+		ri, _ := labelClassOf(chips[i].name)
+		rj, _ := labelClassOf(chips[j].name)
+		if ri != rj {
+			return ri < rj
+		}
+		if chips[i].n != chips[j].n {
+			return chips[i].n > chips[j].n
+		}
+		return chips[i].name < chips[j].name
+	})
+}
+
+func beadChips(b *bead) []labelChip {
+	chips := make([]labelChip, 0, len(b.Labels))
+	for _, l := range b.Labels {
+		chips = append(chips, labelChip{name: l, n: 1})
+	}
+	sortChips(chips)
+	return chips
+}
+
+// rowChips are the chips a list row shows: everything except the labels the
+// row already reports another way. needs-human is the ⚑ flag, and the docket
+// is nothing but needs-human beads — a chip for it would be a wall of red
+// saying what the flag already said.
+func rowChips(b *bead) []labelChip {
+	chips := beadChips(b)
+	out := make([]labelChip, 0, len(chips))
+	for _, c := range chips {
+		if c.name == "needs-human" {
+			continue
+		}
+		out = append(out, c)
+	}
+	return out
+}
+
+// tallyChips counts every label across beads, for the line under a repo header.
+func tallyChips(beads []*bead) []labelChip {
+	counts := map[string]int{}
+	for _, b := range beads {
+		for _, l := range b.Labels {
+			counts[l]++
+		}
+	}
+	chips := make([]labelChip, 0, len(counts))
+	for name, n := range counts {
+		chips = append(chips, labelChip{name: name, n: n})
+	}
+	sortChips(chips)
+	return chips
+}
+
+// shortName is the fallback form for a row too narrow to spell its chips out.
+// The workflow prefix is the least informative part of these labels, and the
+// chip's colour already encodes it.
+func shortName(name string) string {
+	if name == "needs-human" {
+		// never shortened: "human" would read the same as ready-for-human,
+		// and this is the one label that also drives the red ⚑ flag
+		return name
+	}
+	for _, p := range []string{"needs-", "ready-for-", "waiting-for-", "blocked-on-"} {
+		if rest := strings.TrimPrefix(name, p); rest != name && rest != "" {
+			return rest
+		}
+	}
+	return name
+}
+
+// chipsUnbounded is the budget for contexts under no width pressure (--once).
+const chipsUnbounded = 1 << 30
+
+// chipPlan is the one label column the whole list shares: how wide it is, and
+// whether the chips in it are spelled out or shortened. Deciding once rather
+// than per row is what makes the column scan vertically — rows that each
+// picked their own width and form staircase down the pane.
+type chipPlan struct {
+	width int
+	short bool
+}
+
+func chipsWidth(chips []labelChip, short bool) int {
+	w := 0
+	for i, c := range chips {
+		if i > 0 {
+			w++
+		}
+		w += c.width(short)
+	}
+	return w
+}
+
+func planChips(rows []row, avail int) chipPlan {
+	if avail <= 0 {
+		return chipPlan{}
+	}
+	var full, short []int
+	for _, r := range rows {
+		if r.kind != rowBead {
+			continue
+		}
+		chips := rowChips(r.bead)
+		if len(chips) == 0 {
+			continue // sized over the rows that have labels, or one repo of
+			// mostly-unlabelled beads would leave no column for the rest
+		}
+		full = append(full, chipsWidth(chips, false))
+		short = append(short, chipsWidth(chips, true))
+	}
+	if len(full) == 0 {
+		return chipPlan{}
+	}
+	if w := fitWidth(full); w <= avail {
+		return chipPlan{width: w}
+	}
+	return chipPlan{width: min(fitWidth(short), avail), short: true}
+}
+
+// fitWidth is the column that fits four rows in five. The one bead wearing six
+// labels must not truncate every title in the pane down to nothing — it gets a
+// "+N" instead.
+func fitWidth(widths []int) int {
+	sorted := append([]int(nil), widths...)
+	sort.Ints(sorted)
+	return sorted[min(len(sorted)*4/5, len(sorted)-1)]
+}
+
+// renderChips lays chips out within budget columns. A row that can't spell
+// them all out shortens every chip (rather than some, which would break the
+// vertical scan down the list) and only then trades the least urgent ones for
+// a "+N" marker. It returns the rendered string and its display width, which
+// callers need because the string may carry ANSI escapes.
+func renderChips(chips []labelChip, budget int, st chipStyle) (string, int) {
+	if s, w, whole := layoutChips(chips, budget, st, false); whole {
+		return s, w
+	}
+	s, w, _ := layoutChips(chips, budget, st, true)
+	return s, w
+}
+
+// layoutChips packs chips into budget columns in one pass, reporting whether
+// every chip made it in.
+func layoutChips(chips []labelChip, budget int, st chipStyle, short bool) (string, int, bool) {
+	var out strings.Builder
+	w := 0
+	for i, c := range chips {
+		sep := 0
+		if w > 0 {
+			sep = 1
+		}
+		if w+sep+c.width(short) > budget {
+			more := fmt.Sprintf("+%d", len(chips)-i)
+			if w+sep+lipgloss.Width(more) <= budget {
+				w += sep + lipgloss.Width(more)
+				if st != chipPlain {
+					more = stDim.Render(more)
+				}
+				if sep > 0 {
+					out.WriteString(" ")
+				}
+				out.WriteString(more)
+			}
+			return out.String(), w, false
+		}
+		if sep > 0 {
+			out.WriteString(" ")
+			w++
+		}
+		out.WriteString(c.render(st, short))
+		w += c.width(short)
+	}
+	return out.String(), w, true
+}
+
+// chipLines wraps chips over as many lines as they need. The detail pane must
+// show every label of a bead, unlike a list row where they compete with the
+// title.
+func chipLines(chips []labelChip, width int) []string {
+	var lines []string
+	var cur strings.Builder
+	w := 0
+	for _, c := range chips {
+		sep := 0
+		if w > 0 {
+			sep = 1
+		}
+		if w > 0 && w+sep+c.width(false) > width {
+			lines = append(lines, cur.String())
+			cur.Reset()
+			w, sep = 0, 0
+		}
+		if sep > 0 {
+			cur.WriteString(" ")
+			w++
+		}
+		cur.WriteString(c.render(chipFilled, false))
+		w += c.width(false)
+	}
+	if w > 0 {
+		lines = append(lines, cur.String())
+	}
+	return lines
+}
+
+// minChipTitle is how much of the title a list row keeps before its labels are
+// allowed any of the width at all.
+const minChipTitle = 20
+
+// idColumn is the width of the id column: the widest id on display, so a repo
+// with short ids doesn't spend a third of a narrow pane on padding. Measured
+// over every row rather than the visible ones, so the column doesn't jitter
+// while scrolling.
+func idColumn(rows []row) int {
+	w := 0
+	for _, r := range rows {
+		if r.kind == rowBead && len(r.bead.ID) > w {
+			w = len(r.bead.ID)
+		}
+	}
+	return clampInt(w, 6, 18)
+}
+
+func (m model) beadLine(b *bead, width, idW int, plan chipPlan, selected bool) string {
 	_, sym, style, _ := lookupStatus(b.Status)
 	flag := b.flagSymbol()
-	id := truncate(b.ID, 18)
-	pre := fmt.Sprintf(" %s %-18s P%d %4s ", sym, id, b.Priority, b.age())
-	title := truncate(b.Title, width-lipgloss.Width(pre)-2)
+	id := truncate(b.ID, idW)
+	pre := fmt.Sprintf(" %s %-*s P%d %4s ", sym, idW, id, b.Priority, b.age())
+	// The label column is the last one and the same width on every row, so the
+	// chips line up and every title truncates at the same place.
+	rest := width - lipgloss.Width(pre) - 2
+	// The plan is sized for this pane, but clamp anyway: a column wider than
+	// the row would push the title out entirely.
+	col := min(plan.width, max(rest-minChipTitle-1, 0))
+	titleW, gap := rest, ""
+	if col > 0 {
+		titleW, gap = rest-col-1, " "
+	}
+	title := truncate(b.Title, titleW)
+	st := chipText
 	if selected {
-		return stSel.Render(truncate(pre+flag+" "+title, width))
+		st = chipPlain // reverse video already owns the row's colours
+	}
+	chips, chipW, _ := layoutChips(rowChips(b), col, st, plan.short)
+	body := pad(title, titleW)
+	if !selected {
+		body = style.Render(pad(title, titleW))
+	}
+	line := body + gap + chips + strings.Repeat(" ", col-chipW)
+	if selected {
+		// nothing in the line carries ANSI here, so truncating it is safe
+		return stSel.Render(truncate(pre+flag+" "+line, width))
 	}
 	// The flag renders red independently of row colour: red row = blocked,
 	// red ⚑ = waiting on you. Never conflate the two.
@@ -640,7 +972,15 @@ func (m model) beadLine(b *bead, width int, selected bool) string {
 	} else {
 		out += " "
 	}
-	return out + " " + style.Render(title)
+	return out + " " + line
+}
+
+// pad right-pads plain text to w columns.
+func pad(s string, w int) string {
+	if n := w - lipgloss.Width(s); n > 0 {
+		return s + strings.Repeat(" ", n)
+	}
+	return s
 }
 
 func (m model) renderList(width, height int) []string {
@@ -648,6 +988,10 @@ func (m model) renderList(width, height int) []string {
 		return []string{stDim.Render(truncate("no beads match "+strconv.Quote(m.query), width))}
 	}
 	lines := make([]string, 0, height)
+	idW := idColumn(m.rows)
+	// Labels get at most a third of the pane, and never the title's first
+	// minChipTitle columns.
+	plan := planChips(m.rows, clampInt(width-idW-12-2-1-minChipTitle, 0, width/3))
 	end := m.listOffset + height
 	if end > len(m.rows) {
 		end = len(m.rows)
@@ -662,10 +1006,13 @@ func (m model) renderList(width, height int) []string {
 				name, rest, _ := strings.Cut(r.text, "  ")
 				lines = append(lines, stHeader.Render(name)+"  "+stDim.Render(truncate(rest, width-len(name)-2)))
 			}
+		case rowLabels:
+			s, _ := renderChips(r.chips, width-2, chipFilled)
+			lines = append(lines, "  "+s)
 		case rowError:
 			lines = append(lines, stBlocked.Render(truncate(r.text, width)))
 		case rowBead:
-			lines = append(lines, m.beadLine(r.bead, width, i == m.cursor))
+			lines = append(lines, m.beadLine(r.bead, width, idW, plan, i == m.cursor))
 		default:
 			lines = append(lines, "")
 		}
@@ -691,8 +1038,8 @@ func (m model) renderDetail(width, height int) []string {
 	}
 	meta += " · updated " + b.age() + " ago"
 	parts = append(parts, stDim.Render(wrap.Render(meta)))
-	if len(b.Labels) > 0 {
-		parts = append(parts, stLabel.Render(wrap.Render("["+strings.Join(b.Labels, "] [")+"]")))
+	if chips := beadChips(b); len(chips) > 0 {
+		parts = append(parts, chipLines(chips, width)...)
 	}
 	parts = append(parts, "")
 	if b.Description != "" {
@@ -803,16 +1150,25 @@ func main() {
 			os.Exit(1)
 		}
 		query := strings.Join(os.Args[2:], " ") // optional search terms
-		for _, r := range buildRows(repos, query) {
+		rows := buildRows(repos, query)
+		idW := idColumn(rows)
+		for _, r := range rows {
 			switch r.kind {
 			case rowHeader:
 				fmt.Println(r.text)
 			case rowError:
 				fmt.Fprintln(os.Stderr, r.text)
+			case rowLabels:
+				s, _ := renderChips(r.chips, chipsUnbounded, chipPlain)
+				fmt.Println("  " + s)
 			case rowBead:
 				b := r.bead
-				fmt.Printf("  %-11s %-18s P%d %4s %s %s\n",
-					b.Status, b.ID, b.Priority, b.age(), b.flagSymbol(), b.Title)
+				line := fmt.Sprintf("  %-11s %-*s P%d %4s %s %s",
+					b.Status, idW, b.ID, b.Priority, b.age(), b.flagSymbol(), b.Title)
+				if chips, _ := renderChips(beadChips(b), chipsUnbounded, chipPlain); chips != "" {
+					line += "  " + chips
+				}
+				fmt.Println(line)
 			default:
 				fmt.Println()
 			}

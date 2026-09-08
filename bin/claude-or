@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# claude-or — run Claude Code against OpenRouter without touching the normal setup.
+#
+#   claude        -> stock Claude Code (Anthropic login, ~/.claude)
+#   claude-or     -> Claude Code on OpenRouter, default model z-ai/glm-5.3-flash
+#
+# Everything OpenRouter-specific lives in a private config dir (~/.claude-openrouter),
+# so whatever you pick in /model there is saved there and never leaks into
+# ~/.claude/settings.json. Agents, skills, hooks, CLAUDE.md, plugins and session
+# history are symlinked from ~/.claude so both modes share them.
+#
+# /model inside claude-or shows OpenRouter's live model list (gateway model
+# discovery). The opus/sonnet/haiku/fable aliases — used by `--model sonnet` and
+# by agents with `model: haiku` etc. — map to OpenRouter models via the env below.
+#
+# API key, first one found wins:
+#   1. $OPENROUTER_API_KEY
+#   2. macOS Keychain:  security add-generic-password -a "$USER" -s openrouter-api-key -w
+#
+# Overrides (env):
+#   CLAUDE_OR_MODEL     session default            (z-ai/glm-5.3-flash)
+#   CLAUDE_OR_HAIKU     "haiku"  alias             (= CLAUDE_OR_MODEL)
+#   CLAUDE_OR_SONNET    "sonnet" alias             (= CLAUDE_OR_MODEL)
+#   CLAUDE_OR_OPUS      "opus"   alias             (z-ai/glm-5.3)
+#   CLAUDE_OR_FABLE     "fable"  alias             (= CLAUDE_OR_OPUS)
+#   CLAUDE_OR_SUBAGENT  CLAUDE_CODE_SUBAGENT_MODEL (unset: subagents inherit/use alias)
+#   CLAUDE_OR_CONTEXT   CLAUDE_CODE_MAX_CONTEXT_TOKENS — Claude Code assumes 200k for
+#                       models it does not know; set e.g. 1000000 for GLM 5.3 Flash's 1.3M,
+#                       or pick a "[1m]"-suffixed id from /model.
+#   CLAUDE_OR_CONFIG    config dir                 (~/.claude-openrouter)
+#
+# All other arguments are passed straight to claude, e.g. `claude-or --model opus -p "hi"`.
+# Reset: rm -rf ~/.claude-openrouter
+
+set -euo pipefail
+
+SRC="${HOME}/.claude"
+CFG="${CLAUDE_OR_CONFIG:-${HOME}/.claude-openrouter}"
+
+OR_MODEL="${CLAUDE_OR_MODEL:-z-ai/glm-5.3-flash}"
+OR_HAIKU="${CLAUDE_OR_HAIKU:-$OR_MODEL}"
+OR_SONNET="${CLAUDE_OR_SONNET:-$OR_MODEL}"
+OR_OPUS="${CLAUDE_OR_OPUS:-z-ai/glm-5.3}"
+OR_FABLE="${CLAUDE_OR_FABLE:-$OR_OPUS}"
+
+# --- API key -----------------------------------------------------------------
+key="${OPENROUTER_API_KEY:-}"
+if [ -z "$key" ] && command -v security >/dev/null 2>&1; then
+  key="$(security find-generic-password -s openrouter-api-key -w 2>/dev/null || true)"
+fi
+if [ -z "$key" ]; then
+  cat >&2 <<EOF
+claude-or: no OpenRouter API key found.
+  export OPENROUTER_API_KEY=sk-or-...            # per shell, or
+  security add-generic-password -a "\$USER" -s openrouter-api-key -w   # once, macOS Keychain
+EOF
+  exit 1
+fi
+
+# --- Private config dir, mirroring ~/.claude ----------------------------------
+mkdir -p "$CFG"
+for item in agents skills commands hooks plugins tools bin ide projects \
+            CLAUDE.md statusline-command.sh keybindings.json; do
+  if [ -e "$SRC/$item" ] && [ ! -e "$CFG/$item" ] && [ ! -L "$CFG/$item" ]; then
+    ln -s "$SRC/$item" "$CFG/$item"
+  fi
+done
+
+# settings.json: copy of the real one, minus Anthropic-specific model settings,
+# with the OpenRouter model. A model picked via /model in a previous claude-or
+# session (saved in $CFG/settings.json) is kept.
+python3 - "$SRC/settings.json" "$CFG/settings.json" "$OR_MODEL" <<'EOF'
+import json, os, sys
+src, dst, default = sys.argv[1:4]
+s = json.load(open(src)) if os.path.exists(src) else {}
+prev = {}
+if os.path.exists(dst):
+    try:
+        prev = json.load(open(dst))
+    except Exception:
+        prev = {}
+s.pop("modelSettings", None)
+s["model"] = prev.get("model", default)
+tmp = dst + ".tmp"
+with open(tmp, "w") as f:
+    json.dump(s, f, indent=2)
+    f.write("\n")
+os.replace(tmp, dst)
+EOF
+
+# .claude.json: seed once from the real one so onboarding, MCP servers and
+# per-project trust carry over. No account info — auth is the OpenRouter token.
+if [ ! -e "$CFG/.claude.json" ]; then
+  python3 - "$HOME/.claude.json" "$CFG/.claude.json" <<'EOF'
+import json, os, sys
+src, dst = sys.argv[1:3]
+d = json.load(open(src)) if os.path.exists(src) else {}
+seed = {k: d[k] for k in ("mcpServers", "projects", "lastOnboardingVersion") if k in d}
+seed["hasCompletedOnboarding"] = True
+with open(dst, "w") as f:
+    json.dump(seed, f, indent=2)
+    f.write("\n")
+os.chmod(dst, 0o600)
+EOF
+fi
+
+# --- Environment -------------------------------------------------------------
+export CLAUDE_CONFIG_DIR="$CFG"
+
+export ANTHROPIC_BASE_URL="https://openrouter.ai/api"
+export ANTHROPIC_AUTH_TOKEN="$key"
+export ANTHROPIC_API_KEY=""                       # must be explicitly empty (OpenRouter docs)
+unset CLAUDE_CODE_USE_BEDROCK CLAUDE_CODE_USE_VERTEX CLAUDE_CODE_USE_FOUNDRY
+
+export CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY=1  # /model lists OpenRouter's /v1/models
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$OR_HAIKU"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$OR_SONNET"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$OR_OPUS"
+export ANTHROPIC_DEFAULT_FABLE_MODEL="$OR_FABLE"
+[ -n "${CLAUDE_OR_SUBAGENT:-}" ] && export CLAUDE_CODE_SUBAGENT_MODEL="$CLAUDE_OR_SUBAGENT"
+[ -n "${CLAUDE_OR_CONTEXT:-}" ] && export CLAUDE_CODE_MAX_CONTEXT_TOKENS="$CLAUDE_OR_CONTEXT"
+
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1  # gateway discovery still runs
+export DISABLE_TELEMETRY=1
+export DISABLE_ERROR_REPORTING=1
+
+exec claude "$@"

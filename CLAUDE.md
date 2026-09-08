@@ -4,43 +4,17 @@ prompt wins wherever it conflicts with them — if it tells you to stop on an am
 Keep going without asking. Pick sane defaults, state assumptions, finish the task in one turn.
 Fan out to subagents and agent teams by default for anything parallelizable — don't wait to be asked.
 
-## Delegating
-
-Prefer the five agents in `~/.claude/agents/` over `general-purpose` and `claude`, which are
-undifferentiated catch-alls:
-
-- `scout` (haiku) — locate a file/symbol/value, run a known command.
-- `reader` (sonnet) — read across files to answer a question or trace a flow.
-- `worker` (inherits) — implement one specified change plus tests. The only one that writes.
-- `reviewer` (inherits) — adversarial review, security, checking another agent's output.
-- `architect` (inherits) — planning, trade-offs, debugging that resisted one attempt.
-
-`scout` and `reader` are pinned low because depth buys nothing on mechanical and read-only
-work. The other three inherit on purpose: writing code, reviewing it, and design decisions
-are worth the session's best model, so inheriting is the right default and you do not need
-to justify it per call.
-
-Override `model` when latency matters, not to save money:
-
-- Fanning out several agents at once — the batch finishes at the pace of its slowest member,
-  and a Fable session at high effort is slow. Drop the ones doing shallower work to opus or
-  sonnet so they don't hold up the rest.
-- A task that is narrower than the agent it fits — a `worker` change that is genuinely
-  mechanical, a `reviewer` pass over ten lines.
-
-When a change is needed but its shape is not settled, do not hand it to `worker`: it will
-stop and report the spec as under-specified, costing a round trip. Route it to `architect`
-first, then pass that plan to `worker` as the spec.
-
-Only `worker` has `Write`/`Edit`, but all five carry `Bash` — the others are read-only by
-instruction, not by tooling. Strong default, not a guarantee.
+Every runner reads this file, including ones pointed at a non-Anthropic provider: it sits in
+an ancestor `.claude/` directory, so it is loaded regardless of `CLAUDE_CONFIG_DIR`. It
+therefore names no models and no config-dir paths. Per-runner specifics live in that runner's
+own config dir.
 
 ## Orchestrator sessions
 
-From an expensive session (any Fable session), default to orchestrating rather than doing.
-This is about routing, not capability — nothing is off limits, but the first question on a
-non-trivial task is "who should do this" before "how do I do this". The point is context:
-a subagent's tool output never enters your window, only its final report does.
+From an expensive session (on Anthropic, any Fable session), default to orchestrating rather
+than doing. This is about routing, not capability — nothing is off limits, but the first
+question on a non-trivial task is "who should do this" before "how do I do this". The point
+is context: a subagent's tool output never enters your window, only its final report does.
 
 - Delegate the gathering and the execution: searching, reading, tracing, running commands,
   and well-specified edits.
@@ -54,6 +28,3 @@ a subagent's tool output never enters your window, only its final report does.
 - Never pull a large file or a wide grep into the session to "have a look" when a subagent
   could read it and report the answer.
 - Prefer 3 well-scoped agents over 10 speculative ones.
-
-Precedence: an explicit `model` at the call site beats the agent's `model:` frontmatter,
-which beats inheriting the session model.
