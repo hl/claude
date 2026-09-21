@@ -13,7 +13,28 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "claude-fable-5-1[1m]",
   "hooks": {
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -21,6 +42,14 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/mix_format_edited.sh"
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
       }
@@ -34,6 +63,24 @@
             "command": "~/.claude/hooks/wrap_bash_silent.sh"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
       }
     ],
     "SessionStart": [
@@ -44,6 +91,54 @@
             "type": "command",
             "command": "bash '/Users/hl/.claude/hooks/herdr-agent-state.sh' session",
             "timeout": 10
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
       }
@@ -61,6 +156,9 @@
       "effortLevel": "high"
     },
     "claude-opus-5": {
+      "effortLevel": "medium"
+    },
+    "claude-sonnet-5": {
       "effortLevel": "high"
     }
   },
@@ -68,10 +166,10 @@
   "autoDreamEnabled": true,
   "skipDangerousModePermissionPrompt": true,
   "theme": "auto",
+  "terminalProgressBarEnabled": false,
   "teammateMode": "auto",
   "skipAutoPermissionPrompt": true,
   "feedbackSurveyState": {
     "lastShownTime": 1754052688085
-  },
-  "model": "sonnet"
+  }
 }
