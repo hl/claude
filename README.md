@@ -5,6 +5,7 @@ Personal Claude Code configuration.
 | Path | What it is |
 |---|---|
 | `settings.json` | Hooks, permissions, statusline, model |
+| `agents/` | Personal subagents (`claudette` orchestrator) |
 | `hooks/` | Formatting on edit, silent-bash wrapper, herdr agent-state reporting |
 | `statusline-command.sh` | Statusline renderer |
 | `tools/beads-status/` | Small TUI for `bd` status (source only; `go build -o ~/.claude/bin/beads-status .`) |

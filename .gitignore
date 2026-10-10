@@ -9,6 +9,8 @@
 !statusline-command.sh
 !commands/
 !commands/**
+!agents/
+!agents/**
 !hooks/
 !hooks/**
 # beads-status TUI: source only — the binary is rebuilt locally.
