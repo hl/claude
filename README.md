@@ -9,6 +9,7 @@ Personal Claude Code configuration.
 | `hooks/` | Formatting on edit, silent-bash wrapper, herdr agent-state reporting |
 | `statusline-command.sh` | Statusline renderer |
 | `tools/beads-status/` | Small TUI for `bd` status (source only; `go build -o ~/.claude/bin/beads-status .`) |
+| `tools/clash/` | zsh plugin: `: <message>` at the prompt talks to Claude Code, forgecode-style (`source` it from `~/.zshrc`; `:help` lists commands) |
 
 ## Conventions
 

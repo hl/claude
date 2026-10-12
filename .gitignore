@@ -22,3 +22,6 @@
 !tools/beads-status/go.mod
 !tools/beads-status/go.sum
 !tools/beads-status/main.go
+# clash: forge-style ":" prompt commands for Claude Code, sourced from ~/.zshrc
+!tools/clash/
+!tools/clash/clash.zsh
