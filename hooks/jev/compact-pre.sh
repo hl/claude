@@ -41,6 +41,9 @@ fi
 
 jev_disabled && exit 0
 payload=$(cat)
+# A subagent compacting its own context carries agent_id and the parent's
+# session_id; it must not overwrite the parent's state file.
+[ -z "$(jq -r '.agent_id // empty' <<<"$payload")" ] || exit 0
 JEV_SESSION=$(jq -r '.session_id // empty' <<<"$payload")
 export JEV_SESSION
 tp=$(jq -r '.transcript_path // empty' <<<"$payload")

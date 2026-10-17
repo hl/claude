@@ -49,6 +49,8 @@ case $event in
     case $summary in *"<summary>"*) ;; *) exit 0 ;; esac
     ;;
   PostCompact)
+    # A subagent's own compaction carries agent_id; the state belongs to the parent.
+    [ -z "$(jq -r '.agent_id // empty' <<<"$payload")" ] || exit 0
     summary=$(jq -r '.compact_summary // empty' <<<"$payload")
     ;;
   *) exit 0 ;;

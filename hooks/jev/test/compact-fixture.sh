@@ -106,6 +106,32 @@ ctx=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$o" 2>/dev/null
 case $ctx in *pg-staging-7*OPS-4821* | *OPS-4821*pg-staging-7*) ok "background: user-stated host and ticket re-injected after a summary that dropped them" ;; *) bad "background: host/ticket not injected (scores: $(jq -c '[.facts[] | {n, score}]' "$JEV_HOME/compact/$S.json"))" ;; esac
 case $ctx in *notes.txt* | *nonexistent-jev-dir*) bad "background: finished one-off steps injected" ;; *) ok "background: finished one-off steps left out" ;; esac
 
+# --- injected facts are listed in transcript order (chosen by score)
+ctx=$(cat "$JEV_HOME/observed-order.context.txt" 2>/dev/null)
+a=${ctx%%priv/repo/migrations*} b=${ctx%%pg-staging-3*} c=${ctx%%backfill the consumer*}
+[ "${#a}" -lt "${#b}" ] && [ "${#b}" -lt "${#c}" ] && ok "injected facts appear in transcript order" || bad "injected facts not in transcript order"
+
+# --- second compaction: facts re-injected by the first are carried forward
+S=fixture-carried
+cp "$FIX/transcript-carried.jsonl" "$JEV_HOME/carried.jsonl"
+jq -cn --arg s $S --arg tp "$JEV_HOME/carried.jsonl" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | "$J/compact-pre.sh"
+jq -e '[.facts[] | select(.kind == "carried")] | length == 2' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 &&
+  ok "round 2: both facts injected by round 1 are candidates (kind carried)" || bad "round 2: carried facts not extracted"
+jq -cn --arg s $S --arg m "$(cat "$FIX/summary-carried.txt")" '{session_id: $s, hook_event_name: "SubagentStop", agent_type: "", last_assistant_message: $m}' | "$J/compact-post.sh"
+ctx=$(sess $S | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)
+case $ctx in *pg-staging-7*) ok "round 2: fact from round 1 survives the second compaction" ;; *) bad "round 2: round-1 fact lost (scores: $(jq -c '[.facts[] | {n, kind, score, covered}]' "$JEV_HOME/compact/$S.json"))" ;; esac
+case $ctx in *"/tmp is full"* | *encode_payload*) bad "round 2: injected facts the summary kept" ;; *) ok "round 2: facts the summary kept are not re-injected" ;; esac
+
+# --- a subagent compacting its own context (agent_id set) must not touch the parent's state
+S=fixture-sub
+jq -cn --arg s $S --arg tp "$TP" '{session_id: $s, agent_id: "asub1", agent_type: "general-purpose", transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | "$J/compact-pre.sh"
+[ ! -e "$JEV_HOME/compact/$S.json" ] && ok "subagent PreCompact (agent_id set): no state written" || bad "subagent PreCompact wrote state"
+pre $S >/dev/null
+o=$(jq -cn --arg s $S '{session_id: $s, agent_id: "asub1", hook_event_name: "SessionStart", source: "compact"}' | "$J/compact-session.sh")
+jq -cn --arg s $S --arg m "$SUMMARY" '{session_id: $s, agent_id: "asub1", hook_event_name: "PostCompact", trigger: "auto", compact_summary: $m}' | "$J/compact-post.sh"
+[ -z "$o" ] && jq -e '.consumed_at == null and .coverage == null' "$JEV_HOME/compact/$S.json" >/dev/null &&
+  ok "subagent SessionStart/PostCompact (agent_id set): parent state untouched" || bad "subagent hooks touched parent state"
+
 # --- optional guard: blocks one auto-compaction per session, then never again
 S=fixture-e
 gpre() { jq -cn --arg s $S --arg tp "$TP" --arg t "$1" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: $t}' |

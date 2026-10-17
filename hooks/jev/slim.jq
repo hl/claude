@@ -5,10 +5,14 @@ def flat: if type == "string" then . elif type == "array" then [.[] | select(.ty
 
 fromjson?
 | select(.type == "user" or .type == "assistant"
-         or (.type == "attachment" and .attachment.type == "queued_command"))
+         or (.type == "attachment" and .attachment.type == "queued_command")
+         or (.type == "attachment" and .attachment.type == "hook_additional_context" and .attachment.hookEvent == "SessionStart"))
 | {
-    type, isMeta, isCompactSummary, gitBranch,
-    a: (if .type == "attachment" then {type: .attachment.type, prompt: (.attachment.prompt | strings)} else null end),
+    type, isMeta, isCompactSummary, gitBranch, ps: has("promptSource"),
+    a: (if .type == "attachment" then
+          {type: .attachment.type, prompt: ((.attachment.prompt | strings) // null),
+           ctx: ((.attachment.content | if type == "array" then map(strings) | join("\n") else strings end) // null)}
+        else null end),
     c: (.message.content
         | if type == "array" then
             map(if .type == "tool_result" then {type, tool_use_id, is_error, text: (.content | flat | .[0:1500])}

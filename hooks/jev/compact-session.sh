@@ -5,6 +5,8 @@
 # With coverage (compact-post.sh ran on the compaction agent's SubagentStop):
 #   facts scored >= JEV_COMPACT_MIN_SCORE (1.5 = "important") that the summary
 #   did not keep. Without coverage: the top-ranked facts at that score.
+#   Facts are chosen by score (highest first, until the size cap) and listed in
+#   transcript order.
 # Marks the state file consumed. No state file, stale state or nothing to say
 # -> exit 0 with no output.
 set -euo pipefail
@@ -23,6 +25,8 @@ jev_disabled && exit 0
 payload=$(cat)
 source=$(jq -r '.source // empty' <<<"$payload")
 [ "$source" = compact ] || exit 0
+# A subagent compacting its own context carries agent_id; the state belongs to the parent.
+[ -z "$(jq -r '.agent_id // empty' <<<"$payload")" ] || exit 0
 JEV_SESSION=$(jq -r '.session_id // empty' <<<"$payload")
 export JEV_SESSION
 [ -n "$JEV_SESSION" ] || exit 0
@@ -49,15 +53,17 @@ ctx=$(jq -r --argjson min "$MIN_SCORE" --argjson max "$MAX_CHARS" --arg path "$s
   | (.coverage != null) as $cov
   | ([.facts[] | select((.score // 0) >= $min) | select(if $cov then (.covered | not) else true end)]
      | sort_by(-.score, -.n)) as $sel
-  | "Facts preserved across compaction by the Jev hook (ranked; the summary did not include these or they were critical):" as $head
+  | "Facts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical):" as $head
   | "The full ranked fact list is in \($path)." as $foot
-  | [$sel[] | "- \(.text)"] as $lines
+  | [$sel[] | {n, l: "- \(.text)"}] as $lines
   | ([] + (if $st.work_type then ["Work type before compaction: \($st.work_type)."] else [] end)
         + (if ($st.mid_operation // 0) >= 0.6
            then ["Before compaction the last turn was probably mid-operation (p=\($st.mid_operation)): an edit, command or review whose result had not been recorded yet."]
            else [] end)) as $session
-  | (reduce $lines[] as $l ({out: [], len: (($head | length) + ($foot | length) + ([$session[] | length + 1] | add // 0) + 4)};
-       if .len + ($l | length) + 1 <= $max then .out += [$l] | .len += ($l | length) + 1 else . end)) as $fit
+  | (reduce $lines[] as $x ({out: [], len: (($head | length) + ($foot | length) + ([$session[] | length + 1] | add // 0) + 4)};
+       if .len + ($x.l | length) + 1 <= $max then .out += [$x] | .len += ($x.l | length) + 1 else . end)
+     # chosen by score, shown in transcript order so a later statement reads as later
+     | .out |= (sort_by(.n) | map(.l))) as $fit
   | if ($fit.out | length) == 0 then ""
     else ([$head] + $fit.out + $session + [$foot]) | join("\n") end
 ' "$state")

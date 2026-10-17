@@ -11,7 +11,13 @@
 def clean: gsub("<system-reminder>[\\s\\S]*?</system-reminder>"; "") | gsub("\\s+"; " ") | sub("^ "; "") | sub(" $"; "");
 def trunc($n): if length > $n then .[0:$n] + "…" else . end;
 def usertext: if type == "string" then . elif type == "array" then [.[] | select(.type == "text") | .text] | join("\n") else "" end;
-def slash: test("^/[A-Za-z][A-Za-z0-9:_-]*( |$)");
+# Slash commands: a bare "/word" token is always a command. "/word args" is only
+# treated as a command echo when the record lacks promptSource (real prompts
+# carry it on 2.1.302), so "/tmp is full" typed by the user is kept.
+def cmdtoken: test("^/[a-z][a-z0-9:_-]*$");
+def cmdecho: test("^/[a-z][a-z0-9:_-]* ");
+def slash($ps): cmdtoken or (($ps | not) and cmdecho);
+def carried_header: "Facts preserved across compaction by the Jev hook";
 def harness: test("^<(command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|task-notification|bash-input|bash-stdout|bash-stderr|user-prompt-submit-hook)");
 def todo: test("^(?:[-*] )?(?:\\[ \\]|TODO\\b|FIXME\\b|Next:|Next step|Remaining:|Still need|Open item|Follow-up|Follow up)"; "i");
 def decision: test("\\b(?:decid|decision|going with|we'll use|I'll use|will use|chose|choose|must|never|always|do not|don't|avoid|constraint|requirement|root cause|because|instead of|the fix|blocked|conclusion|agreed|confirmed|verified|only)\\b"; "i");
@@ -22,12 +28,20 @@ def recent($k): sort_by(-.i) | .[0:$k];
 | ([$recs[] | select(.type == "assistant") | .c | arrays | .[] | select(.type == "tool_use") | {key: .id, value: .}] | from_entries) as $tools
 
 # user turns (typed or queued)
-| [ $recs[] | select(.type == "user" and (.isMeta | not) and (.isCompactSummary | not)) | ._i as $i
-    | (.c | usertext) | clean | select(length > 0 and (harness | not) and (slash | not))
+| [ $recs[] | select(.type == "user" and (.isMeta | not) and (.isCompactSummary | not)) | ._i as $i | (.ps == true) as $ps
+    | (.c | usertext) | clean | select(length > 0 and (harness | not) and (slash($ps) | not))
     | {i: $i, kind: "user", text: ("User said: " + trunc(400))} ] as $user
 | [ $recs[] | select(.type == "attachment") | ._i as $i | .a.prompt | strings | clean
-    | select(length > 0 and (harness | not) and (slash | not))
+    | select(length > 0 and (harness | not) and (cmdtoken | not))
     | {i: $i, kind: "user", text: ("User said: " + trunc(400))} ] as $queued
+
+# facts a previous compaction re-injected (SessionStart hook_additional_context
+# after the boundary): carried forward so a second compaction does not lose them
+| [ $recs[] | select(.type == "attachment" and .a.type == "hook_additional_context") | ._i as $i
+    | .a.ctx | strings | select(contains(carried_header)) | split("\n")[] | select(startswith("- "))
+    | {i: $i, kind: "carried", text: ltrimstr("- ")} ]
+  | reduce .[] as $f ([]; if any(.[]; .text == $f.text) then . else . + [$f] end) | .[0:30]
+  as $carried
 
 # assistant prose, line by line
 | [ $recs[] | select(.type == "assistant") | ._i as $i | .c | arrays | .[] | select(.type == "text")
@@ -80,15 +94,18 @@ def recent($k): sort_by(-.i) | .[0:$k];
 # per-kind caps (most recent first) so file paths and URLs cannot crowd out what the user said
 | ($user + $queued + ($decisions | recent(25)) + ($todos | recent(10)) + ($files | recent(15))
    + ($urls | recent(10)) + ($branches | recent(5)) + $cur + $err)
+  | map(select(.text | IN($carried[].text) | not))
   | group_by(.text) | map(max_by(.i))
-  | sort_by(-.i) | .[0:$max] | sort_by(.i)
+  # carried facts are exempt from the recency cap
+  | sort_by(-.i) | .[0:([$max - ($carried | length), 0] | max)]
+  | ($carried + .) | sort_by(.i)
   | to_entries | map({n: (.key + 1), kind: .value.kind, text: .value.text})
   as $facts
 
 # plain-text tail of the transcript for context
 | ([ $recs[]
      | if .type == "user" and (.isCompactSummary | not) then
-         ((.c | usertext | clean | select(length > 0 and (harness | not) and (slash | not)) | "USER: " + trunc(1500)),
+         (((.ps == true) as $ps | .c | usertext | clean | select(length > 0 and (harness | not) and (slash($ps) | not)) | "USER: " + trunc(1500)),
           (.c | arrays | .[] | select(.type == "tool_result") | "RESULT" + (if .is_error then " (error)" else "" end) + ": " + (.text | clean | trunc(400))))
        elif .type == "assistant" then
          (.c | arrays | .[]
