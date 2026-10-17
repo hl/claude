@@ -1,4 +1,4 @@
-case: fill (JEV_ROUTE_MODE=fill, parent --model sonnet)
+case: fill (JEV_ROUTE_MODE=fill, parent --model haiku)
 --- PreToolUse stdin (tool_input as the parent sent it)
 {
   "hook_event_name": "PreToolUse",
@@ -6,11 +6,12 @@ case: fill (JEV_ROUTE_MODE=fill, parent --model sonnet)
   "tool_input": {
     "description": "Count files",
     "prompt": "Run: ls / | wc -l and reply with only the number.",
-    "subagent_type": "general-purpose",
-    "run_in_background": false
+    "subagent_type": "general-purpose"
   }
 }
+--- agent-route.sh stdout (what Claude Code received)
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"description":"Count files","prompt":"Run: ls / | wc -l and reply with only the number.","subagent_type":"general-purpose","model":"sonnet"}}}
 --- route.jsonl decision
-{"ts":"2026-10-17T13:45:02Z","hook":"agent-route","session_id":"1003a11d-a1e9-45c0-9936-6776bbbc3fa6","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","jev_model":"haiku","final_model":"haiku","confidence":1.0,"policy":"as_is","signals":{"ambiguous":0.48,"needs_research":0.07,"mechanical":0.68,"cross_cutting":0.1,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files"}
---- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/1003a11d-a1e9-45c0-9936-6776bbbc3fa6/subagents/agent-a2e9f56a1a676b805.jsonl
-message.model values: claude-haiku-5-5
+{"ts":"2026-10-17T14:12:32Z","hook":"agent-route","session_id":"603e3e51-762f-4b00-ad40-31031805cbcd","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","fill_eligible":true,"jev_model":"haiku","final_model":"sonnet","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.42,"needs_research":0.06,"mechanical":0.64,"cross_cutting":0.11,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files","reason":"jev: none→sonnet (jev haiku, conf 0.98, mechanical 0.64)"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/603e3e51-762f-4b00-ad40-31031805cbcd/subagents/agent-adc3d2dec5476a45c.jsonl
+message.model values: claude-sonnet-5-5

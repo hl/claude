@@ -1,0 +1,66 @@
+{
+  "session_id": "e877732f-98f1-44fb-91c6-52616b88249c",
+  "trigger": "manual",
+  "transcript_path": "…",
+  "extracted_at": "2026-10-17T14:16:27Z",
+  "extracted_epoch": 1792246587,
+  "phase": "consumed",
+  "jev_ok": true,
+  "guard_blocked": false,
+  "work_type": "implementation",
+  "mid_operation": 0.05,
+  "facts": [
+    {
+      "n": 1,
+      "kind": "user",
+      "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
+      "score": 2.5,
+      "legend": "Critical",
+      "covered_p": 0.95,
+      "covered": true
+    },
+    {
+      "n": 4,
+      "kind": "user",
+      "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
+      "score": 0.48,
+      "legend": "Irrelevant",
+      "covered_p": 0.92,
+      "covered": true
+    },
+    {
+      "n": 3,
+      "kind": "file",
+      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
+      "score": 0.33,
+      "legend": "Irrelevant",
+      "covered_p": 0.93,
+      "covered": true
+    },
+    {
+      "n": 2,
+      "kind": "user",
+      "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
+      "score": 0.33,
+      "legend": "Irrelevant",
+      "covered_p": 0.85,
+      "covered": true
+    },
+    {
+      "n": 5,
+      "kind": "error",
+      "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
+      "score": 0.26,
+      "legend": "Irrelevant",
+      "covered_p": 0.95,
+      "covered": true
+    }
+  ],
+  "coverage": {
+    "summary_id": "3965092288-3822",
+    "source": "SubagentStop",
+    "at": "2026-10-17T14:16:36Z",
+    "summary_quality": 4.78
+  },
+  "consumed_at": "2026-10-17T14:16:36Z"
+}

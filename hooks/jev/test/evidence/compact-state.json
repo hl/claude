@@ -1,21 +1,21 @@
 {
-  "session_id": "ecb88760-38a5-4d17-8a41-a27a69fefb87",
+  "session_id": "ae152e65-8b18-4c18-80ef-bbc2733830e8",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-17T13:46:37Z",
-  "extracted_epoch": 1792244797,
+  "extracted_at": "2026-10-17T14:14:09Z",
+  "extracted_epoch": 1792246449,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
   "work_type": "implementation",
-  "mid_operation": 0.05,
+  "mid_operation": 0.04,
   "facts": [
     {
       "n": 1,
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
-      "score": 2.49,
-      "legend": "Important",
+      "score": 2.51,
+      "legend": "Critical",
       "covered_p": 0.01,
       "covered": false
     },
@@ -23,16 +23,16 @@
       "n": 4,
       "kind": "user",
       "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
-      "score": 0.5,
-      "legend": "Nice to have",
-      "covered_p": 0.48,
-      "covered": false
+      "score": 0.48,
+      "legend": "Irrelevant",
+      "covered_p": 0.52,
+      "covered": true
     },
     {
       "n": 2,
       "kind": "user",
       "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
-      "score": 0.36,
+      "score": 0.39,
       "legend": "Irrelevant",
       "covered_p": 0.01,
       "covered": false
@@ -41,7 +41,7 @@
       "n": 3,
       "kind": "file",
       "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
-      "score": 0.31,
+      "score": 0.3,
       "legend": "Irrelevant",
       "covered_p": 0.02,
       "covered": false
@@ -50,17 +50,17 @@
       "n": 5,
       "kind": "error",
       "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
-      "score": 0.29,
+      "score": 0.24,
       "legend": "Irrelevant",
       "covered_p": 0.19,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "2575313131-474",
+    "summary_id": "2087534900-492",
     "source": "SubagentStop",
-    "at": "2026-10-17T13:46:40Z",
-    "summary_quality": 2.69
+    "at": "2026-10-17T14:14:11Z",
+    "summary_quality": 3.32
   },
-  "consumed_at": "2026-10-17T13:46:40Z"
+  "consumed_at": "2026-10-17T14:14:11Z"
 }

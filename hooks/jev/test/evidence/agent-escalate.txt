@@ -10,7 +10,9 @@ case: escalate (JEV_ROUTE_MODE=escalate, parent --model sonnet)
     "model": "haiku"
   }
 }
+--- agent-route.sh stdout (what Claude Code received)
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"description":"Security review","prompt":"First-round security review of a non-trivial diff to the authentication plug: it moves session storage from signed cookies to Redis and changes how session tokens are validated. No diff is attached; reply with the top three risks you would check, one line each.","subagent_type":"general-purpose","model":"opus"}}}
 --- route.jsonl decision
-{"ts":"2026-10-17T13:45:11Z","hook":"agent-route","session_id":"bfd4687e-636f-4874-a0c9-593b3b86dd2b","action":"escalated","mode":"escalate","subagent_type":"general-purpose","given_model":"haiku","jev_model":"opus","final_model":"opus","confidence":0.97,"policy":"as_is","signals":{"ambiguous":0.69,"needs_research":0.56,"mechanical":0.13,"cross_cutting":0.8,"security_or_high_blast_radius":0.97,"review_of_nontrivial_diff":0.93},"description":"Security review"}
---- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/bfd4687e-636f-4874-a0c9-593b3b86dd2b/subagents/agent-a468a3672bc067bfd.jsonl
+{"ts":"2026-10-17T14:12:42Z","hook":"agent-route","session_id":"a651e190-9080-4043-9f80-86871ce1d791","action":"escalated","mode":"escalate","subagent_type":"general-purpose","given_model":"haiku","fill_eligible":false,"jev_model":"opus","final_model":"opus","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.67,"needs_research":0.55,"mechanical":0.13,"cross_cutting":0.79,"security_or_high_blast_radius":0.97,"review_of_nontrivial_diff":0.92},"description":"Security review","reason":"jev: haiku→opus (jev opus, conf 0.98, security_or_high_blast_radius 0.97)"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/a651e190-9080-4043-9f80-86871ce1d791/subagents/agent-af724e9cf2587ae2e.jsonl
 message.model values: claude-opus-5-5
