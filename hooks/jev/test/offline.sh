@@ -51,6 +51,11 @@ jq -e '.facts | (map(.n) == [range(1; length + 1)])' <<<"$ex" >/dev/null && ok "
 exb=$("$J/compact-pre.sh" --extract "$FIX/transcript-background.jsonl")
 jq -e '([.facts[].text] | any(test("/compact"))) or (.tail | test("/compact"))' <<<"$exb" >/dev/null &&
   bad "extract: slash command extracted as a fact" || ok "extract: typed slash commands (/compact ...) are skipped"
+exc=$("$J/compact-pre.sh" --extract "$FIX/transcript-carried.jsonl")
+jq -e '[.facts[].text] | any(test("/tmp is full")) and (any(test("^User said: /compact")) | not)' <<<"$exc" >/dev/null &&
+  ok "extract: keeps a user message starting with a path (\"/tmp is full\"), drops a bare /compact" || bad "extract: slash-command filter wrong"
+jq -e '[.facts[] | select(.kind == "carried") | .text] | (length == 2) and (.[0] | test("pg-staging-7"))' <<<"$exc" >/dev/null &&
+  ok "extract: facts re-injected by a previous compaction are carried, in order" || bad "extract: carried facts missing"
 cap=$(JEV_COMPACT_MAX_FACTS=5 "$J/compact-pre.sh" --extract "$FIX/transcript.jsonl" | jq '.facts | length')
 [ "$cap" = 5 ] && ok "extract: JEV_COMPACT_MAX_FACTS caps by recency" || bad "extract: cap gave $cap"
 
@@ -64,8 +69,11 @@ p_agent='{"session_id":"off","hook_event_name":"PreToolUse","tool_name":"Agent",
 
 # A listener that accepts and never answers, to exercise curl --max-time.
 port=$((20000 + RANDOM % 20000))
-sleep 60 | nc -lk 127.0.0.1 "$port" >/dev/null 2>&1 &
+# The FIFO stays open on fd 9, so nc never sees EOF and nothing is orphaned.
+mkfifo "$WORK/ncin"
+nc -lk 127.0.0.1 "$port" <"$WORK/ncin" >/dev/null 2>&1 &
 ncpid=$!
+exec 9>"$WORK/ncin"
 sleep 0.3
 
 seed_state() { # <jev-home>: a scored, unconsumed state file for session "off-post"
@@ -96,6 +104,21 @@ failopen hanging-api 6 TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0
 if [ "${JEV_OFFLINE_BADKEY:-1}" = 1 ]; then
   failopen bad-key 10 TYPESAFE_API_KEY=apikNOTAREALKEY
 fi
+
+# circuit breaker: one timeout, then fast failures until JEV_COOLDOWN expires
+h="$WORK/home-hanging-api"
+jq -e -s '[.[] | .status] | (index("timeout") != null) and (index("cooldown") != null)' "$h/log/jev.jsonl" >/dev/null 2>&1 &&
+  ok "circuit breaker: calls after a timeout fail fast (cooldown logged)" || bad "circuit breaker: no cooldown after timeout"
+hang() { env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_ROUTE_TIMEOUT=2 JEV_HOME="$h" "$@" "$J/agent-route.sh" <<<"$p_agent" >/dev/null 2>&1; }
+t0=$(date +%s)
+hang
+t1=$(date +%s)
+hang JEV_COOLDOWN=0
+t2=$(date +%s)
+[ $((t1 - t0)) -le 1 ] && [ $((t2 - t1)) -ge 2 ] &&
+  ok "circuit breaker: skipped call took $((t1 - t0))s; JEV_COOLDOWN=0 calls again ($((t2 - t1))s timeout)" ||
+  bad "circuit breaker timing: $((t1 - t0))s / $((t2 - t1))s"
+exec 9>&-
 kill "$ncpid" 2>/dev/null
 
 # disabled means no API call at all, and no state written

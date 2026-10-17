@@ -14,6 +14,9 @@
 #   JEV_TIMEOUT            curl --max-time in seconds (default 8)
 #   JEV_LONG_CONTEXT=1     send the long-context header up front (262k, slower)
 #   JEV_HOME               state/log root (default ~/.claude/jev)
+#   JEV_COOLDOWN           seconds to skip API calls after a timeout or connection
+#                          failure (default 300; 0 disables the breaker)
+#   JEV_CHARS_PER_TOKEN    chars-per-token used for the state budget (default 4)
 
 JEV_HOME=${JEV_HOME:-$HOME/.claude/jev}
 JEV_LOG_DIR="$JEV_HOME/log"
@@ -67,6 +70,18 @@ jev_state_budget_chars() {
   echo $(((limit - qtok) * JEV_CHARS_PER_TOKEN))
 }
 
+# Cooldown stamp: epoch of the last timeout/connection failure. While it is
+# younger than JEV_COOLDOWN seconds (default 300), jev_call fails fast.
+jev_cooling_down() {
+  local t
+  t=$(cat "$JEV_HOME/cooldown" 2>/dev/null) || return 1
+  case $t in '' | *[!0-9]*) return 1 ;; esac
+  [ $(($(date +%s) - t)) -lt "${JEV_COOLDOWN:-300}" ]
+}
+jev_start_cooldown() {
+  mkdir -p "$JEV_HOME" 2>/dev/null && date +%s >"$JEV_HOME/cooldown" 2>/dev/null || true
+}
+
 # jev_call: request body JSON on stdin -> response JSON on stdout.
 # Returns non-zero on any failure (no key, network, timeout, HTTP error, missing
 # answers). Logs one line per call to jev.jsonl. Retries once with the
@@ -77,6 +92,10 @@ jev_call() {
   if jev_disabled; then return 1; fi
   if ! jev_load_key; then
     jev_log jev.jsonl '{"status":"no_key","ms":0}'
+    return 1
+  fi
+  if jev_cooling_down; then
+    jev_log jev.jsonl '{"status":"cooldown","ms":0}'
     return 1
   fi
   tmp=$(mktemp "${TMPDIR:-/tmp}/jev.XXXXXX") || return 1
@@ -115,6 +134,12 @@ jev_call() {
   else
     status=ok
   fi
+  # Circuit breaker: a hanging or unreachable API should cost one timeout, not
+  # one per hook. Timeouts and connection-level failures start a cooldown.
+  case $status in
+    timeout | curl_6 | curl_7 | curl_35 | curl_52 | curl_56 | http_429 | http_5??) jev_start_cooldown ;;
+    ok) rm -f "$JEV_HOME/cooldown" 2>/dev/null ;;
+  esac
 
   if [ "$status" = ok ]; then
     jev_log jev.jsonl "$(jq -c --argjson ms "$ms" --arg long "$long" '{
