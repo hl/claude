@@ -11,6 +11,6 @@ case: fill (JEV_ROUTE_MODE=fill, parent --model sonnet)
   }
 }
 --- route.jsonl decision
-{"ts":"2026-10-17T13:25:40Z","hook":"agent-route","session_id":"cb95563a-6fff-411d-bbe3-3bdf14da1694","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","jev_model":"haiku","final_model":"haiku","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.45,"needs_research":0.06,"mechanical":0.65,"cross_cutting":0.11,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files"}
---- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/cb95563a-6fff-411d-bbe3-3bdf14da1694/subagents/agent-ab36959c468ec022e.jsonl
+{"ts":"2026-10-17T13:45:02Z","hook":"agent-route","session_id":"1003a11d-a1e9-45c0-9936-6776bbbc3fa6","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","jev_model":"haiku","final_model":"haiku","confidence":1.0,"policy":"as_is","signals":{"ambiguous":0.48,"needs_research":0.07,"mechanical":0.68,"cross_cutting":0.1,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/1003a11d-a1e9-45c0-9936-6776bbbc3fa6/subagents/agent-a2e9f56a1a676b805.jsonl
 message.model values: claude-haiku-5-5

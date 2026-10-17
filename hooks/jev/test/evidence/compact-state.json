@@ -1,9 +1,9 @@
 {
-  "session_id": "a752af53-9bb2-4afb-9aa1-eaad65e222d9",
+  "session_id": "ecb88760-38a5-4d17-8a41-a27a69fefb87",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-17T13:42:56Z",
-  "extracted_epoch": 1792244576,
+  "extracted_at": "2026-10-17T13:46:37Z",
+  "extracted_epoch": 1792244797,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
@@ -14,8 +14,8 @@
       "n": 1,
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
-      "score": 2.51,
-      "legend": "Critical",
+      "score": 2.49,
+      "legend": "Important",
       "covered_p": 0.01,
       "covered": false
     },
@@ -23,44 +23,44 @@
       "n": 4,
       "kind": "user",
       "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
-      "score": 0.54,
+      "score": 0.5,
       "legend": "Nice to have",
-      "covered_p": 0.29,
-      "covered": false
-    },
-    {
-      "n": 3,
-      "kind": "file",
-      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
-      "score": 0.34,
-      "legend": "Irrelevant",
-      "covered_p": 0.02,
+      "covered_p": 0.48,
       "covered": false
     },
     {
       "n": 2,
       "kind": "user",
       "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
-      "score": 0.34,
+      "score": 0.36,
       "legend": "Irrelevant",
       "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 3,
+      "kind": "file",
+      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
+      "score": 0.31,
+      "legend": "Irrelevant",
+      "covered_p": 0.02,
       "covered": false
     },
     {
       "n": 5,
       "kind": "error",
       "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
-      "score": 0.32,
+      "score": 0.29,
       "legend": "Irrelevant",
-      "covered_p": 0.14,
+      "covered_p": 0.19,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "1914498418-482",
+    "summary_id": "2575313131-474",
     "source": "SubagentStop",
-    "at": "2026-10-17T13:42:59Z",
-    "summary_quality": 3.27
+    "at": "2026-10-17T13:46:40Z",
+    "summary_quality": 2.69
   },
-  "consumed_at": "2026-10-17T13:42:59Z"
+  "consumed_at": "2026-10-17T13:46:40Z"
 }

@@ -7,9 +7,9 @@ transcript lines: compact_boundary 70; SessionStart hook_additional_context 82; 
     "hookEvent": "SessionStart",
     "hookName": "SessionStart",
     "content": [
-      "Facts preserved across compaction by the Jev hook (ranked; the summary did not include these or they were critical):\n- User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.\nWork type before compaction: implementation.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/a752af53-9bb2-4afb-9aa1-eaad65e222d9.json."
+      "Facts preserved across compaction by the Jev hook (ranked; the summary did not include these or they were critical):\n- User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.\nWork type before compaction: implementation.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/ecb88760-38a5-4d17-8a41-a27a69fefb87.json."
     ]
   }
 }
 --- model answer after compaction:
-Staging database is `pg-staging-7` on port 6544, and the ticket is OPS-4821.
+The staging database is `pg-staging-7` on port 6544, and the ticket is OPS-4821. I got these from the preserved session context, not from the compacted summary.

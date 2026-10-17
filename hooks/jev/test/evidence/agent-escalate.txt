@@ -11,6 +11,6 @@ case: escalate (JEV_ROUTE_MODE=escalate, parent --model sonnet)
   }
 }
 --- route.jsonl decision
-{"ts":"2026-10-17T13:25:49Z","hook":"agent-route","session_id":"2f096298-f8f3-447c-b337-c3d8fb7d11a3","action":"escalated","mode":"escalate","subagent_type":"general-purpose","given_model":"haiku","jev_model":"opus","final_model":"opus","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.69,"needs_research":0.55,"mechanical":0.13,"cross_cutting":0.78,"security_or_high_blast_radius":0.98,"review_of_nontrivial_diff":0.91},"description":"Security review"}
---- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/2f096298-f8f3-447c-b337-c3d8fb7d11a3/subagents/agent-ad9e84895b6f26cfd.jsonl
+{"ts":"2026-10-17T13:45:11Z","hook":"agent-route","session_id":"bfd4687e-636f-4874-a0c9-593b3b86dd2b","action":"escalated","mode":"escalate","subagent_type":"general-purpose","given_model":"haiku","jev_model":"opus","final_model":"opus","confidence":0.97,"policy":"as_is","signals":{"ambiguous":0.69,"needs_research":0.56,"mechanical":0.13,"cross_cutting":0.8,"security_or_high_blast_radius":0.97,"review_of_nontrivial_diff":0.93},"description":"Security review"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/bfd4687e-636f-4874-a0c9-593b3b86dd2b/subagents/agent-a468a3672bc067bfd.jsonl
 message.model values: claude-opus-5-5
