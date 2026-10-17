@@ -71,15 +71,23 @@ jev_state_budget_chars() {
 }
 
 # Cooldown stamp: epoch of the last timeout/connection failure. While it is
-# younger than JEV_COOLDOWN seconds (default 300), jev_call fails fast.
+# younger than JEV_COOLDOWN seconds (default 300), jev_call fails fast. One
+# stamp per hook family, so a slow routing call does not switch off compaction
+# help (and vice versa): $JEV_HOME/cooldown.route, $JEV_HOME/cooldown.compact.
+jev_cooldown_file() {
+  case $JEV_HOOK in
+    compact-*) echo "$JEV_HOME/cooldown.compact" ;;
+    *) echo "$JEV_HOME/cooldown.route" ;; # route.sh, agent-route.sh
+  esac
+}
 jev_cooling_down() {
   local t
-  t=$(cat "$JEV_HOME/cooldown" 2>/dev/null) || return 1
+  t=$(cat "$(jev_cooldown_file)" 2>/dev/null) || return 1
   case $t in '' | *[!0-9]*) return 1 ;; esac
   [ $(($(date +%s) - t)) -lt "${JEV_COOLDOWN:-300}" ]
 }
 jev_start_cooldown() {
-  mkdir -p "$JEV_HOME" 2>/dev/null && date +%s >"$JEV_HOME/cooldown" 2>/dev/null || true
+  mkdir -p "$JEV_HOME" 2>/dev/null && date +%s >"$(jev_cooldown_file)" 2>/dev/null || true
 }
 
 # jev_call: request body JSON on stdin -> response JSON on stdout.
@@ -138,7 +146,7 @@ jev_call() {
   # one per hook. Timeouts and connection-level failures start a cooldown.
   case $status in
     timeout | curl_6 | curl_7 | curl_35 | curl_52 | curl_56 | http_429 | http_5??) jev_start_cooldown ;;
-    ok) rm -f "$JEV_HOME/cooldown" 2>/dev/null ;;
+    ok) rm -f "$(jev_cooldown_file)" 2>/dev/null ;;
   esac
 
   if [ "$status" = ok ]; then

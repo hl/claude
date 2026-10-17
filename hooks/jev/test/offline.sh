@@ -118,6 +118,15 @@ t2=$(date +%s)
 [ $((t1 - t0)) -le 1 ] && [ $((t2 - t1)) -ge 2 ] &&
   ok "circuit breaker: skipped call took $((t1 - t0))s; JEV_COOLDOWN=0 calls again ($((t2 - t1))s timeout)" ||
   bad "circuit breaker timing: $((t1 - t0))s / $((t2 - t1))s"
+# cooldown is per hook family: a routing timeout must not switch off compaction calls
+h2="$WORK/home-family"
+env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_ROUTE_TIMEOUT=2 JEV_HOME="$h2" "$J/agent-route.sh" <<<"$p_agent" >/dev/null 2>&1
+cp "$h2/cooldown.route" "$h2/cooldown.route.bak" 2>/dev/null
+env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_TIMEOUT=2 JEV_HOME="$h2" "$J/compact-pre.sh" <<<"$p_pre" >/dev/null 2>&1
+if [ -f "$h2/cooldown.route.bak" ] && [ -f "$h2/cooldown.compact" ] &&
+  jq -e -s '[.[] | select(.hook == "compact-pre") | .status] == ["timeout"]' "$h2/log/jev.jsonl" >/dev/null 2>&1; then
+  ok "circuit breaker is per family: compact-pre still called the API during a routing cooldown (cooldown.route + cooldown.compact)"
+else bad "circuit breaker family isolation: $(find "$h2" -maxdepth 1 -name 'cooldown*' | paste -sd' ' -) $(jq -c -s '[.[] | {hook, status}]' "$h2/log/jev.jsonl" 2>/dev/null)"; fi
 exec 9>&-
 kill "$ncpid" 2>/dev/null
 
