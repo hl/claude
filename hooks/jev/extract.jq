@@ -1,0 +1,97 @@
+# extract.jq — deterministic fact extraction for compact-pre.sh.
+# Input (jq -s): slimmed records (slim.jq) after the last compact boundary.
+# Args: $max (fact cap), $tail_chars (size of the plain-text transcript tail).
+# Output: {facts: [{n, kind, text}], tail: "..."}
+#
+# Candidates: user messages, assistant lines that read like decisions or
+# constraints, files touched, URLs, branches, the last failing command, and
+# open TODO-ish lines. Deduplicated, capped at $max by recency, numbered in
+# transcript order.
+
+def clean: gsub("<system-reminder>[\\s\\S]*?</system-reminder>"; "") | gsub("\\s+"; " ") | sub("^ "; "") | sub(" $"; "");
+def trunc($n): if length > $n then .[0:$n] + "…" else . end;
+def usertext: if type == "string" then . elif type == "array" then [.[] | select(.type == "text") | .text] | join("\n") else "" end;
+def harness: test("^<(command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|task-notification|bash-input|bash-stdout|bash-stderr|user-prompt-submit-hook)");
+def todo: test("^(?:[-*] )?(?:\\[ \\]|TODO\\b|FIXME\\b|Next:|Next step|Remaining:|Still need|Open item|Follow-up|Follow up)"; "i");
+def decision: test("\\b(?:decid|decision|going with|we'll use|I'll use|will use|chose|choose|must|never|always|do not|don't|avoid|constraint|requirement|root cause|because|instead of|the fix|blocked|conclusion|agreed|confirmed|verified|only)\\b"; "i");
+def urls: [scan("https?://[^\\s\"'<>()\\[\\]`]+") | sub("[.,;:!?]+$"; "")];
+
+[to_entries[] | .value + {_i: .key}] as $recs
+| ([$recs[] | select(.type == "assistant") | .c | arrays | .[] | select(.type == "tool_use") | {key: .id, value: .}] | from_entries) as $tools
+
+# user turns (typed or queued)
+| [ $recs[] | select(.type == "user" and (.isMeta | not) and (.isCompactSummary | not)) | ._i as $i
+    | (.c | usertext) | clean | select(length > 0 and (harness | not))
+    | {i: $i, kind: "user", text: ("User said: " + trunc(400))} ] as $user
+| [ $recs[] | select(.type == "attachment") | ._i as $i | .a.prompt | strings | clean
+    | select(length > 0 and (harness | not))
+    | {i: $i, kind: "user", text: ("User said: " + trunc(400))} ] as $queued
+
+# assistant prose, line by line
+| [ $recs[] | select(.type == "assistant") | ._i as $i | .c | arrays | .[] | select(.type == "text")
+    | .text | split("\n")[] | clean | sub("^#+ "; "") | {i: $i, t: .} ] as $alines
+| [ $alines[] | select((.t | length) >= 20 and (.t | todo | not) and (.t | decision))
+    | {i, kind: "decision", text: (.t | trunc(300))} ] as $decisions
+| [ ($alines[], ($user[] | {i, t: (.text | ltrimstr("User said: "))}))
+    | select(.t | todo) | {i, kind: "todo", text: ("Open item: " + (.t | trunc(300)))} ] as $todos
+
+# files touched
+| [ $recs[] | select(.type == "assistant") | ._i as $i | .c | arrays | .[]
+    | select(.type == "tool_use" and (.name | IN("Edit", "Write", "MultiEdit", "NotebookEdit", "Read")))
+    | {i: $i, name, path: (.input.file_path // .input.notebook_path // empty)} ]
+  | group_by(.path)
+  | map({i: (map(.i) | max), kind: "file",
+         text: ((if any(.name != "Read") then "File changed this session: " else "File read this session: " end) + .[0].path)})
+  as $files
+
+# URLs from every text source, PR links called out
+| [ $recs[] | ._i as $i
+    | ((.c | usertext), (.c | arrays | .[] | select(.type == "tool_result") | .text), (.a.prompt // ""))
+    | strings | urls[] | {i: $i, u: .} ]
+  | group_by(.u)
+  | map({i: (map(.i) | max), kind: "url",
+         text: ((if (.[0].u | test("/pull/[0-9]+")) then "Pull request: " else "URL referenced: " end) + .[0].u)})
+  as $urls
+
+# branches: created/pushed in Bash, plus the session's current branch
+| [ $recs[] | select(.type == "assistant") | ._i as $i | .c | arrays | .[]
+    | select(.type == "tool_use" and .name == "Bash") | .input.command | strings
+    | (scan("git (?:checkout -b|switch -c|checkout -B|branch) ([A-Za-z0-9._/-]+)") | .[0]),
+      (scan("git worktree add [^;&|]*-b ([A-Za-z0-9._/-]+)") | .[0]),
+      (scan("git push [^;&|]*origin ([A-Za-z0-9._/-]+)") | .[0]),
+      (scan("--head ([A-Za-z0-9._/-]+)") | .[0])
+    | select(test("^-") | not) | {i: $i, b: .} ]
+  | group_by(.b) | map({i: (map(.i) | max), kind: "branch", text: ("Branch used this session: " + .[0].b)})
+  as $branches
+| ([$branches[] | .text | ltrimstr("Branch used this session: ")]) as $bnames
+| ([$recs[] | select((.gitBranch // "") != "" and .gitBranch != "HEAD") | {i: ._i, b: .gitBranch}] | last
+   | if . and ((.b | IN($bnames[])) | not) then [{i: .i, kind: "branch", text: ("Git branch of the session directory: " + .b)}] else [] end) as $cur
+
+# last failing command
+| ([ $recs[] | ._i as $i | .c | arrays | .[] | select(.type == "tool_result" and .is_error == true)
+     | . as $r | ($tools[$r.tool_use_id] // null) as $t
+     | select($t != null and $t.name == "Bash")
+     | {i: $i, kind: "error",
+        text: ("Last failing command: " + ($t.input.command // "" | clean | trunc(200)) + " — output: " + ($r.text | clean | trunc(300)))} ]
+   | last | if . then [.] else [] end) as $err
+
+| ($user + $queued + $decisions + $todos + $files + $urls + $branches + $cur + $err)
+  | group_by(.text) | map(max_by(.i))
+  | sort_by(-.i) | .[0:$max] | sort_by(.i)
+  | to_entries | map({n: (.key + 1), kind: .value.kind, text: .value.text})
+  as $facts
+
+# plain-text tail of the transcript for context
+| ([ $recs[]
+     | if .type == "user" and (.isCompactSummary | not) then
+         ((.c | usertext | clean | select(length > 0 and (harness | not)) | "USER: " + trunc(1500)),
+          (.c | arrays | .[] | select(.type == "tool_result") | "RESULT" + (if .is_error then " (error)" else "" end) + ": " + (.text | clean | trunc(400))))
+       elif .type == "assistant" then
+         (.c | arrays | .[]
+          | if .type == "text" then "ASSISTANT: " + (.text | clean | trunc(1500))
+            elif .type == "tool_use" then "TOOL " + .name + ": " + ((.input.command // .input.file_path // .input.notebook_path // .input.url // "") | clean | trunc(300))
+            else empty end)
+       elif .type == "attachment" then (.a.prompt | strings | "USER (queued): " + (clean | trunc(1500)))
+       else empty end ]
+   | join("\n")) as $all
+| {facts: $facts, tail: (if ($all | length) > $tail_chars then $all[-$tail_chars:] else $all end)}
