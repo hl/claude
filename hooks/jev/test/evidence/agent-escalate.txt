@@ -1,0 +1,16 @@
+case: escalate (JEV_ROUTE_MODE=escalate, parent --model sonnet)
+--- PreToolUse stdin (tool_input as the parent sent it)
+{
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Security review",
+    "prompt": "First-round security review of a non-trivial diff to the authentication plug: it moves session storage from signed cookies to Redis and changes how session tokens are validated. No diff is attached; reply with the top three risks you would check, one line each.",
+    "subagent_type": "general-purpose",
+    "model": "haiku"
+  }
+}
+--- route.jsonl decision
+{"ts":"2026-10-17T13:25:49Z","hook":"agent-route","session_id":"2f096298-f8f3-447c-b337-c3d8fb7d11a3","action":"escalated","mode":"escalate","subagent_type":"general-purpose","given_model":"haiku","jev_model":"opus","final_model":"opus","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.69,"needs_research":0.55,"mechanical":0.13,"cross_cutting":0.78,"security_or_high_blast_radius":0.98,"review_of_nontrivial_diff":0.91},"description":"Security review"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/2f096298-f8f3-447c-b337-c3d8fb7d11a3/subagents/agent-ad9e84895b6f26cfd.jsonl
+message.model values: claude-opus-5-5

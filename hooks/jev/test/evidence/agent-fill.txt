@@ -1,0 +1,16 @@
+case: fill (JEV_ROUTE_MODE=fill, parent --model sonnet)
+--- PreToolUse stdin (tool_input as the parent sent it)
+{
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "Count files",
+    "prompt": "Run: ls / | wc -l and reply with only the number.",
+    "subagent_type": "general-purpose",
+    "run_in_background": false
+  }
+}
+--- route.jsonl decision
+{"ts":"2026-10-17T13:25:40Z","hook":"agent-route","session_id":"cb95563a-6fff-411d-bbe3-3bdf14da1694","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","jev_model":"haiku","final_model":"haiku","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.45,"needs_research":0.06,"mechanical":0.65,"cross_cutting":0.11,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/cb95563a-6fff-411d-bbe3-3bdf14da1694/subagents/agent-ab36959c468ec022e.jsonl
+message.model values: claude-haiku-5-5
