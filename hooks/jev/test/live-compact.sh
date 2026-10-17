@@ -107,7 +107,9 @@ for x in $(find "$SCRATCH/dump" -name '*-SubagentStop.json' | sort); do
 done
 if [ -n "$cstop" ]; then
   cut "$cstop" >"$EVIDP-stdin-SubagentStop.json"
-  ok "compaction agent's SubagentStop last_assistant_message is byte-identical to PostCompact compact_summary ($(jq -r '.compact_summary | length' "$post") chars)"
+  slen=$(jq -r '.compact_summary | length' "$post")
+  echo "# compaction agent's SubagentStop last_assistant_message == PostCompact compact_summary: byte-identical, $slen chars" >>"$EVIDP-order.txt"
+  ok "compaction agent's SubagentStop last_assistant_message is byte-identical to PostCompact compact_summary ($slen chars)"
 else bad "no SubagentStop carried the compaction summary"; fi
 f=$(for x in $(find "$SCRATCH/dump" -name '*-SessionStart.json' | sort); do jq -e '.source == "compact"' "$x" >/dev/null && echo "$x"; done | tail -n 1)
 [ -n "$f" ] && sanitise <"$f" >"$EVIDP-stdin-SessionStart-compact.json"

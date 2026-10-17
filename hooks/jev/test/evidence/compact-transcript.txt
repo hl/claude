@@ -7,9 +7,9 @@ transcript lines: compact_boundary 70; SessionStart hook_additional_context 82; 
     "hookEvent": "SessionStart",
     "hookName": "SessionStart",
     "content": [
-      "Facts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical):\n- User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.\nWork type before compaction: implementation.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/ae152e65-8b18-4c18-80ef-bbc2733830e8.json."
+      "Facts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical):\n- User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.\nWork type before compaction: implementation.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/d94a3833-c6c2-4645-b382-ca27ae151b59.json."
     ]
   }
 }
 --- model answer after compaction:
-Staging database is pg-staging-7 on port 6544, and the ticket is OPS-4821 (migrations must never run against that database).
+Staging database is `pg-staging-7` on port `6544` (migrations must never run against it), and the ticket is OPS-4821.

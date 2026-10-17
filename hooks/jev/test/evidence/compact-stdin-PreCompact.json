@@ -1,8 +1,8 @@
 {
-  "session_id": "ae152e65-8b18-4c18-80ef-bbc2733830e8",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/ae152e65-8b18-4c18-80ef-bbc2733830e8.jsonl",
+  "session_id": "d94a3833-c6c2-4645-b382-ca27ae151b59",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/d94a3833-c6c2-4645-b382-ca27ae151b59.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "a0a882d2-27c8-4d83-a070-805201921ee7",
+  "prompt_id": "c37d2b94-317a-4056-a351-0a3f63d7b2e0",
   "hook_event_name": "PreCompact",
   "trigger": "manual",
   "custom_instructions": "Keep only a one-line description of the current task. Drop every background fact, name, number and path."

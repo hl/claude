@@ -1,9 +1,9 @@
 {
-  "session_id": "ae152e65-8b18-4c18-80ef-bbc2733830e8",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/ae152e65-8b18-4c18-80ef-bbc2733830e8.jsonl",
+  "session_id": "d94a3833-c6c2-4645-b382-ca27ae151b59",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/d94a3833-c6c2-4645-b382-ca27ae151b59.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "a0a882d2-27c8-4d83-a070-805201921ee7",
+  "prompt_id": "c37d2b94-317a-4056-a351-0a3f63d7b2e0",
   "hook_event_name": "PostCompact",
   "trigger": "manual",
-  "compact_summary": "<analysis>\nThe additional instruction says to keep only a one-line description of the current task and to drop all background facts, names, numbers and paths. I'm following it, so the summary is deliberately minimal.\n</analysis>\n\n<summary>\nCurrent task: report in one line the error from running `ls` on a nonexistent directory. The command failed with exit code 2 and the message \"No such file or directory (os error 2)\". That one-line error still needs to be relayed to the user.\n</summary> …[truncated]"
+  "compact_summary": "<analysis>\nThe additional instruction asks for only a one-line description of the current task, dropping background facts, names, numbers and paths. The summary below is limited to that.\n</analysis>\n\n<summary>\nCurrent task: report the one-line error from running `ls` on a nonexistent directory. The command failed with exit code 2, \"No such file or directory (os error 2)\".\n</summary> …[truncated]"
 }

@@ -1,9 +1,9 @@
 {
-  "session_id": "ae152e65-8b18-4c18-80ef-bbc2733830e8",
+  "session_id": "d94a3833-c6c2-4645-b382-ca27ae151b59",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-17T14:14:09Z",
-  "extracted_epoch": 1792246449,
+  "extracted_at": "2026-10-17T14:27:48Z",
+  "extracted_epoch": 1792247268,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
@@ -14,7 +14,7 @@
       "n": 1,
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
-      "score": 2.51,
+      "score": 2.53,
       "legend": "Critical",
       "covered_p": 0.01,
       "covered": false
@@ -23,44 +23,44 @@
       "n": 4,
       "kind": "user",
       "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
-      "score": 0.48,
+      "score": 0.49,
       "legend": "Irrelevant",
-      "covered_p": 0.52,
+      "covered_p": 0.5,
       "covered": true
     },
     {
       "n": 2,
       "kind": "user",
       "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
-      "score": 0.39,
+      "score": 0.36,
       "legend": "Irrelevant",
       "covered_p": 0.01,
-      "covered": false
-    },
-    {
-      "n": 3,
-      "kind": "file",
-      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
-      "score": 0.3,
-      "legend": "Irrelevant",
-      "covered_p": 0.02,
       "covered": false
     },
     {
       "n": 5,
       "kind": "error",
       "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
-      "score": 0.24,
+      "score": 0.3,
       "legend": "Irrelevant",
-      "covered_p": 0.19,
+      "covered_p": 0.25,
+      "covered": false
+    },
+    {
+      "n": 3,
+      "kind": "file",
+      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
+      "score": 0.29,
+      "legend": "Irrelevant",
+      "covered_p": 0.02,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "2087534900-492",
+    "summary_id": "1510938535-385",
     "source": "SubagentStop",
-    "at": "2026-10-17T14:14:11Z",
-    "summary_quality": 3.32
+    "at": "2026-10-17T14:27:51Z",
+    "summary_quality": 2.87
   },
-  "consumed_at": "2026-10-17T14:14:11Z"
+  "consumed_at": "2026-10-17T14:27:51Z"
 }

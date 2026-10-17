@@ -36,10 +36,10 @@ To send nothing, set `JEV_DISABLED=1`. To stop only the Agent hook, set `JEV_ROU
 | `JEV_MODEL` | `jev-latest` | Jev model. |
 | `JEV_TIMEOUT` | `8` s | curl `--max-time` for compaction calls. |
 | `JEV_ROUTE_TIMEOUT` | `4` s | curl `--max-time` for agent-route calls. |
-| `JEV_COOLDOWN` | `300` s | After a timeout, connection failure, 429 or 5xx, all Jev calls fail fast for this many seconds. The stamp is `$JEV_HOME/cooldown`. `0` disables the cooldown. |
+| `JEV_COOLDOWN` | `300` s | After a timeout, connection failure, 429 or 5xx, Jev calls from the same hook family fail fast for this many seconds. The stamps are per family, `$JEV_HOME/cooldown.route` (route.sh, agent-route) and `$JEV_HOME/cooldown.compact` (compaction hooks), so a slow routing call never switches off compaction help. `0` disables the cooldown. |
 | `JEV_LONG_CONTEXT` | unset | `1` sends the long-context header up front (262k tokens, slower). The hooks also retry with it once on `max_tokens_exceeded`. |
 | `JEV_CHARS_PER_TOKEN` | `4` | Characters per token assumed when sizing the state against the 32k-per-question limit. |
-| `JEV_HOME` | `~/.claude/jev` | Location of state, logs and the cooldown stamp. |
+| `JEV_HOME` | `~/.claude/jev` | Location of state, logs and the cooldown stamps. |
 | `JEV_ROUTE_MODE` | `log` | `log`: decide and log, change nothing. `fill`: set a model on model-less calls of allowlisted types, never below sonnet. `escalate`: like `fill`, and also raise an explicit haiku/sonnet/opus model, never lowering one. `off`: do nothing and send nothing. |
 | `JEV_ROUTE_FILL_TYPES` | `general-purpose` | Agent types that `fill` may set a model on (comma-separated). A missing `subagent_type` counts as `general-purpose`. |
 | `JEV_ROUTE_MIN_CONF` | `0.6` | Below this confidence, the tier goes up one step. |
@@ -77,7 +77,7 @@ A per-call model beats an agent's frontmatter model, and it beats `CLAUDE_CODE_S
 
 ## Failure mode
 
-Every hook fails open. On a missing key, network failure, timeout, HTTP error or malformed answer, the hook exits 0 with no output and logs a status. Compaction and Agent calls go ahead untouched. After a timeout or connection failure, the cooldown makes later calls fail in milliseconds instead of costing another timeout each. `route.sh` exits non-zero on failure so that callers can fall back. The guard is the only hook that can block anything, and it is off by default.
+Every hook fails open. On a missing key, network failure, timeout, HTTP error or malformed answer, the hook exits 0 with no output and logs a status. Compaction and Agent calls go ahead untouched. After a timeout or connection failure, the cooldown makes later calls from the same hook family fail in milliseconds instead of costing another timeout each. `route.sh` exits non-zero on failure so that callers can fall back. The guard is the only hook that can block anything, and it is off by default.
 
 ## Observed hook order (Claude Code 2.1.302)
 
@@ -87,7 +87,7 @@ A manual `/compact` fires the hooks in this order (see `test/evidence/compact-or
 
 `PostCompact` starts only after the SessionStart hooks have finished, and the transcript does not yet contain the new summary at that point. Coverage computed on `PostCompact` would therefore arrive too late for the injection.
 
-For that reason, `compact-post.sh` also runs on the compaction agent's `SubagentStop`. Claude Code waits for that hook before SessionStart, and its summary is byte-identical to `compact_summary` (verified up to 7k chars). The `SubagentStop` pass acts only when all of these hold:
+For that reason, `compact-post.sh` also runs on the compaction agent's `SubagentStop`. Claude Code waits for that hook before SessionStart, and its summary is byte-identical to `compact_summary`. `live-compact.sh` asserts this on every run and records the summary length in `test/evidence/compact-*order.txt`. A reviewer run outside the committed evidence also saw a 6,978-char summary match. The `SubagentStop` pass acts only when all of these hold:
 
 - `agent_type` is empty;
 - the state is still pending from PreCompact;
@@ -106,6 +106,8 @@ Prompt-suggestion agents also stop with an empty type, and they are ignored. Whe
 - **Coverage noise.** Coverage is best effort. On a 474-char one-line summary, Jev marked two facts as missing that the summary did state. This is known noise, and it is not tuned on that one sample. The cost is bounded over-injection, never loss.
 - **Heuristic extraction.** Facts come from regexes over the records after the last `compact_boundary`. The transcript may lag at PreCompact, so the newest turn can be missing. Typed slash commands are skipped: a bare `/word`, or `/word args` on a record without `promptSource`. A message such as "/tmp is full" is kept.
 - **No summary changes.** The hooks cannot change the summary itself; they can only add context after it.
+- **Subagent compaction window.** SubagentStop cannot filter on `agent_id`, because the parent's compaction agent has one too. A background subagent's own compaction agent that stops with a `<summary>` while the parent's PreCompact is pending (a window of seconds) could claim the parent's state. The worst case is coverage computed against the wrong summary, which means extra facts are re-injected. This has not been seen live.
+- **Agent lookup cost.** Finding a custom agent by frontmatter `name:` runs one awk per agent file, about 2 ms each (266 ms with 101 files). This only happens for model-less calls whose type is neither allowlisted nor `plugin:name`.
 - **Guard caveat.** If the auto-compaction is recovering from an API context-limit error, blocking it makes that request fail. The guard therefore fires at most once per session, and only on `auto`.
 
 ## Tests

@@ -12,6 +12,6 @@ case: fill (JEV_ROUTE_MODE=fill, parent --model haiku)
 --- agent-route.sh stdout (what Claude Code received)
 {"hookSpecificOutput":{"hookEventName":"PreToolUse","updatedInput":{"description":"Count files","prompt":"Run: ls / | wc -l and reply with only the number.","subagent_type":"general-purpose","model":"sonnet"}}}
 --- route.jsonl decision
-{"ts":"2026-10-17T14:12:32Z","hook":"agent-route","session_id":"603e3e51-762f-4b00-ad40-31031805cbcd","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","fill_eligible":true,"jev_model":"haiku","final_model":"sonnet","confidence":0.98,"policy":"as_is","signals":{"ambiguous":0.42,"needs_research":0.06,"mechanical":0.64,"cross_cutting":0.11,"security_or_high_blast_radius":0.04,"review_of_nontrivial_diff":0.01},"description":"Count files","reason":"jev: none→sonnet (jev haiku, conf 0.98, mechanical 0.64)"}
---- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/603e3e51-762f-4b00-ad40-31031805cbcd/subagents/agent-adc3d2dec5476a45c.jsonl
+{"ts":"2026-10-17T14:26:12Z","hook":"agent-route","session_id":"47789542-7ca8-4cdd-ab04-2c03f2c66b66","action":"filled","mode":"fill","subagent_type":"general-purpose","given_model":"","fill_eligible":true,"jev_model":"haiku","final_model":"sonnet","confidence":1.0,"policy":"as_is","signals":{"ambiguous":0.46,"needs_research":0.06,"mechanical":0.69,"cross_cutting":0.11,"security_or_high_blast_radius":0.03,"review_of_nontrivial_diff":0.01},"description":"Count files","reason":"jev: none→sonnet (jev haiku, conf 1.0, mechanical 0.69)"}
+--- subagent transcript: ~/.claude/projects/-private-tmp-jev-live-agent/47789542-7ca8-4cdd-ab04-2c03f2c66b66/subagents/agent-a834bb23889c0b019.jsonl
 message.model values: claude-sonnet-5-5
