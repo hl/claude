@@ -1,0 +1,7 @@
+<analysis>
+The additional instructions say to keep only a one-line description of the current task and to drop every background fact, name, number and path. So the summary is a single line covering the current task. It leaves out the earlier session context and all file details.
+</analysis>
+
+<summary>
+Current task: report the one-line error from running `ls` on a nonexistent directory. The command failed with exit code 1 ("No such file or directory"), and the one-line report to the user is still to be given.
+</summary>

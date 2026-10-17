@@ -1,0 +1,88 @@
+
+id     label   routed   conf  policy                 jev_choice / signals>=0.7
+h1     haiku   haiku    0.98  as_is                  haiku / 
+h1     haiku   haiku    0.98  as_is                  haiku / ambiguous
+h1     haiku   haiku    0.98  as_is                  haiku / 
+h2     haiku   haiku     1.0  as_is                  haiku / 
+h2     haiku   haiku     1.0  as_is                  haiku / mechanical
+h2     haiku   haiku    0.98  as_is                  haiku / 
+h3     haiku   haiku     1.0  as_is                  haiku / mechanical
+h3     haiku   haiku     1.0  as_is                  haiku / mechanical
+h3     haiku   haiku     1.0  as_is                  haiku / mechanical
+h4     haiku   haiku     1.0  as_is                  haiku / mechanical,cross_cutting
+h4     haiku   haiku     1.0  as_is                  haiku / mechanical,cross_cutting
+h4     haiku   haiku     1.0  as_is                  haiku / mechanical,cross_cutting
+h5     haiku   haiku    0.98  as_is                  haiku / mechanical,cross_cutting
+h5     haiku   haiku    0.98  as_is                  haiku / mechanical,cross_cutting
+h5     haiku   haiku    0.98  as_is                  haiku / mechanical,cross_cutting
+h6     haiku   sonnet   0.46  bumped_low_confidence  haiku / ambiguous,needs_research
+h6     haiku   sonnet   0.45  bumped_low_confidence  haiku / ambiguous,needs_research
+h6     haiku   sonnet   0.43  bumped_low_confidence  haiku / ambiguous,needs_research
+h7     haiku   haiku    0.95  as_is                  haiku / 
+h7     haiku   haiku    0.94  as_is                  haiku / 
+h7     haiku   haiku    0.95  as_is                  haiku / 
+h8     haiku   haiku    0.64  as_is                  haiku / 
+h8     haiku   haiku    0.62  as_is                  haiku / 
+h8     haiku   haiku    0.62  as_is                  haiku / 
+o1     opus    opus     0.59  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o1     opus    opus     0.56  as_is                  opus / ambiguous,needs_research
+o1     opus    opus     0.61  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o2     opus    opus      1.0  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius,review_of_nontrivial_diff
+o2     opus    opus      1.0  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius,review_of_nontrivial_diff
+o2     opus    opus      1.0  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius,review_of_nontrivial_diff
+o3     opus    opus     0.91  as_is                  opus / ambiguous,cross_cutting
+o3     opus    opus     0.91  as_is                  opus / ambiguous,cross_cutting
+o3     opus    opus     0.88  as_is                  opus / ambiguous,cross_cutting
+o4     opus    opus      0.8  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o4     opus    opus     0.85  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o4     opus    opus     0.85  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o5     opus    opus     0.85  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o5     opus    opus     0.88  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o5     opus    opus     0.86  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o6     opus    opus     0.98  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o6     opus    opus     0.98  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o6     opus    opus     0.97  as_is                  opus / ambiguous,needs_research,cross_cutting,security_or_high_blast_radius
+o7     opus    opus     0.25  bumped_low_confidence  sonnet / ambiguous,needs_research,security_or_high_blast_radius
+o7     opus    opus     0.25  bumped_low_confidence  sonnet / ambiguous,needs_research,security_or_high_blast_radius
+o7     opus    opus     0.28  as_is                  opus / ambiguous,needs_research,security_or_high_blast_radius
+o8     opus    opus     0.97  as_is                  opus / ambiguous,needs_research,cross_cutting
+o8     opus    opus     0.97  as_is                  opus / ambiguous,needs_research,cross_cutting
+o8     opus    opus     0.97  as_is                  opus / ambiguous,needs_research,cross_cutting
+s1     sonnet  sonnet    1.0  as_is                  sonnet / ambiguous,cross_cutting
+s1     sonnet  sonnet    1.0  as_is                  sonnet / ambiguous,cross_cutting
+s1     sonnet  sonnet    1.0  as_is                  sonnet / ambiguous,cross_cutting
+s2     sonnet  sonnet   0.82  as_is                  sonnet / needs_research
+s2     sonnet  sonnet   0.83  as_is                  sonnet / needs_research
+s2     sonnet  sonnet   0.83  as_is                  sonnet / needs_research
+s3     sonnet  sonnet   0.73  as_is                  sonnet / 
+s3     sonnet  sonnet   0.72  as_is                  sonnet / 
+s3     sonnet  sonnet   0.76  as_is                  sonnet / 
+s4     sonnet  sonnet   0.91  as_is                  sonnet / ambiguous
+s4     sonnet  sonnet   0.91  as_is                  sonnet / ambiguous
+s4     sonnet  sonnet   0.91  as_is                  sonnet / ambiguous
+s5     sonnet  sonnet   0.98  as_is                  sonnet / 
+s5     sonnet  sonnet   0.97  as_is                  sonnet / 
+s5     sonnet  sonnet   0.98  as_is                  sonnet / 
+s6     sonnet  sonnet   0.89  as_is                  sonnet / needs_research
+s6     sonnet  sonnet   0.88  as_is                  sonnet / needs_research
+s6     sonnet  sonnet   0.91  as_is                  sonnet / needs_research
+s7     sonnet  sonnet   0.97  as_is                  sonnet / ambiguous
+s7     sonnet  sonnet   0.97  as_is                  sonnet / ambiguous
+s7     sonnet  sonnet   0.98  as_is                  sonnet / ambiguous
+s8     sonnet  sonnet   0.98  as_is                  sonnet / needs_research
+s8     sonnet  sonnet   0.98  as_is                  sonnet / 
+s8     sonnet  sonnet   0.98  as_is                  sonnet / needs_research
+
+confusion (rows = label, cols = routed):
+label/routed     haiku  sonnet    opus    FAIL
+haiku               21       3       0       0
+sonnet               0      24       0       0
+opus                 0       0      24       0
+
+runs=3 cases=72 correct=69 accuracy=0.958 over_routed=3 under_routed_opus=0 failures=0
+jev latency ms: {
+  "n": 72,
+  "p50": 269,
+  "max": 598
+}
+PASS: route eval

@@ -71,6 +71,16 @@
             "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/agent-route.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "SessionEnd": [
@@ -99,6 +109,16 @@
           {
             "type": "command",
             "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/compact-session.sh",
+            "timeout": 20
           }
         ]
       }
@@ -131,6 +151,15 @@
             "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/compact-post.sh",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -139,6 +168,30 @@
           {
             "type": "command",
             "command": "/Users/hl/.config/iterm2/cc-status"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/compact-pre.sh",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/compact-post.sh",
+            "timeout": 20
           }
         ]
       }

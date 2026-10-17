@@ -1,0 +1,9 @@
+{
+  "session_id": "f0404112-1093-48ce-b56a-676db309106e",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/f0404112-1093-48ce-b56a-676db309106e.jsonl",
+  "cwd": "/private/tmp/jev-live-compact",
+  "prompt_id": "17f39be3-450c-49d0-9ec5-3dd945878031",
+  "hook_event_name": "PreCompact",
+  "trigger": "manual",
+  "custom_instructions": null
+}

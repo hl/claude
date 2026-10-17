@@ -1,0 +1,31 @@
+<analysis>
+The user wants ordered per-account event fan-out. I chose Redis Streams, edited fanout.ex, hit an ordering test failure, fixed it, opened a PR and started on a feature flag.
+</analysis>
+
+<summary>
+1. Primary request and intent:
+   The user asked for per-account ordered event fan-out in the platform app.
+
+2. Key technical decisions:
+   - Decision: use Redis Streams instead of Oban for the event fan-out, because Oban cannot guarantee ordering per account. The consumer group is platform-fanout.
+   - Elixir 1.19 features may only be used behind a version check, because production still runs Elixir 1.18.
+
+3. Files and code sections:
+   - /work/platform/lib/platform/events/fanout.ex: changed from `use Oban.Worker` to `use Platform.Streams.Consumer`.
+   - /work/platform/config/runtime.exs: being edited to add the feature flag.
+
+4. Errors and fixes:
+   - `mix test test/platform/events/fanout_test.exs` failed: "preserves per-account ordering" expected [1, 2, 3], got [1, 3, 2].
+     Root cause: the test clock is shared between async tests, so timestamps collide. Fix: set async: false on FanoutTest.
+
+5. Branch and PR:
+   - Work is on branch feat/event-fanout-streams, pushed to origin.
+   - Pull request: https://github.com/acme/platform/pull/2417
+
+6. Pending tasks:
+   - Wait for CI on the PR.
+   - Add the feature flag fanout_streams_enabled, defaulting to off.
+
+7. Current work:
+   Adding the fanout_streams_enabled flag to config/runtime.exs.
+</summary>
