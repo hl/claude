@@ -51,7 +51,7 @@ echo "confusion (rows = label, cols = routed):"
 jq -r '
   def tiers: ["haiku", "sonnet", "opus", "FAIL"];
   . as $all
-  | (["label\\routed"] + tiers | @tsv),
+  | (["label/routed"] + tiers | @tsv),
     (["haiku", "sonnet", "opus"][] as $l
      | [$l] + [tiers[] as $m | [$all[] | select(.label == $l and .model == $m)] | length | tostring] | @tsv)
 ' "$out/all.json" | awk -F'\t' '{ printf "%-14s %7s %7s %7s %7s\n", $1, $2, $3, $4, $5 }'

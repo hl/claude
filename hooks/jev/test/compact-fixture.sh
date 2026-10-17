@@ -95,6 +95,17 @@ pre $S >/dev/null
 jq -cn --arg s $S --arg m "$SUMMARY" '{session_id: $s, hook_event_name: "SubagentStop", agent_type: "general-purpose", last_assistant_message: $m}' | "$J/compact-post.sh"
 jq -e '.coverage == null' "$JEV_HOME/compact/$S.json" >/dev/null && ok "ordinary subagent stop ignored" || bad "ordinary subagent stop wrote coverage"
 
+# --- background context the latest steps don't use (regression from a live run:
+# a user-stated host/ticket ranked below threshold once the work moved on)
+S=fixture-bg
+cp "$FIX/transcript-background.jsonl" "$JEV_HOME/bg.jsonl"
+jq -cn --arg s $S --arg tp "$JEV_HOME/bg.jsonl" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: "manual"}' | "$J/compact-pre.sh"
+jq -cn --arg s $S --arg m "$(cat "$FIX/summary-background.txt")" '{session_id: $s, hook_event_name: "SubagentStop", agent_type: "", last_assistant_message: $m}' | "$J/compact-post.sh"
+o=$(sess $S)
+ctx=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$o" 2>/dev/null)
+case $ctx in *pg-staging-7*OPS-4821* | *OPS-4821*pg-staging-7*) ok "background: user-stated host and ticket re-injected after a summary that dropped them" ;; *) bad "background: host/ticket not injected (scores: $(jq -c '[.facts[] | {n, score}]' "$JEV_HOME/compact/$S.json"))" ;; esac
+case $ctx in *notes.txt* | *nonexistent-jev-dir*) bad "background: finished one-off steps injected" ;; *) ok "background: finished one-off steps left out" ;; esac
+
 # --- optional guard: blocks one auto-compaction per session, then never again
 S=fixture-e
 gpre() { jq -cn --arg s $S --arg tp "$TP" --arg t "$1" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: $t}' |

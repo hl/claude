@@ -12,7 +12,7 @@ trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=compact-session
-# shellcheck source=lib.sh
+# shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
 MAX_CHARS=${JEV_COMPACT_MAX_CHARS:-9000}

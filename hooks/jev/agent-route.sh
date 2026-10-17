@@ -21,7 +21,7 @@ trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=agent-route
-# shellcheck source=lib.sh
+# shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
 mode=${JEV_ROUTE_MODE:-fill}

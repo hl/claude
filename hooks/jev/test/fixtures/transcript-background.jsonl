@@ -1,0 +1,11 @@
+{"type":"user","uuid":"u1","sessionId":"fixture-bg","message":{"role":"user","content":"Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821."}}
+{"type":"assistant","uuid":"a1","sessionId":"fixture-bg","message":{"role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"OK"}]}}
+{"type":"user","uuid":"u2","sessionId":"fixture-bg","message":{"role":"user","content":"Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE."}}
+{"type":"assistant","uuid":"a2","sessionId":"fixture-bg","message":{"role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"/work/scratch/notes.txt","content":"fanout v2\n"}}]}}
+{"type":"user","uuid":"u3","sessionId":"fixture-bg","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"File created successfully at: /work/scratch/notes.txt"}]}}
+{"type":"assistant","uuid":"a3","sessionId":"fixture-bg","message":{"role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"DONE"}]}}
+{"type":"user","uuid":"u4","sessionId":"fixture-bg","message":{"role":"user","content":"Run the shell command: ls /nonexistent-jev-dir   and tell me the error in one line."}}
+{"type":"assistant","uuid":"a4","sessionId":"fixture-bg","message":{"role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"tool_use","id":"t2","name":"Bash","input":{"command":"ls /nonexistent-jev-dir"}}]}}
+{"type":"user","uuid":"u5","sessionId":"fixture-bg","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","is_error":true,"content":"Exit code 1\nls: /nonexistent-jev-dir: No such file or directory"}]}}
+{"type":"assistant","uuid":"a5","sessionId":"fixture-bg","message":{"role":"assistant","model":"claude-sonnet-5-5","content":[{"type":"text","text":"ls: /nonexistent-jev-dir: No such file or directory"}]}}
+{"type":"user","uuid":"u6","sessionId":"fixture-bg","message":{"role":"user","content":"/compact Keep only a one-line description of the current task. Drop every background fact, name, number and path."}}

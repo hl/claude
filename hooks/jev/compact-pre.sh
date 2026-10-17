@@ -18,7 +18,7 @@ trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=compact-pre
-# shellcheck source=lib.sh
+# shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
 MAX_FACTS=${JEV_COMPACT_MAX_FACTS:-60}
@@ -79,7 +79,7 @@ build_req() {
           key: "f\(.n)",
           value: {
             type: "score",
-            instructions: "Fact \(.n) in `facts`: \"\(.text)\". This session is about to be compacted into a summary and the work will continue from that summary. How much must fact \(.n) survive compaction for the work to continue correctly? Use `recent_transcript_tail` to judge whether it still matters.",
+            instructions: "Fact \(.n) in `facts`: \"\(.text)\". This session is about to be compacted into a short summary and will continue from it. How much must fact \(.n) survive compaction for the rest of the session to go correctly? Constraints and context the user stated (names, hosts, ports, tickets, branches, rules), decisions and open items keep mattering for the whole session even when the latest step does not use them. Finished one-off steps and tool noise do not.",
             criteria: [
               "Irrelevant: not needed to continue the work, or already obsolete",
               "Nice to have: useful background; the work continues correctly without it",

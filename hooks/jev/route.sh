@@ -18,7 +18,7 @@ set -euo pipefail
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 JEV_HOOK=${JEV_HOOK:-route}
-# shellcheck source=lib.sh
+# shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
 jev_disabled && exit 3

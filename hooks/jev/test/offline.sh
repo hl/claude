@@ -48,6 +48,9 @@ jq -e '[.facts[].text] | (any(test("pg-staging-3")) and any(test("priv/repo/migr
 jq -e '([.facts[].text] | any(test("pre-boundary|pull/1111|secret thoughts|Caveat:|system-reminder|Attribution lines"))) or (.tail | test("secret thoughts|huge file content"))' <<<"$ex" >/dev/null &&
   bad "extract: leaked pre-boundary, thinking, meta or reminder text" || ok "extract: skips pre-boundary records, thinking, meta and system-reminders"
 jq -e '.facts | (map(.n) == [range(1; length + 1)])' <<<"$ex" >/dev/null && ok "extract: facts numbered 1..N in order" || bad "extract: numbering"
+exb=$("$J/compact-pre.sh" --extract "$FIX/transcript-background.jsonl")
+jq -e '([.facts[].text] | any(test("/compact"))) or (.tail | test("/compact"))' <<<"$exb" >/dev/null &&
+  bad "extract: slash command extracted as a fact" || ok "extract: typed slash commands (/compact ...) are skipped"
 cap=$(JEV_COMPACT_MAX_FACTS=5 "$J/compact-pre.sh" --extract "$FIX/transcript.jsonl" | jq '.facts | length')
 [ "$cap" = 5 ] && ok "extract: JEV_COMPACT_MAX_FACTS caps by recency" || bad "extract: cap gave $cap"
 
