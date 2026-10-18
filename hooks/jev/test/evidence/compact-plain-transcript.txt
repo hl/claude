@@ -1,4 +1,17 @@
-transcript lines: compact_boundary 70; SessionStart hook_additional_context none; first post-compaction api-request-blob containing it none
+transcript lines: compact_boundary 100; SessionStart hook_additional_context 111; first post-compaction api-request-blob containing it none
 --- the hook_additional_context record:
+{
+  "type": "attachment",
+  "attachment": {
+    "type": "hook_additional_context",
+    "hookEvent": "SessionStart",
+    "hookName": "SessionStart",
+    "content": [
+      "Live sections of /private/tmp/jev-live-compact/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):\n## 2026-10-18 — fan-out rollout (OPS-4821)\n  Status: waiting on CI for the rollout PR\n\nArtifacts saved this session (read the file instead of redoing the work):\n* /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/rollout-checklist.md — Rollout checklist\n\nFull record: ledger /tmp/jev-live-compact/jevhome/ledger/e479b5d4-6b6c-48b9-bb80-7380d87af7ab.jsonl (all facts; superseded ones marked), artifacts /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/."
+    ]
+  }
+}
 --- model answer after compaction:
-The staging database is pg-staging-7 on port 6544 (no migrations run against it), and the ticket is OPS-4821.
+Staging database: pg-staging-9 on port 6545 (pg-staging-7 is gone, and migrations must never run against staging).
+Ticket: OPS-4821
+Rollout checklist: /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/rollout-checklist.md

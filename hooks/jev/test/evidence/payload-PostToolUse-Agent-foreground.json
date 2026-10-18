@@ -1,0 +1,75 @@
+{
+  "session_id": "3c58a254-9cf8-4e72-bcfb-80138f60202b",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/3c58a254-9cf8-4e72-bcfb-80138f60202b.jsonl",
+  "cwd": "<scratch>",
+  "prompt_id": "179d7bab-7417-435a-b6dd-5588f4af2263",
+  "permission_mode": "default",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "List fruit tastes",
+    "prompt": "Reply with a numbered list of 40 different fruits, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
+    "subagent_type": "general-purpose",
+    "model": "haiku",
+    "run_in_background": false
+  },
+  "tool_response": {
+    "status": "completed",
+    "prompt": "Reply with a numbered list of 40 different fruits, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
+    "agentId": "a9255d370e0631579",
+    "agentType": "general-purpose",
+    "harnessNoteCount": 0,
+    "harnessTailCount": 0,
+    "harnessSectionHash": "17022cc5309fa495",
+    "content": [
+      {
+        "type": "text",
+        "text": "1. **Apple**: The apple has a crisp, juicy flesh that snaps cleanly when you bite into it, releasing a bright burst of sweetness balanced by a gentle tartness. Its skin is smooth and firm, and the interior stays refreshingly dense and cool even after it has been stored for several weeks.\n\n2. **Banan …[10744 chars]"
+      }
+    ],
+    "resolvedModel": "claude-haiku-5-5",
+    "totalDurationMs": 23716,
+    "totalTokens": 15532,
+    "totalToolUseCount": 0,
+    "usage": {
+      "output_tokens_details": {
+        "thinking_tokens": 625
+      },
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 10945,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 4585,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 10945
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 4585,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 10945,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 10945,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "canContinueAgent": true
+  },
+  "tool_use_id": "toolu_01PWY3ksfPXgbU5mS5DHSnkB",
+  "duration_ms": 23717
+}

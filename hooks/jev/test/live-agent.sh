@@ -6,7 +6,7 @@
 #  1. fill:     parent on haiku spawns a mechanical general-purpose subagent with
 #               NO model. Inherit would give haiku; Jev says haiku and the fill
 #               floor makes it sonnet -> the subagent must run on a sonnet ID
-#  2. escalate: parent on sonnet asks for model "haiku" on a non-trivial security
+#  2. escalate (the default mode): parent on sonnet asks for model "haiku" on a non-trivial security
 #               review -> the subagent must run on an opus ID
 # Also checks the hook output carries no permissionDecision.
 set -uo pipefail
@@ -35,7 +35,7 @@ fails=0
 run_case() { # <name> <parent-model> <mode> <model-clause> <description> <prompt> <expect-substring>
   local name=$1 PARENT=$2 mode=$3 mclause=$4 desc=$5 prompt=$6 want=$7 stop tp models
   rm -f "$SCRATCH"/dump/*
-  (cd "$SCRATCH" && JEV_ROUTE_MODE=$mode timeout 300 claude -p --model "$PARENT" \
+  (cd "$SCRATCH" && JEV_ROUTE_MODE=$mode timeout 300 claude -p --setting-sources project --model "$PARENT" \
     "Use the Agent tool exactly once, with subagent_type \"general-purpose\" $mclause, description \"$desc\", and this prompt: \"$prompt\". Then reply with its answer in one line.") >/dev/null 2>&1
   stop=$(find "$SCRATCH/dump" -name '*-SubagentStop-*.json' | sort | tail -n 1)
   tp=$(jq -r '.agent_transcript_path // empty' "$stop" 2>/dev/null)

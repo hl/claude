@@ -1,0 +1,18 @@
+# latency.sh — 2026-10-18T21:25Z, Claude Code 2.1.302 (Claude Code), Jev jev-1.13.0
+# ledger Stop is replayed turn by turn over the fixture and over the last 20 turns of a real local transcript
+# (timings and sizes only). Budgets in parentheses.
+ok   - agent-route (escalate, Jev call): ms per run: 472 464 444 (n=3 p50=464 p95=472 max=472) (budget 1500 ms)
+ok   - compact-pre v1 mode (extract + 1 Jev call, 13 facts): ms per run: 503 457 522 (n=3 p50=503 p95=522 max=522) (budget 5000 ms)
+ok   - compact-pre ledger mode, first flush of a session (extract + 1 Jev call + snapshot): ms per run: 652 651 676 (n=3 p50=652 p95=676 max=676) (budget 5000 ms)
+ok   - compact-pre ledger mode, ledger already current (snapshot only): ms per run: 112 113 111 (n=3 p50=112 p95=113 max=113) (budget 1500 ms)
+ok   - compact-post (SubagentStop, 1 Jev call): ms per run: 416 434 446 (n=3 p50=434 p95=446 max=446) (budget 5000 ms)
+ok   - compact-session (no API call): ms per run: 95 96 96 (n=3 p50=96 p95=96 max=96) (budget 1000 ms)
+ok   - compact-post on an ordinary SubagentStop (fast exit): ms per run: 30 30 29 (n=3 p50=30 p95=30 max=30) (budget 300 ms)
+ok   - artifact-hook PostToolUse(Agent), 6 KB result (local only): ms per run: 124 123 123 (n=3 p50=123 p95=124 max=124) (budget 1000 ms)
+     fixture: first run over 0 bytes of history: 52 ms
+ok   - ledger Stop per turn, fixture: n=12 p50=477 p95=600 max=600 ms; slice bytes n=12 p50=670 p95=1925 max=1925; statuses ok=12 (budget 1500 ms)
+     real transcript: 16130801 bytes, 95 typed prompts
+     real: first run over 14495277 bytes of history: 2100 ms
+ok   - ledger Stop per turn, real: n=20 p50=650 p95=803 max=836 ms; slice bytes n=20 p50=53144 p95=202876 max=384296; statuses no_candidates=1,ok=20 (budget 1500 ms)
+     jev call ms (all calls above): n=56 p50=317 p95=544 max=548
+latency: 0 failure(s)

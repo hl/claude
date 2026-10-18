@@ -1,0 +1,26 @@
+{
+  "session_id": "3c58a254-9cf8-4e72-bcfb-80138f60202b",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/3c58a254-9cf8-4e72-bcfb-80138f60202b.jsonl",
+  "cwd": "<scratch>",
+  "prompt_id": "179d7bab-7417-435a-b6dd-5588f4af2263",
+  "permission_mode": "default",
+  "agent_id": "af530efd632535256",
+  "agent_type": "general-purpose",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "SubagentStop",
+  "stop_hook_active": false,
+  "agent_transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/3c58a254-9cf8-4e72-bcfb-80138f60202b/subagents/agent-af530efd632535256.jsonl",
+  "last_assistant_message": "1. **Asparagus** has a grassy, slightly sweet flavor with a hint of bitterness that becomes more pronounced the thicker the spear. Its tender stalks snap cleanly when fresh, and the tips turn soft and creamy when they are roasted or grilled.\n\n2. **Broccoli** tastes earthy and mildly peppery, with a  …[9167 chars]",
+  "background_tasks": [
+    {
+      "id": "af530efd632535256",
+      "type": "subagent",
+      "status": "running",
+      "description": "List vegetable tastes",
+      "agent_type": "general-purpose"
+    }
+  ],
+  "session_crons": []
+}

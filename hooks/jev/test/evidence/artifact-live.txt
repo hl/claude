@@ -1,0 +1,16 @@
+# live-artifact.sh — 2026-10-18T21:19Z, 2.1.302 (Claude Code)
+## parent's final reply
+foreground: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md
+background: /private/tmp/claude-501/-private-tmp-jev-live-artifact/3c58a254-9cf8-4e72-bcfb-80138f60202b/tasks/af530efd632535256.output
+## artifacts
+<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md 10858 bytes, first line: <!-- subagent a9255d370e0631579 (general-purpose, claude-haiku-5-5), 2026-10-18T21:19:35Z, List fruit tastes -->
+<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable-tastes.md 9274 bytes, first line: <!-- subagent af530efd632535256 (general-purpose), 2026-10-18T21:19:34Z, List vegetable tastes -->
+## artifact.jsonl
+{"ts":"2026-10-18T21:19:34Z","hook":"artifact-hook","session_id":"3c58a254-9cf8-4e72-bcfb-80138f60202b","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable-tastes.md","chars":9167,"agent_id":"af530efd632535256"}
+{"ts":"2026-10-18T21:19:35Z","hook":"artifact-hook","session_id":"3c58a254-9cf8-4e72-bcfb-80138f60202b","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md","chars":10744,"agent_id":"a9255d370e0631579"}
+## ledger
+{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-vegetable-tastes: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable"}
+{"id":"f2","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-fruit-tastes: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes."}
+{"id":"f3","kind":"user","score":1.92,"text":"User said: Do exactly this, then stop: 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpos"}
+## parent transcript: hook additionalContext the parent received
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md\"]"}
