@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
-# compact-pre.sh — PreCompact hook. Extracts candidate facts from the transcript
-# (deterministically, records after the last compact boundary only), asks Jev
-# how much each must survive compaction, and writes
-# ~/.claude/jev/compact/<session_id>.json for compact-post.sh / compact-session.sh.
+# compact-pre.sh — PreCompact hook. Final ledger flush, then a snapshot of the
+# facts compaction must not lose, for compact-post.sh / compact-session.sh in
+# ~/.claude/jev/compact/<session_id>.json.
+#
+# Ledger mode (default): runs ledger.sh --flush (the same incremental step the
+# Stop hook runs, waiting for a running one), then snapshots the live,
+# non-superseded ledger facts scored >= JEV_COMPACT_MIN_SCORE (critical ones
+# first, then the most recent, up to JEV_COMPACT_MAX_FACTS, listed in ledger
+# order). No Jev call of its own: the ledger already scored everything up to
+# the last turn, so a lagging transcript costs nothing.
+#
+# v1 mode (JEV_LEDGER=0, or no ledger facts for this session): extracts
+# candidate facts from the records after the last compact boundary and asks
+# Jev to rank them, as before.
 #
 #   compact-pre.sh                       hook mode (PreCompact JSON on stdin)
 #   compact-pre.sh --extract <jsonl>     print extracted facts + tail, no API call
@@ -53,7 +63,60 @@ trigger=$(jq -r '.trigger // "unknown"' <<<"$payload")
 state_dir="$JEV_HOME/compact"
 state="$state_dir/$JEV_SESSION.json"
 mkdir -p "$state_dir"
+prev_blocked=$(jq -r '.guard_blocked // false' "$state" 2>/dev/null || echo false)
+MIN_SCORE=${JEV_COMPACT_MIN_SCORE:-1.5}
 
+# guard_check <tail-text>: echoes the mid_operation probability (or nothing).
+guard_check() {
+  jq -cn --arg model "$JEV_MODEL" --arg tail "$1" '{model: $model, state: {recent_transcript_tail: $tail},
+    questions: {mid_operation: {type: "noul",
+      instructions: "In `recent_transcript_tail`, the most recent turn is in the middle of an edit, command or review whose result has not been recorded yet."}}}' |
+    jev_call | jq -r '.answers.mid_operation.noul // empty' 2>/dev/null || true
+}
+
+# --- ledger mode
+ledger="$JEV_HOME/ledger/$JEV_SESSION.jsonl"
+if [ "${JEV_LEDGER:-1}" != 0 ]; then
+  JEV_HOOK=ledger-flush "$JEV_DIR/ledger.sh" --flush <<<"$payload" || true
+  if [ -s "$ledger" ] && jq -e -s 'any(.[]; .superseded_by == null and .kind != "artifact")' "$ledger" >/dev/null 2>&1; then
+    mid=null
+    if [ "${JEV_COMPACT_GUARD:-0}" = 1 ] && [ "$trigger" = auto ] && [ "$prev_blocked" != true ]; then
+      tail_text=$(extract "$tp" | jq -r '.tail' 2>/dev/null | tail -c "${JEV_COMPACT_TAIL_CHARS:-40000}" || true)
+      m=$(guard_check "$tail_text")
+      [ -n "$m" ] && mid=$m
+    fi
+    new_state=$(jq -s -c --arg sid "$JEV_SESSION" --arg trigger "$trigger" --arg tp "$tp" --arg at "$(jev_now)" \
+      --argjson epoch "$(date +%s)" --argjson blocked "$prev_blocked" --argjson min "$MIN_SCORE" \
+      --argjson max "${JEV_COMPACT_MAX_FACTS:-60}" --arg lp "$ledger" --argjson mid "$mid" '
+      {
+        session_id: $sid, mode: "ledger", ledger_path: $lp, trigger: $trigger, transcript_path: $tp,
+        extracted_at: $at, extracted_epoch: $epoch, phase: "pre", jev_ok: true,
+        guard_blocked: $blocked, work_type: null, mid_operation: $mid,
+        superseded: ([.[] | select(.superseded_by != null)] | length),
+        facts: ([.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)]
+                | to_entries | map(.value + {ord: .key})
+                | sort_by(-(if .score >= 2.5 then 1 else 0 end), -.ord) | .[0:$max] | sort_by(.ord)
+                | to_entries | map(.value + {n: (.key + 1)} | {n, id, kind, text, score}))
+      }' "$ledger")
+    block=false
+    if [ "${JEV_COMPACT_GUARD:-0}" = 1 ] && [ "$trigger" = auto ] && [ "$prev_blocked" != true ] && [ "$mid" != null ] &&
+      awk -v m="$mid" -v t="${JEV_COMPACT_GUARD_MIN:-0.85}" 'BEGIN { exit !(m >= t) }'; then
+      block=true
+      new_state=$(jq -c '.guard_blocked = true | .phase = "blocked"' <<<"$new_state")
+    fi
+    printf '%s\n' "$new_state" >"$state.tmp" && mv "$state.tmp" "$state"
+    jev_log compact.jsonl "$(jq -c --arg block "$block" '{event: "pre", mode: "ledger", status: "ok", trigger,
+      facts: (.facts | length), superseded, mid_operation, blocked: ($block == "true")}' <<<"$new_state")"
+    if [ "$block" = true ]; then
+      echo "jev: compaction deferred once — the last turn looks mid-operation (an edit, command or review without a recorded result). It will run at the next opportunity." >&2
+      trap - EXIT
+      exit 2
+    fi
+    exit 0
+  fi
+fi
+
+# --- v1 mode: no ledger for this session
 ex=$(extract "$tp") || exit 0
 nfacts=$(jq '.facts | length' <<<"$ex")
 [ "$nfacts" -gt 0 ] || {
@@ -130,12 +193,11 @@ if [ "$answers" = null ] || ! jq -e --argjson n "$nfacts" '[range(1; $n + 1) as 
   jev_ok=false
 fi
 
-prev_blocked=$(jq -r '.guard_blocked // false' "$state" 2>/dev/null || echo false)
 new_state=$(jq -c --arg sid "$JEV_SESSION" --arg trigger "$trigger" --arg tp "$tp" --arg at "$(jev_now)" \
   --argjson epoch "$(date +%s)" --argjson ok "$jev_ok" --argjson a "${answers:-null}" \
   --argjson blocked "$prev_blocked" '
   {
-    session_id: $sid, trigger: $trigger, transcript_path: $tp,
+    session_id: $sid, mode: "v1", trigger: $trigger, transcript_path: $tp,
     extracted_at: $at, extracted_epoch: $epoch, phase: "pre", jev_ok: $ok,
     guard_blocked: $blocked,
     work_type: ($a.work_type.choice // null),

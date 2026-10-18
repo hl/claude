@@ -8,7 +8,7 @@ fromjson?
          or (.type == "attachment" and .attachment.type == "queued_command")
          or (.type == "attachment" and .attachment.type == "hook_additional_context" and .attachment.hookEvent == "SessionStart"))
 | {
-    type, isMeta, isCompactSummary, gitBranch, ps: has("promptSource"),
+    type, uuid, timestamp, isMeta, isCompactSummary, gitBranch, ps: has("promptSource"),
     a: (if .type == "attachment" then
           {type: .attachment.type, prompt: ((.attachment.prompt | strings) // null),
            ctx: ((.attachment.content | if type == "array" then map(strings) | join("\n") else strings end) // null)}

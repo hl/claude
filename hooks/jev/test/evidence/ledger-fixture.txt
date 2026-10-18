@@ -1,0 +1,60 @@
+# ledger-fixture.sh — 2026-10-18T20:40Z, Jev jev-1.13.0
+## replay: Stop after every turn (ms per ledger step, includes the Jev call)
+ok   - turn 5: artifact.sh saved review-producer-r1.md
+ok   - compaction 1 (after turn 7): context injected (1085 chars)
+ledger step ms per turn: 567 517 475 497 465 478 451 507 489 490 515 452 495
+## ledger after 13 turns
+f1 [user 2.78]: User said: We're adding per-account ordered event fan-out to the platform app. Never touch the migrations in priv/repo/migrations; the DBA team owns t
+f2 [user 2.35] SUPERSEDED by f3: User said: Go with Redis Streams for the fan-out; Oban can't guarantee per-account ordering.
+f3 [decision 2.62] SUPERSEDED by f17 supersedes f2: Decision: we'll use Redis Streams for the event fan-out, because Oban cannot guarantee ordering per account.
+f4 [user 2.49] SUPERSEDED by f15: User said: The staging database is pg-staging-3 on port 6543; the integration tests must run against it, not localhost.
+f5 [decision 2.6] SUPERSEDED by f15: OK: the integration tests will run against pg-staging-3 on port 6543, never localhost.
+f6 [branch 1.95]: Branch used this session: feat/event-fanout-streams
+f7 [file 1.83]: File changed this session: /work/platform/lib/platform/events/stream_producer.ex
+f8 [branch 1.73]: Git branch of the session directory: main
+f9 [artifact 2.5]: Artifact review-producer-r1: <tmp>/home/artifacts/ledger-fixture/review-producer-r1.md — Rev
+f10 [user 2.48]: User said: The feature flag is called fanout_streams_enabled and must default to off in every environment.
+f11 [error 1.75] SUPERSEDED by f15: Last failing command: mix test --only integration — output: ** (DBConnection.ConnectionError) tcp connect (pg-staging-3:6543): connection refused
+f12 [todo 1.68] SUPERSEDED by f14: Open item: Open item: backfill the consumer group offsets for existing accounts before enabling the flag.
+f13 [user 1.89]: User said: Open item: backfill the consumer group offsets for existing accounts before enabling the flag.
+f14 [todo 1.71] supersedes f12: Open item: - [ ] backfill the consumer group offsets for existing accounts before enabling the flag
+f15 [user 2.78] supersedes f11,f4,f5: User said: Correction: staging moved to pg-staging-7 on port 6544 last night; pg-staging-3 is gone.
+f16 [user 2.31] SUPERSEDED by f17 supersedes f3: User said: Change of plan: use Oban Pro's ordered queues instead of Redis Streams; the platform team already pays for it.
+f17 [decision 2.43] supersedes f16,f3: Decision: we'll use Oban Pro ordered queues instead of Redis Streams for the event fan-out.
+f18 [user 1.78]: User said: The ticket for this is OPS-4821; put it in the PR title.
+f19 [url 1.87]: Pull request: https://github.com/acme/platform/pull/2417
+f20 [todo 2.01]: Open item: Remaining: the consumer-group offsets backfill, then CI on the PR.
+ok   - ledger: live facts include the migrations rule, the flag, pg-staging-7, Oban Pro, OPS-4821, PR 2417
+ok   - correction 1: the pg-staging-3:6543 statement is superseded
+ok   - correction 2: the Redis Streams decision is superseded
+ok   - artifact indexed in the ledger
+ok   - cursor: offset 14872 = transcript size, last_uuid L039
+ok   - second replay is a no-op (ledger and cursor unchanged)
+ok   - Stop during a running step: skipped in 43 ms (status locked)
+## compaction 2 (after turn 13): summary drops the migrations rule, the flag default and pg-staging-3
+    Live sections of <tmp>/project/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):
+    ## 2026-10-18 — event fan-out (OPS-4821)
+      Brief: per-account ordered fan-out on Oban Pro ordered queues; PR title starts with OPS-4821
+      Status: review round 1
+    
+    Artifacts saved this session (read the file instead of redoing the work):
+    * <tmp>/home/artifacts/ledger-fixture/review-producer-r1.md — Review of the stream producer (round 1)
+    
+    Facts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical; a fact that conflicts with the summary may be stale, so check the file or PR):
+    - User said: We're adding per-account ordered event fan-out to the platform app. Never touch the migrations in priv/repo/migrations; the DBA team owns them and will reject the PR.
+    - File changed this session: /work/platform/lib/platform/events/stream_producer.ex
+    - Git branch of the session directory: main
+    - User said: The feature flag is called fanout_streams_enabled and must default to off in every environment.
+    - User said: Correction: staging moved to pg-staging-7 on port 6544 last night; pg-staging-3 is gone.
+    Full record: ledger <tmp>/home/ledger/ledger-fixture.jsonl (all facts; superseded ones marked), artifacts <tmp>/home/artifacts/ledger-fixture/.
+ok   - injection is 1559 chars (< 9000)
+ok   - dropped live fact injected: migrations rule
+ok   - dropped live fact injected: flag default off
+ok   - superseded pg-staging-3 statement not injected
+ok   - superseded Redis Streams decision not injected
+ok   - artifact index line present
+ok   - .orchestrator.md live section present
+ok   - DONE and BLOCKED orchestrator sections left out
+ok   - order: orchestrator, artifacts, facts
+compact.jsonl: {"covered":7,"missing":[1,3,4,5,8]}
+ledger-fixture: 0 failure(s)

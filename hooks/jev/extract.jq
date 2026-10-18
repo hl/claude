@@ -1,7 +1,9 @@
 # extract.jq — deterministic fact extraction for compact-pre.sh.
 # Input (jq -s): slimmed records (slim.jq) after the last compact boundary.
 # Args: $max (fact cap), $tail_chars (size of the plain-text transcript tail).
-# Output: {facts: [{n, kind, text}], tail: "..."}
+# Output: {facts: [{n, kind, text, src}], tail: "..."}  (src: uuid of the record the fact came from)
+# --argjson ledger true (ledger.sh): facts re-injected by an earlier compaction
+# are not candidates, because the ledger already holds them.
 #
 # Candidates: user messages, assistant lines that read like decisions or
 # constraints, files touched, URLs, branches, the last failing command, and
@@ -41,6 +43,7 @@ def recent($k): sort_by(-.i) | .[0:$k];
     | .a.ctx | strings | select(contains(carried_header)) | split("\n")[] | select(startswith("- "))
     | {i: $i, kind: "carried", text: ltrimstr("- ")} ]
   | reduce .[] as $f ([]; if any(.[]; .text == $f.text) then . else . + [$f] end) | .[0:30]
+  | (if ($ARGS.named.ledger // false) then [] else . end)
   as $carried
 
 # assistant prose, line by line
@@ -99,7 +102,7 @@ def recent($k): sort_by(-.i) | .[0:$k];
   # carried facts are exempt from the recency cap
   | sort_by(-.i) | .[0:([$max - ($carried | length), 0] | max)]
   | ($carried + .) | sort_by(.i)
-  | to_entries | map({n: (.key + 1), kind: .value.kind, text: .value.text})
+  | to_entries | map({n: (.key + 1), kind: .value.kind, text: .value.text, src: ($recs[.value.i].uuid // null)})
   as $facts
 
 # plain-text tail of the transcript for context

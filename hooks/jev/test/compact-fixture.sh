@@ -10,11 +10,14 @@
 #   - the 3 omitted facts appear in additionalContext
 #   - at least 2 covered facts do not
 #   - additionalContext < 9000 chars; output is valid SessionStart JSON
-#   - pre-boundary decoys are never extracted; a second SessionStart is silent
+#   - pre-boundary decoys are never extracted; a second SessionStart without a
+#     new PreCompact falls back to ranking the ledger and leaves the state consumed
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J="$HERE/.."
 FIX="$HERE/fixtures"
+# Isolate from the session running the tests (its .orchestrator.md, its artifacts).
+unset CLAUDE_PROJECT_DIR CLAUDE_CODE_SESSION_ID CLAUDE_SESSION_ID CLAUDE_PID
 JEV_HOME=$(mktemp -d "${TMPDIR:-/tmp}/jev-cf.XXXXXX")
 export JEV_HOME
 cp "$FIX/transcript.jsonl" "$JEV_HOME/transcript.jsonl"
@@ -73,7 +76,8 @@ o=$(postc $S)
 [ -z "$o" ] && tail -n 1 "$JEV_HOME/log/compact.jsonl" | jq -e '.status == "already_covered"' >/dev/null &&
   ok "PostCompact after SessionStart: same summary, no second Jev call" || bad "PostCompact dedup failed"
 o=$(sess $S)
-[ -z "$o" ] && ok "second SessionStart(compact): silent (state consumed)" || bad "second SessionStart not silent"
+tail -n 1 "$JEV_HOME/log/compact.jsonl" | jq -e '.mode == "ledger-ranking"' >/dev/null && jq -e '.consumed_at != null' "$st" >/dev/null &&
+  ok "second SessionStart(compact) without a new PreCompact: ranks the live ledger facts, state stays consumed" || bad "second SessionStart: $(tail -n 1 "$JEV_HOME/log/compact.jsonl")"
 
 # --- the other order: PostCompact before SessionStart, no SubagentStop pass
 S=fixture-b
@@ -82,6 +86,14 @@ postc $S >/dev/null
 jq -e '.coverage.source == "PostCompact"' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 &&
   ok "PostCompact-first: coverage recorded" || bad "PostCompact-first: no coverage"
 check_ctx post-first "$(sess $S)" true
+
+# --- v1 mode (JEV_LEDGER=0): extraction at PreCompact, no ledger
+S=fixture-v1
+JEV_LEDGER=0 pre $S >/dev/null
+jq -e '.mode == "v1" and .jev_ok' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 && [ ! -e "$JEV_HOME/ledger/$S.jsonl" ] &&
+  ok "JEV_LEDGER=0: v1 extraction path, no ledger written" || bad "JEV_LEDGER=0 did not take the v1 path"
+substop $S >/dev/null
+check_ctx v1-mode "$(sess $S)" true
 
 # --- no coverage at all: ranking fallback
 S=fixture-c
