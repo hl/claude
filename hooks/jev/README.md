@@ -188,7 +188,7 @@ All under `~/.claude/jev/`, which `.gitignore` keeps out of this public repo.
 
 Every hook fails open: on a missing key, network failure, timeout, HTTP error or malformed answer it exits 0 with no output and logs a status. The cooldown makes later calls from the same family fail in milliseconds. `route.sh` and `artifact.sh` exit non-zero so that callers can fall back. The compaction injection of `.orchestrator.md` and the artifact index needs no Jev call and still happens when Jev is down. `test/offline.sh` checks every hook with no key, an unreachable port, a hanging listener, a blackholed address, a bad key, `JEV_DISABLED=1` and `JEV_LEDGER=0`.
 
-Latency (`test/latency.sh`, Jev p50 ≈ 0.3 s): ledger Stop per turn p50 ≈ 0.5 s on the fixture and ≈ 0.6 s (p95 ≈ 0.8 s) replaying 20 turns of a 16 MB real transcript; the first ledger run over that transcript's 14 MB history took ≈ 1.9 s once. compact-pre with a current ledger ≈ 0.1 s; compact-post ≈ 0.45 s; compact-session ≈ 0.1 s; agent-route ≈ 0.45 s; artifact-hook ≈ 0.12 s.
+Latency (`test/latency.sh`, Jev p50 ≈ 0.3 s): ledger Stop per turn p50 ≈ 0.5 s on the fixture and ≈ 0.65 s (p95 ≈ 0.8 s) replaying 20 turns of a 16 MB real transcript; the first ledger run over that transcript's 14 MB history took ≈ 2 s once. compact-pre with a current ledger ≈ 0.1 s; compact-post ≈ 0.45 s; compact-session ≈ 0.1 s; agent-route ≈ 0.45 s; artifact-hook ≈ 0.12 s.
 
 ## Limits
 
