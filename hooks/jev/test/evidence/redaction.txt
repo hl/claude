@@ -17,11 +17,29 @@ ok   - redacted: clone https://<redacted>@git.example.com/acme/repo.git
 ok   - redacted: download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential
 ok   - redacted: download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential
 ok   - redacted: <private-key>
+ok   - redacted: stripe live key <secret>
+ok   - redacted: restricted key <secret>
+ok   - redacted: test key <secret>
+ok   - redacted: curl -u admin:<redacted> https://api.example.com/x
+ok   - redacted: curl --user deploy:<redacted> https://api.example.com/y
+ok   - redacted: mysql -u root -p<redacted> app_db
+ok   - redacted: mysql -h db.internal.example -u app -p<redacted> app_db
+ok   - redacted: pg_dump --password <redacted> app
+ok   - redacted: tool --password=<redacted> run
+ok   - redacted: curl -H 'Cookie: <redacted>' https://app.example.com
+ok   - redacted: post to https://hooks.slack.com/<redacted> when done
+ok   - redacted: SLACK_WEBHOOK=https://hooks.slack.com/<redacted>
+ok   - redacted: npm token <secret>
+ok   - redacted: hugging face <secret>
+ok   - redacted: digitalocean <secret>
+ok   - redacted: shopify <secret>
+ok   - redacted: github app token <secret>
+ok   - redacted: gitlab <secret>
 ok   - kept: paths, hostnames, git remotes, PR links
 ## 2. on the wire (fake Jev on 127.0.0.1)
 ok   - 5 request bodies captured (hooks that called out: agent-route,compact-post,compact-pre,ledger,route)
 ok   - the API key is not in any captured body or header (Authorization recorded as <present>)
-ok   - none of the 18 planted secrets is in any captured body
+ok   - none of the 36 planted secrets is in any captured body
 ok   - paths and hostnames still reach Jev
 --- sample of a captured body (route.sh state.task):
     Fix the deploy script. Context: export ANTHROPIC_API_KEY=<redacted>
@@ -42,5 +60,8 @@ ok   - paths and hostnames still reach Jev
     download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential=<redacted>
     download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential=<redacted>
     <private-key>
-    Files: /home/dev/projects/platform/lib/platform/events.ex on pg-staging-7.internal.example
+    stripe live key <secret>
+    restricted key <secret>
+    test key <secret>
+    curl -u admin:<redacted> https://api.example.com/x
 redact: 0 failure(s)

@@ -7,7 +7,8 @@
 #  2. on the wire: a local fake Jev (fake-jev.py) captures the request bodies of
 #     route.sh, agent-route.sh, ledger.sh, compact-pre.sh (v1 mode) and
 #     compact-post.sh fed with the planted secrets; none of the secret values
-#     may appear in any body. Writes test/evidence/redaction.txt.
+#     may appear in any body. With JEV_LIVE=1 or JEV_EVIDENCE=1 it also
+#     rewrites test/evidence/redaction.txt.
 # All secrets below are fake.
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -46,6 +47,24 @@ clone https://deploy:s3cretFAKEpw@git.example.com/acme/repo.git	s3cretFAKEpw
 download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=FAKESIG0123abcdef&X-Amz-Credential=FAKECRED99&x=1	FAKESIG0123abcdef
 download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=FAKESIG0123abcdef&X-Amz-Credential=FAKECRED99&x=1	FAKECRED99
 -----BEGIN OPENSSH PRIV@@ATE KEY----- b3BlbnNzaC1rZXktdjEFAKEKEYMATERIAL -----END OPENSSH PRIV@@ATE KEY-----	b3BlbnNzaC1rZXktdjEFAKEKEYMATERIAL
+stripe live key s@@k_live_51HFAKEabcdefghijklmnop0123	s@@k_live_51HFAKEabcdefghij
+restricted key r@@k_live_51HFAKEqrstuvwxyz98765432	r@@k_live_51HFAKEqrstuv
+test key s@@k_test_51HFAKE00112233445566	s@@k_test_51HFAKE0011
+curl -u admin:s3cretFAKEpw https://api.example.com/x	s3cretFAKEpw
+curl --user deploy:FAKEpass-77 https://api.example.com/y	FAKEpass-77
+mysql -u root -pFAKEsupersecret app_db	FAKEsupersecret
+mysql -h db.internal.example -u app -p FAKEspacedpw app_db	FAKEspacedpw
+pg_dump --password FAKEflagpw1 app	FAKEflagpw1
+tool --password=FAKEflagpw2 run	FAKEflagpw2
+curl -H 'Cookie: session=FAKEcookie0123456789abcdef; theme=dark' https://app.example.com	FAKEcookie0123456789
+post to https://hooks.slack@@.com/services/T0FAKE/B0FAKE/FAKEwebhookSECRET123 when done	FAKEwebhookSECRET123
+SLACK_WEBHOOK=https://hooks.slack@@.com/services/T0FAKE/B0FAKE/FAKEwebhook2SECRET	FAKEwebhook2SECRET
+npm token n@@pm_FAKEabcdefghijklmnopqrstuvwxyz0123	n@@pm_FAKEabcdefghijkl
+hugging face h@@f_FAKEabcdefghijklmnopqrstuvwxyz	h@@f_FAKEabcdefghijklm
+digitalocean d@@op_v1_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef	d@@op_v1_0123456789abcdef
+shopify s@@hpat_0123456789abcdef0123456789abcdef	s@@hpat_0123456789abcdef
+github app token g@@hs_FAKEabcdefghijklmnopqrstuvwxyz0123	g@@hs_FAKEabcdefghijkl
+gitlab g@@lpat-FAKEabcdefghijklmnop	g@@lpat-FAKEabcdefghij
 EOF
 # token-shaped values carry an @@ that is removed here, so the repository
 # never holds a string a secret scanner would take for a real key
@@ -110,5 +129,5 @@ f=$(grep -lF 'Fix the deploy script' "$W"/cap/body-*.json | sed -n 1p)
 jq -r '.state.task // empty' "$f" 2>/dev/null | sed -n 1,22p | sed 's/^/    /' | tee -a "$W/ev.txt" >/dev/null
 
 log "redact: $fails failure(s)"
-sed "s#$W#<tmp>#g" "$W/ev.txt" >"$EVID"
+if [ "${JEV_LIVE:-0}" = 1 ] || [ "${JEV_EVIDENCE:-0}" = 1 ]; then sed "s#$W#<tmp>#g" "$W/ev.txt" >"$EVID"; fi
 [ "$fails" -eq 0 ]
