@@ -46,7 +46,7 @@ expect "above: how sure a cheaper tier falls short" "$mid" '.above.haiku >= 0.7 
 
 # --- fake Jev for everything below
 port=$((20000 + RANDOM % 20000))
-python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
+FAKE_JEV_FULLY='Change of plan' python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
 fpid=$!
 trap 'kill $fpid 2>/dev/null' EXIT
 for _ in $(seq 1 50); do grep -q ready "$W/fake.out" 2>/dev/null && break; sleep 0.1; done
@@ -72,7 +72,7 @@ id=$(jq -r .id <<<"$o")
 [ $? -eq 2 ] && ok "outcome.sh: bad JSON exits 2" || bad "outcome.sh bad JSON"
 jq -c '{id: "x1", label: "opus", model: "opus"} + .' <<<"$o" >"$W/res.jsonl"
 tout=$(JEV_TUNE_ROUTE_LOG="$JEV_HOME/log/route.jsonl" "$HERE/tune.sh" "$W/res.jsonl" 2>/dev/null)
-grep -q '1 eval (from res.jsonl), 1 outcome' <<<"$tout" &&
+grep -q '1 eval rows over 1 tasks (from res.jsonl), 1 outcome' <<<"$tout" &&
   ok "tune.sh: reads outcome.sh records as labels" || bad "tune.sh did not read outcomes"
 
 # --- 4. ledger.sh: cursor, idempotence, partial lines, lock, add, failure
@@ -127,6 +127,38 @@ jq -cn --arg tp "$TP" '{session_id: "sub-x", agent_id: "a1", transcript_path: $t
 JEV_LEDGER=0 stop "" off-disabled
 [ ! -e "$JEV_HOME/ledger/off-disabled.jsonl" ] && ok "ledger: JEV_LEDGER=0 does nothing" || bad "JEV_LEDGER=0 ignored"
 
+# A -> B -> A: the third turn restates A word for word; A must be live again
+# (dedupe is against live facts only) and B superseded by it. The fake Jev
+# answers "fully" for any correction question that involves B.
+S2="off-aba"
+TP2="$W/aba.jsonl"
+: >"$TP2"
+turn() { # <uuid> <text>
+  jq -cn --arg u "$1" --arg t "$2" '{type: "user", uuid: $u, promptSource: "typed", message: {role: "user", content: $t}}' >>"$TP2"
+  jq -cn --arg tp "$TP2" --arg s "$S2" '{session_id: $s, transcript_path: $tp, hook_event_name: "Stop"}' | "$J/ledger.sh"
+}
+turn a1 "Use advisory locks for the job queue."
+turn b1 "Change of plan: use a unique index on jobs instead of advisory locks."
+turn a2 "Use advisory locks for the job queue."
+L2="$JEV_HOME/ledger/$S2.jsonl"
+jq -e -s '[.[] | select(.text == "User said: Use advisory locks for the job queue.")] as $a
+  | ($a | length) == 2 and ($a[0].superseded_by != null) and ($a[1].superseded_by == null)
+  and any(.[]; (.text | test("Change of plan")) and .superseded_by == $a[1].id)' "$L2" >/dev/null &&
+  ok "ledger: A, B, A again -> the restated A is live and supersedes B" || bad "ledger A-B-A: $(jq -c '{id, superseded_by, t: .text[0:40]}' "$L2" | paste -sd' ' -)"
+# open items: the same item as a user line, an "Open item:" line and a checkbox -> one fact
+S3="off-todo"
+TP3="$W/todo.jsonl"
+jq -cn '{type: "user", uuid: "t1", promptSource: "typed", message: {role: "user", content: "Open item: backfill the consumer offsets before enabling the flag."}},
+  {type: "assistant", uuid: "t2", message: {role: "assistant", content: [{type: "text", text: "- [ ] backfill the consumer offsets before enabling the flag"}]}}' >"$TP3"
+jq -cn --arg tp "$TP3" --arg s "$S3" '{session_id: $s, transcript_path: $tp, hook_event_name: "Stop"}' | "$J/ledger.sh"
+[ "$(jq -s '[.[] | select(.text | test("backfill the consumer offsets"))] | length' "$JEV_HOME/ledger/$S3.jsonl")" = 1 ] &&
+  ok "ledger: one open item stated three ways is stored once" || bad "ledger todo dedupe: $(jq -c '.text' "$JEV_HOME/ledger/$S3.jsonl" | paste -sd' ' -)"
+# housekeeping: a superseded fact older than 7 days moves to the archive
+jq -c 'if .superseded_by != null then .ts = "2020-01-01T00:00:00Z" else . end' "$L2" >"$L2.t" && mv "$L2.t" "$L2"
+turn a3 "Also: the queue table is jobs_v2."
+jq -e -s 'all(.[]; .superseded_by == null)' "$L2" >/dev/null && [ -s "$JEV_HOME/ledger/$S2.archive.jsonl" ] &&
+  ok "ledger: superseded facts older than 7 days move to <session>.archive.jsonl" || bad "ledger archive"
+
 # --- 5. artifact.sh
 P="$W/proj"
 mkdir -p "$P"
@@ -148,20 +180,20 @@ p=$(printf 'x\n' | "$J/artifact.sh" "../../etc/evil name" --session sA)
 
 # --- 6. artifact-hook.sh (PostToolUse Agent + SubagentStop)
 long=$(printf 'Finding line %s with enough words to make the result long.\n' $(seq 1 60))
-post() { jq -cn --arg t "$1" --arg a "$2" --arg st "${3:-completed}" '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent",
+post() { jq -cn --arg t "$1" --arg a "$2" --arg st "${3:-completed}" '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent", tool_use_id: ("toolu_" + $a),
   tool_input: {description: "Review the auth plug", subagent_type: "general-purpose", model: "opus"},
   tool_response: {status: $st, agentId: $a, resolvedModel: "claude-opus-5-5", content: [{type: "text", text: $t}]}}' | "$J/artifact-hook.sh"; }
 o=$(post "$long" ag1)
 f=$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o" | sed 's/^Subagent result (Review the auth plug) saved to //')
-jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' <<<"$o" >/dev/null && [ -f "$f" ] && grep -q 'Finding line 60' "$f" && case $f in */artifacts/sH/agent-1-review-the-auth-plug.md) true ;; *) false ;; esac &&
-  ok "artifact-hook: long foreground result saved as agent-1-review-the-auth-plug.md, parent told the path" || bad "artifact-hook PostToolUse: $o"
+jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' <<<"$o" >/dev/null && [ -f "$f" ] && grep -q 'Finding line 60' "$f" && case $f in */artifacts/sH/agent-1-review-the-auth-plug-ag1.md) true ;; *) false ;; esac &&
+  ok "artifact-hook: long foreground result saved as agent-1-review-the-auth-plug-ag1.md, parent told the path" || bad "artifact-hook PostToolUse: $o"
 [ -z "$(post "short answer" ag2)" ] && ok "artifact-hook: short result -> nothing" || bad "artifact-hook short"
 o=$(jq -cn '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent", tool_input: {description: "bg"},
   tool_response: "{\"isAsync\":true,\"status\":\"async_launched\",\"agentId\":\"ag3\"}"}' | "$J/artifact-hook.sh")
 [ -z "$o" ] && ok "artifact-hook: background launch (async_launched, string tool_response) -> nothing" || bad "artifact-hook async: $o"
 jq -cn --arg t "$long" '{session_id: "sH", hook_event_name: "SubagentStop", agent_id: "ag4", agent_type: "general-purpose", last_assistant_message: $t,
   background_tasks: [{id: "ag4", description: "Survey retry logic", agent_type: "general-purpose", status: "running"}]}' | "$J/artifact-hook.sh"
-f4=$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-survey-retry-logic.md')
+f4=$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-survey-retry-logic-ag4.md')
 [ -n "$f4" ] && ok "artifact-hook: background agent saved on SubagentStop ($(basename "$f4"))" || bad "artifact-hook SubagentStop"
 o=$(post "$long" ag4)
 [ "$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o")" = "Subagent result (Review the auth plug) saved to $f4" ] && [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] &&
@@ -170,6 +202,35 @@ jq -cn --arg t "<summary>$long</summary>" '{session_id: "sH", hook_event_name: "
 [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] && ok "artifact-hook: the compaction agent (empty agent_type) is skipped" || bad "artifact-hook saved the compaction summary"
 jq -cn --arg t "$long" '{session_id: "sH", hook_event_name: "SubagentStop", agent_id: "ag5", agent_type: "general-purpose", last_assistant_message: $t, background_tasks: []}' | "$J/artifact-hook.sh"
 [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] && ok "artifact-hook: a foreground agent's SubagentStop is left to its PostToolUse" || bad "artifact-hook saved a foreground agent on SubagentStop"
+
+# two agents with the same description finishing together: two files, each parent told its own
+for run in 1 2 3; do
+  cpids=()
+  for a in "par${run}x" "par${run}y"; do
+    (post "$(printf 'RESULT-OF-%s line %s with enough words to be long.\n' "$a" $(seq 1 80))" "$a" >"$W/ctx-$a.json") &
+    cpids+=($!)
+  done
+  wait "${cpids[@]}"
+
+done
+good=0
+for run in 1 2 3; do for a in "par${run}x" "par${run}y"; do
+  p=$(jq -r '.hookSpecificOutput.additionalContext // empty' "$W/ctx-$a.json" | sed 's/^Subagent result (Review the auth plug) saved to //')
+  [ -f "$p" ] && grep -q "RESULT-OF-$a " "$p" && good=$((good + 1))
+done; done
+[ "$good" = 6 ] && [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-par*.md' | wc -l | tr -d ' ')" = 6 ] &&
+  ok "artifact-hook: 3 x 2 same-description agents finishing together -> 6 files, each parent pointed at its own result" ||
+  bad "artifact-hook concurrency: $good of 6 correct, $(find "$JEV_HOME/artifacts/sH" -name 'agent-*-par*.md' | wc -l | tr -d ' ') files"
+# the model that ran is logged for every Agent call, joined by tool_use_id
+jq -e -s '[.[] | select(.action == "ran")] | length >= 8 and all(.[]; .resolved_model == "claude-opus-5-5" or .status == "async_launched")
+  and any(.[]; .tool_use_id == "toolu_ag1" and .agent_id == "ag1")' "$JEV_HOME/log/route.jsonl" >/dev/null &&
+  ok "artifact-hook: every PostToolUse(Agent) logs action ran with resolved_model and tool_use_id to route.jsonl" || bad "ran records missing"
+# per-artifact cap
+big=$(head -c 700000 /dev/zero | tr '\0' 'x')
+post "$big" agbig >/dev/null
+fb=$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-agbig.md')
+[ -n "$fb" ] && [ "$(wc -c <"$fb" | tr -d ' ')" -lt 530000 ] && tail -n 1 "$fb" | grep -q 'truncated by the Jev artifact hook' &&
+  ok "artifact-hook: a 700 KB result is cut to 512 KB with a note" || bad "artifact cap"
 
 # --- 7. compact-session.sh without Jev: authored state and artifacts still come back
 cat >"$P/.orchestrator.md" <<'EOF'
@@ -199,6 +260,19 @@ o=$(jq -cn --arg cwd "$P" '{session_id: "sBig", cwd: $cwd, hook_event_name: "Ses
 ctx=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$o")
 [ "${#ctx}" -le 9000 ] && [ "${#ctx}" -gt 7000 ] && case $ctx in *"live change number 200"*"fact number"*) true ;; *) false ;; esac &&
   ok "session: 200 sections + 300 facts -> ${#ctx} chars (<= 9000), newest sections kept, facts fill the rest" || bad "session budget: ${#ctx} chars"
+
+# --- 7b. the mkdir lock
+lk="$W/lk"
+lockt() { bash -c '. "$1/lib.sh"; jev_lock "$2" 60' _ "$J" "$lk"; }
+mkdir "$lk" # a holder between mkdir and writing `at`
+lockt && bad "lock: a fresh lock without its at file was broken" || ok "lock: a fresh lock without its at file is respected (judged by the directory's mtime)"
+touch -t 202001010000 "$lk"
+lockt && ok "lock: an old lock without its at file is broken" || bad "lock: old lock without at kept"
+rm -rf "$lk"; mkdir "$lk"; printf '%s %s\n' "$(date +%s)" 999999 >"$lk/at" # holder pid gone
+lockt && ok "lock: a lock whose holder process is gone is broken at once" || bad "lock: dead holder kept"
+rm -rf "$lk"; mkdir "$lk"; printf '%s %s\n' "$(date +%s)" "$$" >"$lk/at" # holder alive
+lockt && bad "lock: a live holder's lock was broken" || ok "lock: a live holder's fresh lock is respected"
+rm -rf "$lk"
 
 # --- 8. log lines larger than an atomic append, written in parallel, stay whole
 big=$(jq -cn '{status: "ok", answers: [range(0; 400) | {q: ., p: 0.123456}]}')

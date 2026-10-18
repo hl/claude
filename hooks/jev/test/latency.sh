@@ -7,11 +7,20 @@
 # turns of a real local transcript (JEV_LAT_TRANSCRIPT, default: the largest
 # main-session transcript under ~/.claude/projects modified in the last 7 days).
 # That sends those turns, redacted, to Jev, exactly as the Stop hook would.
-# Only timings and sizes are printed. JEV_LAT_REAL=0 skips it.
+# Only timings and sizes are printed. JEV_LAT_REAL=0 skips it. With JEV_LIVE=1
+# or JEV_EVIDENCE=1 the output also goes to test/evidence/latency.txt.
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures"
+if { [ "${JEV_LIVE:-0}" = 1 ] || [ "${JEV_EVIDENCE:-0}" = 1 ]; } && [ -z "${JEV_LAT_TEE:-}" ]; then
+  {
+    echo "# latency.sh — $(date -u +%Y-%m-%dT%H:%MZ), $(claude --version 2>/dev/null | head -n 1)"
+    echo "# the ledger is replayed turn by turn over the fixture and the last turns of a real local transcript (timings and sizes only)"
+    JEV_LAT_TEE=1 "$0" "$@"
+  } 2>&1 | sed -e "s#$HOME#~#g" | tee "$HERE/evidence/latency.txt"
+  exit "${PIPESTATUS[0]}"
+fi
 unset CLAUDE_PROJECT_DIR CLAUDE_CODE_SESSION_ID CLAUDE_SESSION_ID CLAUDE_PID
 JEV_HOME=$(mktemp -d "${TMPDIR:-/tmp}/jev-lat.XXXXXX")
 export JEV_HOME
