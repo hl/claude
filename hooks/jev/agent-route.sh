@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 # agent-route.sh — PreToolUse hook for the Agent tool. Asks route.sh (Jev) for a
-# tier, logs it, and in the opt-in modes sets tool_input.model via updatedInput.
+# tier, logs it, and may raise the subagent's model via updatedInput.
 #
 # JEV_ROUTE_MODE:
-#   log (default)   decide and log to route.jsonl, change nothing
-#   fill            set a model on calls that have none, for allowlisted agent
-#                   types only (see below); never below sonnet, because a
-#                   model-less call would otherwise inherit the parent's model
-#   escalate        fill, and also raise an explicit haiku/sonnet/opus model when
-#                   Jev's tier (after policy) is higher. Never lowers. "fable",
-#                   "inherit" and other full IDs are left alone.
-#   off             do nothing
+#   escalate (default)  raise an explicit alias model ("haiku", "sonnet") when
+#                       route.sh's tier is higher AND Jev is at least
+#                       JEV_ROUTE_MIN_ESCALATE_CONF (0.7) sure the given tier
+#                       falls short (route.sh's `above`). Never lowers. Acts
+#                       only on the exact aliases haiku|sonnet|opus: model-less
+#                       calls (frontmatter / inherit semantics), full model IDs,
+#                       "fable", "inherit", subagent_type "fork", plugin "x:y"
+#                       agents and sessions with CLAUDE_CODE_SUBAGENT_MODEL set
+#                       are left alone. Model-less calls are still routed and
+#                       logged, so route.jsonl shows what Jev would have picked.
+#   fill                escalate, plus set a model on model-less calls of
+#                       allowlisted agent types (see below), never below sonnet
+#                       because a model-less call would otherwise inherit the
+#                       parent's model
+#   log                 decide and log to route.jsonl, change nothing
+#   off                 do nothing, send nothing
 #
 # Fill allowlist: a per-call model beats an agent's frontmatter model, so a
 # model is only filled where nothing is pinned:
@@ -19,13 +27,11 @@
 #   - a custom agent whose definition file was found (by frontmatter `name:`
 #     in $CLAUDE_PROJECT_DIR, cwd, or ${CLAUDE_CONFIG_DIR:-~/.claude} agents/)
 #     and has no `model:` line.
-# Anything unresolved (plugin "x:y" agents, --agents/SDK agents, built-ins
-# outside the allowlist) is skipped. With CLAUDE_CODE_SUBAGENT_MODEL set, the
-# hook never changes a model (a per-call model would override that env).
 #
 # No permissionDecision is returned: the normal permission flow applies and
 # updatedInput is still honoured (verified on 2.1.302). Fails open: any
-# problem -> exit 0, no output. Every decision goes to ~/.claude/jev/log/route.jsonl.
+# problem -> exit 0, no output. Every decision goes to ~/.claude/jev/log/route.jsonl
+# with the reason; that file is the only place that shows the model that ran.
 set -euo pipefail
 trap 'exit 0' EXIT
 
@@ -34,7 +40,7 @@ export JEV_HOOK=agent-route
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
-mode=${JEV_ROUTE_MODE:-log}
+mode=${JEV_ROUTE_MODE:-escalate}
 case $mode in fill | escalate | log) ;; *) exit 0 ;; esac
 jev_disabled && exit 0
 
@@ -53,8 +59,11 @@ log_decision() { # <action> [route-json] [final] [reason]
     --arg fill "$fill_ok" --argjson r "${2:-null}" '{
       action: $action, mode: $mode, subagent_type: $stype, given_model: $given,
       fill_eligible: ($fill == "yes"),
-      jev_model: ($r.model // null), final_model: (if $final == "" then null else $final end),
-      confidence: ($r.confidence // null), policy: ($r.policy // null),
+      route_id: ($r.id // null), jev_model: ($r.model // null),
+      final_model: (if $final == "" then null else $final end),
+      reviewer_model: ($r.reviewer_model // null), deepen: ($r.deepen // null),
+      confidence: ($r.confidence // null), probabilities: ($r.probabilities // null),
+      above: ($r.above // null), policy: ($r.policy // null),
       signals: ($r.signals // null), description: $desc}
       + (if $reason == "" then {} else {reason: $reason} end)')"
 }
@@ -87,32 +96,34 @@ fill_status() {
 }
 
 fill_ok=no
-if [ -z "$given" ]; then
+# The allowlist lookup only matters when fill may act.
+if [ -z "$given" ] && [ "$mode" = fill ]; then
   fill_ok=$(fill_status)
 fi
 
-# Tier of the model the caller asked for: haiku/sonnet/opus alias or full ID.
+# Tier of the model the caller asked for. Only the exact aliases can be raised.
 case $given in
   '') given_rank=-1 ;;
-  *haiku*) given_rank=0 ;;
-  *sonnet*) given_rank=1 ;;
-  *opus*) given_rank=2 ;;
-  *) given_rank=9 ;; # fable, inherit, unknown IDs: never touch
+  haiku) given_rank=0 ;;
+  sonnet) given_rank=1 ;;
+  opus) given_rank=2 ;;
+  *) given_rank=9 ;; # full IDs, fable, inherit, anything else: never touch
 esac
 
 # Decide whether this call could change at all before spending an API call.
 if [ "$mode" != log ]; then
-  if [ -n "${CLAUDE_CODE_SUBAGENT_MODEL:-}" ]; then
-    fill_ok=skip_subagent_model_env
-    log_decision skip_subagent_model_env
-    exit 0
+  skip=""
+  if [ -n "${CLAUDE_CODE_SUBAGENT_MODEL:-}" ]; then skip=skip_subagent_model_env
+  elif [ "$stype" = fork ]; then skip=skip_fork
+  elif [ -n "$given" ] && [ "$given_rank" -ge 9 ]; then skip=skip_has_model
+  elif [ -n "$given" ]; then
+    case $stype in *:*) skip=skip_plugin_agent ;; esac
+    [ "$given_rank" -ge 2 ] && skip=kept_opus
+  elif [ "$mode" = fill ] && [ "$fill_ok" != yes ]; then skip=$fill_ok
   fi
-  if [ -z "$given" ] && [ "$fill_ok" != yes ]; then
-    log_decision "$fill_ok"
-    exit 0
-  fi
-  if [ -n "$given" ] && { [ "$mode" = fill ] || [ "$given_rank" -ge 9 ]; }; then
-    log_decision skip_has_model
+  if [ -n "$skip" ]; then
+    [ "$skip" = skip_subagent_model_env ] && fill_ok=skip_subagent_model_env
+    log_decision "$skip"
     exit 0
   fi
 fi
@@ -120,7 +131,7 @@ fi
 text=$(jq -r '[(.description // ""), (if .subagent_type then "subagent_type: " + .subagent_type else empty end), (.prompt // "")] | map(select(. != "")) | join("\n\n")' <<<"$input")
 [ -n "$text" ] || exit 0
 
-if ! route=$(printf '%s' "$text" | JEV_TIMEOUT=${JEV_ROUTE_TIMEOUT:-4} "$JEV_DIR/route.sh" 2>/dev/null); then
+if ! route=$(printf '%s' "$text" | JEV_ROUTE_NO_LOG=1 JEV_TIMEOUT=${JEV_ROUTE_TIMEOUT:-4} "$JEV_DIR/route.sh" 2>/dev/null); then
   log_decision route_failed
   exit 0
 fi
@@ -132,7 +143,8 @@ if [ -z "$given" ] && [ "$jev_rank" -lt 1 ]; then
   tier=sonnet jev_rank=1
 fi
 
-if [ "$mode" = log ]; then
+# Model-less calls are only ever changed in fill mode; everything else is logged.
+if [ "$mode" = log ] || { [ -z "$given" ] && [ "$mode" != fill ]; }; then
   log_decision logged "$route" "$tier"
   exit 0
 fi
@@ -140,13 +152,19 @@ if [ "$given_rank" -ge "$jev_rank" ]; then
   log_decision kept "$route" "$given"
   exit 0
 fi
+# An explicit choice is only overridden when Jev is sure enough it falls short.
+if [ -n "$given" ]; then
+  conf=$(jq -r --arg g "$given" '.above[$g] // 0' <<<"$route")
+  if ! awk -v c="$conf" -v m="${JEV_ROUTE_MIN_ESCALATE_CONF:-0.7}" 'BEGIN { exit !(c >= m) }'; then
+    log_decision kept_low_conf "$route" "$given" "jev: would raise $given→$tier but only $conf sure $given falls short (< ${JEV_ROUTE_MIN_ESCALATE_CONF:-0.7})"
+    exit 0
+  fi
+fi
 
 action=filled
 [ -n "$given" ] && action=escalated
 reason=$(jq -r --arg from "${given:-none}" --arg to "$tier" '
-  (.signals | to_entries | max_by(.value)) as $top
-  | "jev: \($from)→\($to) (jev \(.model), conf \(.confidence), \($top.key) \($top.value)" +
-    (if .policy == "as_is" then "" else ", " + .policy end) + ")"' <<<"$route")
+  "jev: \($from)→\($to) (" + ((.policy // []) | join("; ")) + (if $from != "none" then "; \($from) falls short p=\(.above[$from] // "?")" else "" end) + ")"' <<<"$route")
 out=$(jq -cn --argjson input "$input" --arg model "$tier" '{
   hookSpecificOutput: {hookEventName: "PreToolUse", updatedInput: ($input + {model: $model})}}')
 log_decision "$action" "$route" "$tier" "$reason"

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015 # ok() always succeeds, so `A && ok || bad` is a safe if-then-else.
 # agent-route-api.sh — agent-route.sh against the live Jev API (needs a key).
-# Checks log (default) / fill / escalate semantics, the fill allowlist, the
-# sonnet floor, never-lower, and the output shape (updatedInput only).
+# Checks escalate (default) / fill / log / off semantics: escalate acts only on
+# the exact aliases, never on model-less calls, full IDs, fable, inherit, fork,
+# plugin agents or with CLAUDE_CODE_SUBAGENT_MODEL; the escalation confidence
+# gate; the fill allowlist and sonnet floor; never-lower; updatedInput only.
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 HOOK="$HERE/../agent-route.sh"
@@ -45,32 +47,48 @@ silent() { # <label> <mode> <payload> [expected log action]
 mech="Fix the typo \"recieve\" -> \"receive\" on line 42 of README.md. Change nothing else."
 hard="First-round review of PR #1601 (+1,240/-380 across 23 files), which moves session storage from cookies to Redis and changes the auth plug. Check correctness, security and migration safety."
 
-# default mode is log: never changes anything, logs Jev's pick
-silent "default mode (log): no output, decision logged" default "$(payload "" general-purpose "$hard")" logged
+# default mode is escalate: a model-less call is routed and logged, never changed
+silent "default mode (escalate): model-less call left alone, Jev's pick logged" default "$(payload "" general-purpose "$hard")" logged
+last_log | jq -e '.mode == "escalate" and .final_model == "opus" and (.route_id | startswith("r")) and (.reviewer_model == "opus")' >/dev/null &&
+  ok "default mode logs route id, final_model opus and reviewer_model opus for a hard review" || bad "default-mode log line: $(last_log)"
 
-# fill, general-purpose, mechanical: Jev says haiku, the sonnet floor applies
+# escalate: explicit aliases only
+o=$(run default "$(payload haiku general-purpose "$hard")")
+if jq -e '.hookSpecificOutput.updatedInput.model == "opus" and (.hookSpecificOutput | has("permissionDecision") | not)' <<<"$o" >/dev/null 2>&1 &&
+  last_log | jq -e '.action == "escalated" and (.reason | startswith("jev: haiku→opus"))' >/dev/null; then
+  ok "escalate: haiku + hard review -> opus ($(last_log | jq -r .reason | cut -c1-120))"
+else bad "escalate: expected haiku→opus, got: $o"; fi
+o=$(run escalate "$(payload sonnet general-purpose "$hard")")
+jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 && ok "escalate: sonnet + hard review -> opus" || bad "escalate sonnet: $o"
+silent "escalate: never lowers opus (no Jev call needed)" escalate "$(payload opus general-purpose "$mech")" kept_opus
+silent "escalate: sonnet on a mechanical task is kept" escalate "$(payload sonnet general-purpose "$mech")" kept
+silent "escalate: full haiku ID is left alone" escalate "$(payload claude-haiku-5-5 general-purpose "$hard")" skip_has_model
+for m in fable inherit; do
+  silent "escalate: $m left alone" escalate "$(payload "$m" general-purpose "$hard")" skip_has_model
+done
+silent "escalate: plugin agent with an alias is left alone" escalate "$(payload haiku feature-dev:code-reviewer "$hard")" skip_plugin_agent
+silent "escalate: fork is left alone" escalate "$(payload haiku fork "$hard")" skip_fork
+o=$(CLAUDE_CODE_SUBAGENT_MODEL=haiku run escalate "$(payload haiku general-purpose "$hard")")
+[ -z "$o" ] && last_log | jq -e '.action == "skip_subagent_model_env"' >/dev/null && ok "escalate: skipped when CLAUDE_CODE_SUBAGENT_MODEL is set" || bad "escalate with env: $o"
+o=$(JEV_ROUTE_MIN_ESCALATE_CONF=1.01 run escalate "$(payload haiku general-purpose "$hard")")
+[ -z "$o" ] && last_log | jq -e '.action == "kept_low_conf"' >/dev/null &&
+  ok "escalate: below JEV_ROUTE_MIN_ESCALATE_CONF the explicit choice stands ($(last_log | jq -r .reason | cut -c1-100))" || bad "escalation gate: $o"
+silent "escalate: model-less plugin agent is not filled" escalate "$(payload "" feature-dev:code-explorer "$hard")" logged
+
+# fill (opt-in): escalate + model-less allowlisted calls, sonnet floor
 p=$(payload "" general-purpose "$mech")
 o=$(run fill "$p")
 if jq -e --argjson p "$p" '.hookSpecificOutput
     | .hookEventName == "PreToolUse" and (has("permissionDecision") | not) and (has("permissionDecisionReason") | not)
       and .updatedInput == ($p.tool_input + {model: "sonnet"})' <<<"$o" >/dev/null 2>&1 &&
   last_log | jq -e '.action == "filled" and .final_model == "sonnet" and (.reason | startswith("jev: none→sonnet"))' >/dev/null; then
-  ok "fill: model-less mechanical call -> sonnet (floor), updatedInput only, reason in log: $(last_log | jq -r .reason)"
+  ok "fill: model-less mechanical call -> sonnet (floor), updatedInput only, reason in log"
 else bad "fill floor: out=$o log=$(last_log)"; fi
-
-# fill, general-purpose, hard -> opus
 o=$(run fill "$(payload "" general-purpose "$hard")")
-jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 &&
-  ok "fill: model-less hard review -> opus" || bad "fill hard: $o"
-
-# empty subagent_type counts as general-purpose
+jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 && ok "fill: model-less hard review -> opus" || bad "fill hard: $o"
 o=$(run fill "$(payload "" "" "$hard" | jq -c 'del(.tool_input.subagent_type)')")
 jq -e '.hookSpecificOutput.updatedInput.model == "opus" and (.hookSpecificOutput.updatedInput | has("subagent_type") | not)' <<<"$o" >/dev/null 2>&1 &&
   ok "fill: missing subagent_type treated as general-purpose" || bad "fill no type: $o"
-
-# fill allowlist: everything not known to be model-less is skipped
-silent "fill: explicit model is left alone" fill "$(payload sonnet general-purpose "$hard")" skip_has_model
-silent "fill: fork is skipped" fill "$(payload "" fork "$hard")" skip_unresolved_type
 silent "fill: Explore (built-in outside the allowlist) is skipped" fill "$(payload "" Explore "$hard")" skip_unresolved_type
 silent "fill: plugin agent feature-dev:code-reviewer is skipped" fill "$(payload "" feature-dev:code-reviewer "$mech")" skip_unresolved_plugin
 silent "fill: custom agent with frontmatter model is skipped" fill "$(payload "" pinned "$mech")" skip_pinned_model
@@ -80,34 +98,12 @@ o=$(run fill "$(payload "" free-agent "$hard")")
 jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 &&
   ok "fill: custom agent found by name in CLAUDE_CONFIG_DIR (file some-other-file.md), no model -> filled" || bad "fill free-agent: $o"
 o=$(JEV_ROUTE_FILL_TYPES=general-purpose,Plan run fill "$(payload "" Plan "$hard")")
-jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 &&
-  ok "fill: JEV_ROUTE_FILL_TYPES extends the allowlist" || bad "fill Plan: $o"
-
-# CLAUDE_CODE_SUBAGENT_MODEL set -> never change a model
+jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 && ok "fill: JEV_ROUTE_FILL_TYPES extends the allowlist" || bad "fill Plan: $o"
 o=$(CLAUDE_CODE_SUBAGENT_MODEL=haiku run fill "$(payload "" general-purpose "$hard")")
 [ -z "$o" ] && last_log | jq -e '.action == "skip_subagent_model_env"' >/dev/null && ok "fill: skipped when CLAUDE_CODE_SUBAGENT_MODEL is set" || bad "fill with env: $o"
-o=$(CLAUDE_CODE_SUBAGENT_MODEL=haiku run escalate "$(payload haiku general-purpose "$hard")")
-[ -z "$o" ] && ok "escalate: skipped when CLAUDE_CODE_SUBAGENT_MODEL is set" || bad "escalate with env: $o"
 
-# escalate
-o=$(run escalate "$(payload haiku general-purpose "$hard")")
-if jq -e '.hookSpecificOutput.updatedInput.model == "opus" and (.hookSpecificOutput | has("permissionDecision") | not)' <<<"$o" >/dev/null 2>&1 &&
-  last_log | jq -e '.action == "escalated" and (.reason | startswith("jev: haiku→opus"))' >/dev/null; then
-  ok "escalate: haiku + hard review -> opus ($(last_log | jq -r .reason))"
-else bad "escalate: expected haiku→opus, got: $o"; fi
-o=$(run escalate "$(payload haiku feature-dev:code-reviewer "$hard")")
-jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 &&
-  ok "escalate: an explicit low model on a plugin agent is still raised" || bad "escalate plugin: $o"
-silent "escalate: never lowers opus on a mechanical task" escalate "$(payload opus general-purpose "$mech")" kept
-o=$(run escalate "$(payload claude-haiku-5-5 general-purpose "$hard")")
-jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1 &&
-  ok "escalate: full haiku ID raised to opus" || bad "escalate: full ID not raised: $o"
-for m in fable inherit; do
-  silent "escalate: $m left alone" escalate "$(payload "$m" general-purpose "$hard")" skip_has_model
-done
-silent "escalate: model-less plugin agent is skipped (not filled)" escalate "$(payload "" feature-dev:code-explorer "$hard")" skip_unresolved_plugin
-
-silent "off: no output" off "$(payload "" general-purpose "$hard")"
+silent "log: no output, decision logged" log "$(payload haiku general-purpose "$hard")" logged
+silent "off: no output" off "$(payload haiku general-purpose "$hard")"
 
 # route.jsonl: description only (<= 120 chars), never the prompt
 long=$(printf 'd%.0s' $(seq 1 300))
