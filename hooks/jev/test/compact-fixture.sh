@@ -123,16 +123,28 @@ ctx=$(cat "$JEV_HOME/observed-order.context.txt" 2>/dev/null)
 a=${ctx%%priv/repo/migrations*} b=${ctx%%pg-staging-3*} c=${ctx%%backfill the consumer*}
 [ "${#a}" -lt "${#b}" ] && [ "${#b}" -lt "${#c}" ] && ok "injected facts appear in transcript order" || bad "injected facts not in transcript order"
 
-# --- second compaction: facts re-injected by the first are carried forward
+# --- second compaction: facts re-injected by the first are carried forward.
+# The session has no ledger yet (it began before the ledger, or a compaction fell
+# back to v1), so the first ledger run starts at the boundary and must keep the
+# facts that compaction re-injected, whatever Jev scores them. The assertions are
+# on the carried facts themselves; whether the summary "covers" them is Jev's
+# call, so the injection is only reported.
 S=fixture-carried
 cp "$FIX/transcript-carried.jsonl" "$JEV_HOME/carried.jsonl"
 jq -cn --arg s $S --arg tp "$JEV_HOME/carried.jsonl" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | "$J/compact-pre.sh"
-jq -e '[.facts[] | select(.kind == "carried")] | length == 2' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 &&
-  ok "round 2: both facts injected by round 1 are candidates (kind carried)" || bad "round 2: carried facts not extracted"
+jq -e -s '[.[] | select(.kind == "carried" and .superseded_by == null and .score >= 1.5)] | length == 2 and (.[0].text | test("pg-staging-7"))' "$JEV_HOME/ledger/$S.jsonl" >/dev/null 2>&1 &&
+  ok "round 2 (first ledger run): both facts the v1 compaction re-injected are live ledger facts (kind carried, kept at >= 1.5)" ||
+  bad "round 2: carried facts not in the ledger: $(jq -c -s '[.[] | {kind, score, superseded_by, t: .text[0:40]}]' "$JEV_HOME/ledger/$S.jsonl" 2>/dev/null)"
+jq -e '.mode == "ledger" and ([.facts[] | select(.kind == "carried")] | length == 2)' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 &&
+  ok "round 2: the compaction snapshot holds both carried facts" || bad "round 2: carried facts missing from the snapshot"
 jq -cn --arg s $S --arg m "$(cat "$FIX/summary-carried.txt")" '{session_id: $s, hook_event_name: "SubagentStop", agent_type: "", last_assistant_message: $m}' | "$J/compact-post.sh"
 ctx=$(sess $S | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)
-case $ctx in *pg-staging-7*) ok "round 2: fact from round 1 survives the second compaction" ;; *) bad "round 2: round-1 fact lost (scores: $(jq -c '[.facts[] | {n, kind, score, covered}]' "$JEV_HOME/compact/$S.json"))" ;; esac
-case $ctx in *"/tmp is full"* | *encode_payload*) bad "round 2: injected facts the summary kept" ;; *) ok "round 2: facts the summary kept are not re-injected" ;; esac
+case $ctx in *pg-staging-7*) echo "note - round 2: the round-1 fact was re-injected (coverage said the summary dropped it)" ;; *) echo "note - round 2: coverage judged the round-1 fact kept by the summary: $(jq -c '[.facts[] | {n, kind, covered_p}]' "$JEV_HOME/compact/$S.json")" ;; esac
+# v1 mode, same transcript: carried facts are extracted deterministically
+S=fixture-carried-v1
+JEV_LEDGER=0 jq -cn --arg s $S --arg tp "$JEV_HOME/carried.jsonl" '{session_id: $s, transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | JEV_LEDGER=0 "$J/compact-pre.sh"
+jq -e '.mode == "v1" and ([.facts[] | select(.kind == "carried")] | length == 2)' "$JEV_HOME/compact/$S.json" >/dev/null 2>&1 &&
+  ok "round 2, v1 mode: both carried facts are candidates" || bad "round 2, v1 mode: carried facts not extracted"
 
 # --- a subagent compacting its own context (agent_id set) must not touch the parent's state
 S=fixture-sub

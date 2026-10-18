@@ -31,12 +31,22 @@
 # in <session_id>.meta.json {offset, last_uuid, next_id, ...}.
 #
 # First run on a session (no cursor): starts at the last compact boundary, as
-# v1 extraction did, so sessions that began before the ledger existed still
-# get one. Jev failure: the cursor does not move, so the next turn retries.
-# Idempotent (the cursor), and a second Stop while one runs is skipped (lock).
+# v1 extraction did, and keeps the facts an earlier (v1) compaction re-injected
+# after it ("carried", kept whatever their score), so sessions that began
+# before the ledger existed lose nothing. Jev failure: the cursor does not
+# move, so the next turn retries. Idempotent (the cursor); a second Stop while
+# one runs is skipped (lock). Candidates are deduplicated against LIVE facts
+# only, so a statement that comes back after being superseded (A, B, A again)
+# is a new live fact; open items are also deduplicated on normalised text.
+# Housekeeping: superseded facts older than 7 days move to <session>.archive.jsonl;
+# once a day the first run deletes ledger, snapshot, artifact and pointer files
+# untouched for 30 days (JEV_RETAIN_DAYS).
 # Never blocks, never prints. JEV_LEDGER=0 or JEV_DISABLED=1 turns it off.
+# Safe as an async hook: a killed run releases its lock (TERM trap), and a
+# lock whose holder is gone is broken at once.
 set -euo pipefail
 trap 'exit 0' EXIT
+trap 'exit 0' TERM INT HUP
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=${JEV_HOOK:-ledger}
@@ -49,7 +59,8 @@ MAX_FACTS=${JEV_LEDGER_MAX_CANDIDATES:-${JEV_COMPACT_MAX_FACTS:-60}}
 TAIL_CHARS=${JEV_LEDGER_TAIL_CHARS:-20000}
 PER_REQ=${JEV_LEDGER_PER_REQ:-60}
 MAX_PAIRS=${JEV_LEDGER_MAX_PAIRS:-120}
-LOCK_WAIT=${JEV_LEDGER_LOCK_WAIT:-8}
+LOCK_WAIT=${JEV_LEDGER_LOCK_WAIT:-3}
+RETAIN_DAYS=${JEV_RETAIN_DAYS:-30}
 LDIR="$JEV_HOME/ledger"
 
 [ "${JEV_LEDGER:-1}" = 0 ] && exit 0
@@ -107,8 +118,21 @@ if [ "$flush" = true ]; then take_lock "$sid" "$LOCK_WAIT" || exit 0; else take_
   jev_log ledger.jsonl '{"event":"step","status":"locked"}'
   exit 0
 }; fi
-tmpd=$(mktemp -d "${TMPDIR:-/tmp}/jev-ledger.XXXXXX")
+# Temp files live next to the ledger, so every mv is a same-volume rename.
+tmpd=$(mktemp -d "$LDIR/.tmp.XXXXXX")
 trap 'rm -rf "$tmpd"; jev_unlock "$LDIR/$sid.lock"; exit 0' EXIT
+
+# Once a day: drop state nobody has touched for RETAIN_DAYS.
+stamp="$JEV_HOME/.swept-$(date -u +%Y%m%d)"
+if [ ! -e "$stamp" ]; then
+  : >"$stamp" 2>/dev/null || true
+  find "$JEV_HOME" -maxdepth 1 -name '.swept-*' ! -name "$(basename "$stamp")" -delete 2>/dev/null || true
+  for d in ledger compact sessions; do
+    find "$JEV_HOME/$d" -maxdepth 1 -type f -mtime +"$RETAIN_DAYS" ! -name "$sid.*" -delete 2>/dev/null || true
+  done
+  find "$JEV_HOME/artifacts" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETAIN_DAYS" ! -name "$sid" -exec rm -rf {} + 2>/dev/null || true
+  find "$LDIR" "$JEV_HOME/artifacts" -maxdepth 2 -name '.tmp.*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+fi
 
 facts="$LDIR/$sid.jsonl"
 meta="$LDIR/$sid.meta.json"
@@ -162,16 +186,27 @@ save_meta() { # <status> [next_id]
 
 jq -cR -f "$JEV_DIR/slim.jq" "$tmpd/slice" |
   jq -s -c --argjson max "$MAX_FACTS" --argjson tail_chars "$TAIL_CHARS" --argjson ledger true \
-    -f "$JEV_DIR/extract.jq" >"$tmpd/ex.json" 2>/dev/null || {
+    --argjson carried "$first" -f "$JEV_DIR/extract.jq" >"$tmpd/ex.json" 2>/dev/null || {
   save_meta extract_failed
   exit 0
 }
 [ -f "$facts" ] || : >"$facts"
-# New candidates only (exact text already in the ledger: skip), renumbered.
+# New candidates only, renumbered. A text that is already a LIVE fact is
+# skipped; one that was superseded is a candidate again (A, B, A restores A).
+# Open items whose normalised text matches a live fact or another candidate
+# (the same item as a user line, an "Open item:" line and a checkbox) are dropped.
 jq -c --slurpfile f "$facts" '
-  ([$f[] | .text]) as $known
-  | {cands: ([.facts[] | select(.text as $t | $known | index($t) | not)] | to_entries | map(.value + {n: (.key + 1)})),
-     live: [$f[] | select(.superseded_by == null)], tail}' "$tmpd/ex.json" >"$tmpd/in.json"
+  def norm: ascii_downcase | gsub("^(user said: |open item: |carried: )+"; "")
+    | gsub("^(- \\[ \\] |\\[ \\] |remaining: |todo:? |next:? )+"; "") | gsub("[^a-z0-9]+"; " ") | gsub("^ | $"; "");
+  [$f[] | select(.superseded_by == null)] as $live
+  | ([$live[] | .text]) as $known
+  | ([$live[] | .text | norm]) as $known_norm
+  | [.facts[] | select(.text as $t | $known | index($t) | not)] as $c0
+  | ([$c0[] | select(.kind != "todo") | .text | norm]) as $stmt_norm
+  | (reduce $c0[] as $x ([];
+       if $x.kind == "todo" and (($x.text | norm) as $k | ($known_norm | index($k)) or ($stmt_norm | index($k)) or (map(select(.kind == "todo") | .text | norm) | index($k)))
+       then . else . + [$x] end)) as $cands
+  | {cands: ($cands | to_entries | map(.value + {n: (.key + 1)})), live: $live, tail}' "$tmpd/ex.json" >"$tmpd/in.json"
 nc=$(jq '.cands | length' "$tmpd/in.json")
 if [ "$nc" -eq 0 ]; then
   save_meta no_candidates
@@ -217,7 +252,8 @@ jq -c --argjson a "$answers" --argjson min "$MIN_SCORE" --argjson sup "$SUP_MIN"
      | ([$pairs[] | select((.p.fully // 0) < $sup and ((.p.fully // 0) + (.p.partly // 0)) >= $sup) | .t]) as $cor_t
      | ([($sup_t + $cor_t)[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $sup_score
      | {n, kind, text, src, score: ($score * 100 | round / 100), sup_t: $sup_t, cor_t: $cor_t,
-        keep: ($score >= $min or ($sup_score >= $min and $score >= 0.75))}]
+        # carried: re-injected by an earlier compaction, so already judged important
+        keep: ($score >= $min or $c.kind == "carried" or ($sup_score >= $min and $score >= 0.75))}]
   | [.[] | select(.keep)] as $kept
   | ($kept | to_entries | map({key: "c\(.value.n)", value: "f\($next + .key)"}) | from_entries) as $cid
   | [$kept[] | {id: $cid["c\(.n)"], ts: $ts, kind, text,
@@ -235,7 +271,11 @@ mark='.superseded_by = (if .superseded_by == null then ($d.marks[.id] // null) e
 jq -c --slurpfile dd "$tmpd/decided.json" "\$dd[0] as \$d | $mark" "$facts" >"$tmpd/facts.jsonl"
 # New facts can themselves be superseded or corrected by later ones from the same slice.
 jq -c ". as \$d | .new[] | $mark" "$tmpd/decided.json" >>"$tmpd/facts.jsonl"
-mv "$tmpd/facts.jsonl" "$facts"
+# Superseded facts older than 7 days leave the live file for the archive.
+jq -c '(now - 7 * 86400 | todate) as $cut | select(.superseded_by != null and .ts < $cut)' "$tmpd/facts.jsonl" >>"$LDIR/$sid.archive.jsonl" 2>/dev/null || true
+[ -s "$LDIR/$sid.archive.jsonl" ] || rm -f "$LDIR/$sid.archive.jsonl"
+jq -c '(now - 7 * 86400 | todate) as $cut | select((.superseded_by != null and .ts < $cut) | not)' "$tmpd/facts.jsonl" >"$tmpd/facts.live.jsonl"
+mv "$tmpd/facts.live.jsonl" "$facts"
 next_new=$(jq -r .next "$tmpd/decided.json")
 save_meta ok "$next_new"
 jev_log ledger.jsonl "$(jq -c --argjson b "$n" --arg first "$first" --argjson nreq "$nreq" --argjson nq "$nq" '{event: "step", status: "ok",

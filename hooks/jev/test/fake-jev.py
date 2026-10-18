@@ -5,10 +5,13 @@
 Writes every request body to <capture-dir>/body-<n>.json (and the headers, minus
 Authorization, to headers-<n>.txt), and answers every question with a fixed,
 valid answer: score -> level 2 ("important"), noul -> 0.1, choice -> the first
-option. Prints "ready" once listening. Test-only; never used by the hooks.
+option, except that a choice whose instructions match the regex in
+$FAKE_JEV_FULLY answers "fully" (lets tests drive a supersession).
+Prints "ready" once listening. Test-only; never used by the hooks.
 """
 import json
 import os
+import re
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -16,6 +19,7 @@ PORT = int(sys.argv[1])
 CAP = sys.argv[2]
 os.makedirs(CAP, exist_ok=True)
 count = [0]
+FULLY = os.environ.get("FAKE_JEV_FULLY", "")
 
 
 def answer(q):
@@ -27,8 +31,11 @@ def answer(q):
                 "legend": {str(i): l for i, l in enumerate(levels)}, "probabilities": probs}
     if t == "choice":
         opts = list((q.get("criteria") or {"a": None}).keys())
-        return {"type": "choice", "choice": opts[0], "confidence": 1.0,
-                "probabilities": {o: (1.0 if i == 0 else 0.0) for i, o in enumerate(opts)}}
+        pick = opts[0]
+        if FULLY and "fully" in opts and re.search(FULLY, str(q.get("instructions", ""))):
+            pick = "fully"
+        return {"type": "choice", "choice": pick, "confidence": 1.0,
+                "probabilities": {o: (1.0 if o == pick else 0.0) for o in opts}}
     return {"type": "noul", "noul": 0.1}
 
 

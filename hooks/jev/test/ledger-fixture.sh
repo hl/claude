@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015 # ok() always succeeds, so `A && ok || bad` is a safe if-then-else.
 # ledger-fixture.sh — the long-session path end to end on a synthetic session
-# (needs a Jev key; hits the live API). Writes test/evidence/ledger-fixture.txt.
+# (needs a Jev key; hits the live API). With JEV_LIVE=1 or JEV_EVIDENCE=1 it
+# rewrites test/evidence/ledger-fixture.txt.
 #
-# fixtures/ledger-session.jsonl: 13 turns. Turn 3 says staging is pg-staging-3:6543,
+# fixtures/ledger-session.jsonl: 14 turns. Turn 3 says staging is pg-staging-3:6543,
 # turn 9 corrects it to pg-staging-7:6544; turn 2 decides Redis Streams, turn 10
-# switches to Oban Pro. Turn 5 saves an artifact. Compaction 1 happens after
-# turn 7 (boundary, summary and the re-injected context are appended the way
-# Claude Code writes them); compaction 2 after turn 13, with a summary that
-# drops three facts: the migrations rule and the flag default (live) and the
-# pg-staging-3 statement (superseded).
+# switches to Oban Pro, and turn 14 restates turn 2 word for word (A, B, A).
+# Turn 5 saves an artifact. Compaction 1 happens after turn 7 (boundary, summary
+# and the re-injected context are appended the way Claude Code writes them);
+# compaction 2 after turn 14, with a summary that drops three facts: the
+# migrations rule and the flag default (live) and the pg-staging-3 statement
+# (superseded).
 #
 # Asserts: after replaying Stop per turn the ledger has the live facts, both
 # corrections mark the earlier facts superseded, the artifact is indexed, the
@@ -76,7 +78,7 @@ append_compaction() { # <summary> <injected-context>: what Claude Code writes af
 log "# ledger-fixture.sh — $(date -u +%Y-%m-%dT%H:%MZ), Jev $(JEV_HOME=$W/x "$J/route.sh" x 2>/dev/null | jq -r .jev_model)"
 log "## replay: Stop after every turn (ms per ledger step, includes the Jev call)"
 lat=""
-for t in $(seq 1 13); do
+for t in $(seq 1 14); do
   jq -c --argjson t "$t" 'select(._turn == $t)' "$FIX" >>"$TP"
   if [ "$t" = 5 ]; then
     p=$(cd "$PROJ" && "$J/artifact.sh" review-producer-r1 --from-file "$W/review.md" --session "$S")
@@ -94,7 +96,7 @@ for t in $(seq 1 13); do
   fi
 done
 log "ledger step ms per turn:$lat"
-log "## ledger after 13 turns"
+log "## ledger after 14 turns"
 jq -r '"\(.id) [\(.kind) \(.score)]\(if .superseded_by then " SUPERSEDED by \(.superseded_by)" else "" end)\(if (.supersedes | length) > 0 then " supersedes \(.supersedes | join(","))" else "" end): \(.text[0:150])"' \
   "$JEV_HOME/ledger/$S.jsonl" | sed "s#$W#<tmp>#g" | tee -a "$W/evidence.txt"
 
@@ -102,11 +104,18 @@ L="$JEV_HOME/ledger/$S.jsonl"
 M="$JEV_HOME/ledger/$S.meta.json"
 live() { jq -e -s --arg r "$1" 'any(.[]; .superseded_by == null and (.text | test($r)))' "$L" >/dev/null; }
 dead() { jq -e -s --arg r "$1" 'any(.[]; .superseded_by != null and (.text | test($r))) and (any(.[]; .superseded_by == null and (.text | test($r))) | not)' "$L" >/dev/null; }
-live 'priv/repo/migrations' && live 'fanout_streams_enabled' && live 'pg-staging-7' && live 'Oban Pro' && live 'OPS-4821' && live 'pull/2417' &&
-  ok "ledger: live facts include the migrations rule, the flag, pg-staging-7, Oban Pro, OPS-4821, PR 2417" || bad "ledger: live facts missing"
+live 'priv/repo/migrations' && live 'fanout_streams_enabled' && live 'pg-staging-7' && live 'OPS-4821' && live 'pull/2417' &&
+  ok "ledger: live facts include the migrations rule, the flag, pg-staging-7, OPS-4821, PR 2417" || bad "ledger: live facts missing"
 dead 'staging database is pg-staging-3' && ok "correction 1: the pg-staging-3:6543 statement is superseded" || bad "correction 1: pg-staging-3 statement not superseded"
 dead "^Decision: we.ll use Redis Streams" && ok "correction 2: the Redis Streams decision is superseded" || bad "correction 2: Redis Streams decision not superseded"
 jq -e -s 'any(.[]; .kind == "artifact" and (.text | test("review-producer-r1")) and .superseded_by == null)' "$L" >/dev/null && ok "artifact indexed in the ledger" || bad "artifact fact missing"
+# A, B, A: the restated turn-2 statement is a new live fact (deterministic: dedupe is
+# against live facts only); whether it retires the Oban Pro facts is Jev's call.
+a_txt="User said: Go with Redis Streams for the fan-out; Oban can't guarantee per-account ordering."
+jq -e -s --arg t "$a_txt" '[.[] | select(.text == $t)] | length == 2 and (.[0].superseded_by != null) and (.[1].superseded_by == null)' "$L" >/dev/null &&
+  ok "A, B, A: turn 2 restated after the switch is live again (the first copy stays superseded)" || bad "A, B, A: restated statement not live"
+log "note - A, B, A: Oban Pro facts after the restatement: $(jq -r -s --arg t "$a_txt" '([.[] | select(.text == $t)] | last | .id) as $a
+  | [.[] | select(.text | test("Oban Pro")) | "\(.id) " + (if .superseded_by == $a then "superseded by the restatement" elif ((.corrected_by // []) | index($a)) then "partly corrected by it" elif .superseded_by then "superseded by \(.superseded_by)" else "live" end)] | join("; ")' "$L")"
 size=$(wc -c <"$TP" | tr -d ' ')
 lastu=$(grep -o '"uuid":"[^"]*"' "$TP" | tail -n 1 | cut -d'"' -f4)
 jq -e --argjson s "$size" --arg u "$lastu" '.offset == $s and .last_uuid == $u' "$M" >/dev/null &&
@@ -129,7 +138,7 @@ tail -n 1 "$JEV_HOME/log/ledger.jsonl" | jq -e '.status == "locked"' >/dev/null 
   ok "Stop during a running step: skipped in ${ms} ms (status locked)" || bad "locked Stop not skipped"
 rm -rf "$JEV_HOME/ledger/$S.lock"
 
-log "## compaction 2 (after turn 13): summary drops the migrations rule, the flag default and pg-staging-3"
+log "## compaction 2 (after turn 14): summary drops the migrations rule, the flag default and pg-staging-3"
 pre
 substop "$summary2"
 out=$(sess)
@@ -149,5 +158,5 @@ a=${ctx%%Live sections*} b=${ctx%%Artifacts saved*} c=${ctx%%Facts preserved*}
 log "compact.jsonl: $(grep '"event":"post"' "$JEV_HOME/log/compact.jsonl" | tail -n 1 | jq -c '{covered: (.covered | length), missing}')"
 
 log "ledger-fixture: $fails failure(s)"
-sed "s#$W#<tmp>#g; s#$HOME#~#g" "$W/evidence.txt" >"$EVID"
+if [ "${JEV_LIVE:-0}" = 1 ] || [ "${JEV_EVIDENCE:-0}" = 1 ]; then sed "s#$W#<tmp>#g; s#$HOME#~#g" "$W/evidence.txt" >"$EVID"; fi
 [ "$fails" -eq 0 ]

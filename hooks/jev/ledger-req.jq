@@ -9,25 +9,39 @@
 #   x<N>_c<K>     the same against earlier candidate K of this slice
 # Supersession is only asked within a family (statements = user/decision/todo,
 # errors, branches; a statement may also retire an error, e.g. "that host is
-# gone"), against the $per_kind most recent live facts of that family, ranked
-# by word overlap; at most $max_pairs pairs in total.
+# gone"): against the $per_kind live facts of that family with the most word
+# overlap (all of them ranked, the more recent first on a tie), plus earlier
+# candidates of this slice; at most $max_pairs pairs in total. Not asked: an
+# assistant line that restates a statement (over 80% of its words in it and no
+# new values: numbers, paths, names with . / _ -).
 
 def family: if IN("user", "decision", "todo", "carried") then "statement"
   elif . == "error" then "error" elif . == "branch" then "branch" else null end;
 def words: ascii_downcase | [scan("[a-z0-9][a-z0-9._/-]{2,}")] | unique;
 def overlap($a; $b): ($a - ($a - $b)) | length;
 def targets($f): if $f == "statement" then ["statement", "error"] else [$f] end;
+def vals: map(select(test("[0-9/._-]")));
+# content words: no "User said:"/"Decision:" prefix, no filler words
+def cw: sub("^(User said|Decision|Open item|Carried): *"; "") | words
+  - ["the", "and", "for", "with", "this", "that", "will", "we'll", "i'll", "are", "was", "from", "into",
+     "our", "you", "your", "use", "using", "only", "must", "should", "not", "never", "always", "ok", "okay"];
+# $x restates $t: an assistant line mostly made of $t's content words, adding no value of its own
+def restates($x; $t): $x.kind == "decision" and ($x.cw | length) > 0
+  and (overlap($x.cw; $t.cw) / ($x.cw | length)) > 0.8 and (($x.w | vals) - $t.w | length) == 0;
 
 . as $in
 # The checkout's current branch is context, not a decision: it never retires a branch fact.
-| [.cands[] | . + {fam: (if (.text | startswith("Git branch of the session directory")) then null else (.kind | family) end), w: (.text | words)}] as $c
-| [.live[] | . + {fam: (.kind | family), w: (.text | words)}] as $live
+| [.cands[] | . + {fam: (if (.text | startswith("Git branch of the session directory")) then null else (.kind | family) end), w: (.text | words), cw: (.text | cw)}] as $c
+| [.live[] | . + {fam: (.kind | family), w: (.text | words), cw: (.text | cw)}] as $live
 | [
     $c[] | select(.fam != null) | . as $x
-    | (([$live[] | select(.fam | IN(targets($x.fam)[]))] | .[-$per_kind:] | map({t: .id, text, w}))
-       + [$c[] | select((.fam | IN(targets($x.fam)[])) and .n < $x.n) | {t: "c\(.n)", text, w}])
-    | to_entries[]
-    | {n: $x.n, ntext: $x.text, t: .value.t, ttext: .value.text, o: overlap($x.w; .value.w), r: .key}
+    | (([$live | to_entries[] | .value + {r: .key} | select(.fam | IN(targets($x.fam)[]))]
+         | map(. + {o: overlap($x.w; .w)}) | sort_by(-.o, -.r) | .[0:$per_kind]
+         | map({t: .id, kind, text, w, cw, o, r}))
+       + [$c[] | select((.fam | IN(targets($x.fam)[])) and .n < $x.n)
+          | {t: "c\(.n)", kind, text, w, cw, o: overlap($x.w; .w), r: (1000000 + .n)}])
+    | .[] | select(restates($x; .) | not)
+    | {n: $x.n, ntext: $x.text, t: .t, ttext: .text, o: .o, r: .r}
   ]
 | sort_by(-.o, -.r) | .[0:$max_pairs] | sort_by(.n, .t) as $pairs
 | ([$c[] | {key: "s\(.n)", value: {
