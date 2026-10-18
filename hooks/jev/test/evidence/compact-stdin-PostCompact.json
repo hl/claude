@@ -1,9 +1,9 @@
 {
-  "session_id": "ed79f50e-e66c-4afa-b8fc-a8813d939be2",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/ed79f50e-e66c-4afa-b8fc-a8813d939be2.jsonl",
+  "session_id": "f558ba9a-4cf6-4cbe-b7ed-ff932c8bdb66",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/f558ba9a-4cf6-4cbe-b7ed-ff932c8bdb66.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "92458d9e-355e-4e0d-aaec-dc38d60ef47c",
+  "prompt_id": "ef05f83b-bdda-41fb-b566-e7917f59646b",
   "hook_event_name": "PostCompact",
   "trigger": "manual",
-  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop every background fact, name, number and path. The summary below follows that. The current task is the last user request: run a shell command that lists a nonexistent directory and report the error in one line. The command ran and returned a \"No such file or directory\" error. I still owe the user that one-line error report.\n</analysis>\n\n<summary>\nCurrent task: report in one line the error from the shell command that listed a nonexistent directory. The command failed with \"No such file or  …[truncated]"
+  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop all background facts, names, numbers and paths. The summary below follows that, so the usual sections are collapsed to the one line.\n</analysis>\n\n<summary>\nCurrent task: I ran `ls` on a nonexistent directory, and the user asked for the resulting error in one line. The error was \"No such file or directory (os error 2)\", exit code 2. I still owe the user that one-line report.\n</summary> …[truncated]"
 }

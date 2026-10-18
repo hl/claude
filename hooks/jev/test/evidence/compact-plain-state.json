@@ -1,11 +1,11 @@
 {
-  "session_id": "e479b5d4-6b6c-48b9-bb80-7380d87af7ab",
+  "session_id": "af2411aa-8be2-484c-b8fd-03948fa16b5e",
   "mode": "ledger",
-  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/e479b5d4-6b6c-48b9-bb80-7380d87af7ab.jsonl",
+  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/af2411aa-8be2-484c-b8fd-03948fa16b5e.jsonl",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-18T21:31:46Z",
-  "extracted_epoch": 1792359106,
+  "extracted_at": "2026-10-18T22:25:14Z",
+  "extracted_epoch": 1792362314,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
@@ -18,8 +18,8 @@
       "id": "f1",
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821. [later corrected: User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.]",
-      "score": 2.94,
-      "covered_p": 0.93,
+      "score": 2.93,
+      "covered_p": 0.78,
       "covered": true
     },
     {
@@ -27,16 +27,16 @@
       "id": "f2",
       "kind": "user",
       "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
-      "score": 2.89,
-      "covered_p": 0.96,
+      "score": 2.87,
+      "covered_p": 0.94,
       "covered": true
     }
   ],
   "coverage": {
-    "summary_id": "3467100992-5829",
+    "summary_id": "1224283519-4669",
     "source": "SubagentStop",
-    "at": "2026-10-18T21:32:01Z",
-    "summary_quality": 4.89
+    "at": "2026-10-18T22:25:27Z",
+    "summary_quality": 4.87
   },
-  "consumed_at": "2026-10-18T21:32:01Z"
+  "consumed_at": "2026-10-18T22:25:27Z"
 }

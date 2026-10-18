@@ -192,7 +192,7 @@ over-routed:  90 (21%)  haiku->sonnet=27 haiku->opus=5 sonnet->opus=58
   under-routed; fold 1 picked 0.5 / 0.6 and under-routed 3 opus rows on its test half (18 at the
   margin). Session 2 the same shape (0.6 / 0.35 and 0.5 / 0.6). The opus guarantee rests on the
   conservative choice, and on one opus task with P(opus) 0.17-0.19 that only the 0.7 security gate
-  (0.88) keeps on opus; every other opus row is >= 0.65.
+  (0.88) keeps on opus; the next lowest are 0.47 (security 0.75), 0.56 and 0.64.
 - Over-routing is 48% overall and 43% on the unanchored subset. Stripping the anchors raised it (the
   labels kept the anchored answers, Jev no longer sees them) and so did the stricter bars: round 1
   (P(haiku) 0.5, P(opus) 0.4, unstripped text) over-routed 35%. Most of it is sonnet-labelled work

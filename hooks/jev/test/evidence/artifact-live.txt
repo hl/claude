@@ -1,16 +1,39 @@
-# live-artifact.sh — 2026-10-18T21:19Z, 2.1.302 (Claude Code)
+# live-artifact.sh — 2026-10-18T22:35Z, 2.1.303 (Claude Code)
+## route.jsonl: PreToolUse decision joined to the model that ran (tool_use_id)
+[
+  {
+    "tool_use_id": "toolu_014uDxJb1NPecunVvZkBTD6y",
+    "description": "List fruit tastes",
+    "hook_action": "escalated",
+    "given": "haiku",
+    "jev_final": "sonnet",
+    "ran": "claude-sonnet-5-5",
+    "status": "completed"
+  },
+  {
+    "tool_use_id": "toolu_017kn2TAjntHot92P4hFxvZz",
+    "description": "List vegetable tastes",
+    "hook_action": "escalated",
+    "given": "haiku",
+    "jev_final": "sonnet",
+    "ran": "claude-sonnet-5-5",
+    "status": "async_launched"
+  }
+]
 ## parent's final reply
-foreground: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md
-background: /private/tmp/claude-501/-private-tmp-jev-live-artifact/3c58a254-9cf8-4e72-bcfb-80138f60202b/tasks/af530efd632535256.output
+The background agent is still running, so I'm waiting for its completion notification.
+
+foreground: <scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-1-list-fruit-tastes-a79741d0a4f37454f.md
+background: NONE
 ## artifacts
-<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md 10858 bytes, first line: <!-- subagent a9255d370e0631579 (general-purpose, claude-haiku-5-5), 2026-10-18T21:19:35Z, List fruit tastes -->
-<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable-tastes.md 9274 bytes, first line: <!-- subagent af530efd632535256 (general-purpose), 2026-10-18T21:19:34Z, List vegetable tastes -->
+<scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-2-list-vegetable-tastes-a0992ce9b552ab06c.md 9651 bytes, first line: <!-- subagent a0992ce9b552ab06c (general-purpose), 2026-10-18T22:35:15Z, List vegetable tastes -->
+<scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-1-list-fruit-tastes-a79741d0a4f37454f.md 8249 bytes, first line: <!-- subagent a79741d0a4f37454f (general-purpose, claude-sonnet-5-5), 2026-10-18T22:35:12Z, List fruit tastes -->
 ## artifact.jsonl
-{"ts":"2026-10-18T21:19:34Z","hook":"artifact-hook","session_id":"3c58a254-9cf8-4e72-bcfb-80138f60202b","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable-tastes.md","chars":9167,"agent_id":"af530efd632535256"}
-{"ts":"2026-10-18T21:19:35Z","hook":"artifact-hook","session_id":"3c58a254-9cf8-4e72-bcfb-80138f60202b","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md","chars":10744,"agent_id":"a9255d370e0631579"}
+{"ts":"2026-10-18T22:35:12Z","hook":"artifact-hook","session_id":"437a0e9e-2ab1-47e4-8503-ac6d5389c01d","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-1-list-fruit-tastes-a79741d0a4f37454f.md","chars":8134,"agent_id":"a79741d0a4f37454f"}
+{"ts":"2026-10-18T22:35:15Z","hook":"artifact-hook","session_id":"437a0e9e-2ab1-47e4-8503-ac6d5389c01d","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-2-list-vegetable-tastes-a0992ce9b552ab06c.md","chars":9547,"agent_id":"a0992ce9b552ab06c"}
 ## ledger
-{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-vegetable-tastes: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-1-list-vegetable"}
-{"id":"f2","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-fruit-tastes: <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes."}
-{"id":"f3","kind":"user","score":1.92,"text":"User said: Do exactly this, then stop: 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpos"}
+{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-fruit-tastes-a79741d0a4f37454f: <scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-1-"}
+{"id":"f2","kind":"user","score":2.07,"text":"User said: Do exactly this, then stop: 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpos"}
+{"id":"f3","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-vegetable-tastes-a0992ce9b552ab06c: <scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agen"}
 ## parent transcript: hook additionalContext the parent received
-{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/3c58a254-9cf8-4e72-bcfb-80138f60202b/agent-2-list-fruit-tastes.md\"]"}
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/437a0e9e-2ab1-47e4-8503-ac6d5389c01d/agent-1-list-fruit-tastes-a79741d0a4f37454f.md\"]"}

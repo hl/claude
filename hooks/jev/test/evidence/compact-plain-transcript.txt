@@ -7,11 +7,11 @@ transcript lines: compact_boundary 100; SessionStart hook_additional_context 111
     "hookEvent": "SessionStart",
     "hookName": "SessionStart",
     "content": [
-      "Live sections of /private/tmp/jev-live-compact/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):\n## 2026-10-18 — fan-out rollout (OPS-4821)\n  Status: waiting on CI for the rollout PR\n\nArtifacts saved this session (read the file instead of redoing the work):\n* /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/rollout-checklist.md — Rollout checklist\n\nFull record: ledger /tmp/jev-live-compact/jevhome/ledger/e479b5d4-6b6c-48b9-bb80-7380d87af7ab.jsonl (all facts; superseded ones marked), artifacts /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/."
+      "Live sections of /private/tmp/jev-live-compact/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):\n## 2026-10-18 — fan-out rollout (OPS-4821)\n  Status: waiting on CI for the rollout PR\n\nArtifacts saved this session (read the file instead of redoing the work):\n* /tmp/jev-live-compact/jevhome/artifacts/af2411aa-8be2-484c-b8fd-03948fa16b5e/rollout-checklist.md — Rollout checklist\n\nFull record: ledger /tmp/jev-live-compact/jevhome/ledger/af2411aa-8be2-484c-b8fd-03948fa16b5e.jsonl (all facts; superseded ones marked), artifacts /tmp/jev-live-compact/jevhome/artifacts/af2411aa-8be2-484c-b8fd-03948fa16b5e/."
     ]
   }
 }
 --- model answer after compaction:
-Staging database: pg-staging-9 on port 6545 (pg-staging-7 is gone, and migrations must never run against staging).
+Staging database: pg-staging-9, port 6545
 Ticket: OPS-4821
-Rollout checklist: /tmp/jev-live-compact/jevhome/artifacts/e479b5d4-6b6c-48b9-bb80-7380d87af7ab/rollout-checklist.md
+Rollout checklist: /tmp/jev-live-compact/jevhome/artifacts/af2411aa-8be2-484c-b8fd-03948fa16b5e/rollout-checklist.md
