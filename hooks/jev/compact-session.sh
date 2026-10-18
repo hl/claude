@@ -63,7 +63,11 @@ if [ -f "$state" ] && jq -e '(.consumed_at // null) == null' "$state" >/dev/null
 elif [ -s "$ledger" ]; then
   # No snapshot (PreCompact failed or was skipped): rank the live ledger facts.
   jq -s -c --argjson min "$MIN_SCORE" '{mode: "ledger-ranking", state_mode: "ledger", work_type: null, mid_operation: null,
-    facts: ([.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)] | to_entries | map(.value + {n: (.key + 1)}))}' \
+    facts: ((map({key: .id, value: .text}) | from_entries) as $txt
+      | [.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)
+         | if ((.corrected_by // []) | length) > 0
+           then .text += " [later corrected: " + ([.corrected_by[] | $txt[.] // empty | .[0:200]] | join("; ")) + "]" else . end]
+      | to_entries | map(.value + {n: (.key + 1)}))}' \
     "$ledger" >"$tmpd/facts.json"
   facts_mode="ledger-ranking"
 fi

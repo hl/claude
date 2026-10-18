@@ -17,11 +17,16 @@
 # most JEV_LEDGER_PER_REQ questions) for:
 #   - a score per candidate (irrelevant / nice / important / critical), and
 #   - per candidate x recent live fact of the same family, whether the
-#     candidate supersedes or corrects it (noul).
+#     candidate corrects it fully, partly or not at all (choice).
+# A full correction marks the old fact superseded_by (it is never injected
+# again); a partial one adds to its corrected_by (it stays live and is injected
+# with the correction attached), so a multi-fact message is not lost because
+# one of its facts changed.
 # Candidates scored >= JEV_COMPACT_MIN_SCORE (important), and lower-scored ones
 # that supersede an important live fact, are appended in transcript order to
 #   ~/.claude/jev/ledger/<session_id>.jsonl
-#     {id, ts, kind, text, score, supersedes: [ids], superseded_by, source_uuid}
+#     {id, ts, kind, text, score, supersedes: [ids], corrects: [ids],
+#      superseded_by, corrected_by: [ids], source_uuid}
 # and the facts they supersede get superseded_by. The cursor lives next to it
 # in <session_id>.meta.json {offset, last_uuid, next_id, ...}.
 #
@@ -73,7 +78,7 @@ if [ "${1:-}" = --add ]; then
       "$LDIR/$sid.jsonl" >"$LDIR/$sid.jsonl.tmp" && mv "$LDIR/$sid.jsonl.tmp" "$LDIR/$sid.jsonl"
   fi
   jq -cn --arg id "f$next" --arg ts "$(jev_now)" --arg k "$kind" --arg t "$text" --argjson s "$score" --arg src "$src" \
-    '{id: $id, ts: $ts, kind: $k, text: $t, score: $s, supersedes: [], superseded_by: null,
+    '{id: $id, ts: $ts, kind: $k, text: $t, score: $s, supersedes: [], corrects: [], superseded_by: null, corrected_by: [],
       source_uuid: (if $src == "" then null else $src end)}' >>"$LDIR/$sid.jsonl"
   m=$(jq -c --argjson n "$((next + 1))" '.next_id = $n' "$meta" 2>/dev/null || jq -cn --argjson n "$((next + 1))" '{next_id: $n}')
   printf '%s\n' "$m" >"$meta.tmp" && mv "$meta.tmp" "$meta"
@@ -198,34 +203,41 @@ if [ "$answers" = null ] || ! jq -e --slurpfile q "$tmpd/reqs.json" '. as $a | [
   exit 0
 fi
 
-# Decide, number and write. Superseded targets: ledger facts by id, or
-# earlier candidates of this slice (if they are kept themselves).
+# Decide, number and write. Targets: ledger facts by id, or earlier candidates
+# of this slice (if they are kept themselves). P(fully) >= SUP_MIN supersedes;
+# P(partly) + P(fully) >= SUP_MIN corrects.
 jq -c --argjson a "$answers" --argjson min "$MIN_SCORE" --argjson sup "$SUP_MIN" --argjson next "$next_id" \
   --arg ts "$(jev_now)" '
   .live as $live
   | [.cands[] | . as $c
      # A pull request link is how the session finds its own work again: never below important.
      | ($a["s\(.n)"].score // 0 | if $c.kind == "url" and ($c.text | startswith("Pull request:")) then ([., $min] | max) else . end) as $score
-     | ([$a | to_entries[] | select(.key | startswith("x\($c.n)_")) | select(.value.noul >= $sup) | .key | sub("^x[0-9]+_"; "")]) as $sup_t
-     | ([$sup_t[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $sup_score
-     | {n, kind, text, src, score: ($score * 100 | round / 100), sup_t: $sup_t,
+     | [$a | to_entries[] | select(.key | startswith("x\($c.n)_")) | {t: (.key | sub("^x[0-9]+_"; "")), p: (.value.probabilities // {})}] as $pairs
+     | ([$pairs[] | select((.p.fully // 0) >= $sup) | .t]) as $sup_t
+     | ([$pairs[] | select((.p.fully // 0) < $sup and ((.p.fully // 0) + (.p.partly // 0)) >= $sup) | .t]) as $cor_t
+     | ([($sup_t + $cor_t)[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $sup_score
+     | {n, kind, text, src, score: ($score * 100 | round / 100), sup_t: $sup_t, cor_t: $cor_t,
         keep: ($score >= $min or ($sup_score >= $min and $score >= 0.75))}]
   | [.[] | select(.keep)] as $kept
   | ($kept | to_entries | map({key: "c\(.value.n)", value: "f\($next + .key)"}) | from_entries) as $cid
   | [$kept[] | {id: $cid["c\(.n)"], ts: $ts, kind, text,
                 score: (if .score < $min then $min else .score end),
                 supersedes: [.sup_t[] | if startswith("c") then ($cid[.] // empty) else . end],
-                superseded_by: null, source_uuid: .src}] as $new
+                corrects: [.cor_t[] | if startswith("c") then ($cid[.] // empty) else . end],
+                superseded_by: null, corrected_by: [], source_uuid: .src}] as $new
   | {new: $new, marks: ([$new[] | .id as $by | .supersedes[] | {key: ., value: $by}] | from_entries),
+     cmarks: ([$new[] | .id as $by | .corrects[] | {k: ., v: $by}] | group_by(.k) | map({key: .[0].k, value: map(.v)}) | from_entries),
      scored: length, next: ($next + ($new | length))}' "$tmpd/in.json" >"$tmpd/decided.json"
 
-jq -c --slurpfile d "$tmpd/decided.json" '
-  .superseded_by = (if .superseded_by == null then ($d[0].marks[.id] // null) else .superseded_by end)' "$facts" >"$tmpd/facts.jsonl"
-# New facts can themselves be superseded by later ones from the same slice.
-jq -c '. as $d | .new[] | .superseded_by = ($d.marks[.id] // null)' "$tmpd/decided.json" >>"$tmpd/facts.jsonl"
+# shellcheck disable=SC2016 # a jq program, expanded by jq
+mark='.superseded_by = (if .superseded_by == null then ($d.marks[.id] // null) else .superseded_by end)
+  | .corrected_by = ((.corrected_by // []) + ($d.cmarks[.id] // []))'
+jq -c --slurpfile dd "$tmpd/decided.json" "\$dd[0] as \$d | $mark" "$facts" >"$tmpd/facts.jsonl"
+# New facts can themselves be superseded or corrected by later ones from the same slice.
+jq -c ". as \$d | .new[] | $mark" "$tmpd/decided.json" >>"$tmpd/facts.jsonl"
 mv "$tmpd/facts.jsonl" "$facts"
 next_new=$(jq -r .next "$tmpd/decided.json")
 save_meta ok "$next_new"
 jev_log ledger.jsonl "$(jq -c --argjson b "$n" --arg first "$first" --argjson nreq "$nreq" --argjson nq "$nq" '{event: "step", status: "ok",
   slice_bytes: $b, first_run: ($first == "true"), requests: $nreq, questions: $nq, candidates: .scored,
-  appended: (.new | length), superseded: (.marks | length), kinds: [.new[].kind]}' "$tmpd/decided.json")"
+  appended: (.new | length), superseded: (.marks | length), corrected: (.cmarks | length), kinds: [.new[].kind]}' "$tmpd/decided.json")"

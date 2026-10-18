@@ -93,7 +93,10 @@ if [ "${JEV_LEDGER:-1}" != 0 ]; then
         extracted_at: $at, extracted_epoch: $epoch, phase: "pre", jev_ok: true,
         guard_blocked: $blocked, work_type: null, mid_operation: $mid,
         superseded: ([.[] | select(.superseded_by != null)] | length),
-        facts: ([.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)]
+        facts: ((map({key: .id, value: .text}) | from_entries) as $txt
+                | [.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)
+                   | if ((.corrected_by // []) | length) > 0
+                     then .text += " [later corrected: " + ([.corrected_by[] | $txt[.] // empty | .[0:200]] | join("; ")) + "]" else . end]
                 | to_entries | map(.value + {ord: .key})
                 | sort_by(-(if .score >= 2.5 then 1 else 0 end), -.ord) | .[0:$max] | sort_by(.ord)
                 | to_entries | map(.value + {n: (.key + 1)} | {n, id, kind, text, score}))

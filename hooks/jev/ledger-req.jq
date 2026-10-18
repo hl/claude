@@ -3,8 +3,10 @@
 # Args: $model, $tail_max, $per_req (questions per request), $max_pairs, $per_kind (20)
 # Output: an array of request bodies. Questions:
 #   s<N>          score: how much candidate N must survive (v1 rubric)
-#   x<N>_<id>     noul: candidate N supersedes or corrects ledger fact <id>
-#   x<N>_c<K>     noul: candidate N supersedes or corrects earlier candidate K
+#   x<N>_<id>     choice unrelated / partly / fully: does candidate N correct
+#                 ledger fact <id> (partly: the older fact also says other
+#                 things that stay true; fully: nothing in it stays current)
+#   x<N>_c<K>     the same against earlier candidate K of this slice
 # Supersession is only asked within a family (statements = user/decision/todo,
 # errors, branches; a statement may also retire an error, e.g. "that host is
 # gone"), against the $per_kind most recent live facts of that family, ranked
@@ -17,7 +19,8 @@ def overlap($a; $b): ($a - ($a - $b)) | length;
 def targets($f): if $f == "statement" then ["statement", "error"] else [$f] end;
 
 . as $in
-| [.cands[] | . + {fam: (.kind | family), w: (.text | words)}] as $c
+# The checkout's current branch is context, not a decision: it never retires a branch fact.
+| [.cands[] | . + {fam: (if (.text | startswith("Git branch of the session directory")) then null else (.kind | family) end), w: (.text | words)}] as $c
 | [.live[] | . + {fam: (.kind | family), w: (.text | words)}] as $live
 | [
     $c[] | select(.fam != null) | . as $x
@@ -37,13 +40,14 @@ def targets($f): if $f == "statement" then ["statement", "error"] else [$f] end;
         "Critical: losing it causes rework, a wrong decision or a repeated mistake"
       ]}}]
    + [$pairs[] | {key: "x\(.n)_\(.t)", value: {
-      type: "noul",
-      instructions: ("Candidate \(.n) in `candidates`: \"\(.ntext)\". " +
-        (if (.t | startswith("c")) then "Candidate \(.t[1:])" else "Fact \(.t) in `ledger`" end) + ": \"\(.ttext)\". " +
-        "Candidate \(.n) supersedes or corrects it: it gives a newer value, decision or status for the same thing, so the older statement is no longer current."),
+      type: "choice",
+      instructions: ("Candidate \(.n) in `candidates` (newer): \"\(.ntext)\". " +
+        (if (.t | startswith("c")) then "Candidate \(.t[1:])" else "Fact \(.t) in `ledger`" end) + " (older): \"\(.ttext)\". " +
+        "Does the newer statement give a newer value, decision or status for something the older one says, so that the older statement is no longer fully current?"),
       criteria: {
-        true: "The newer statement replaces, corrects, reverses or completes the older one about the same subject",
-        false: "They are about different things, or both stay true"
+        unrelated: "No: they are about different things, or both stay fully true",
+        partly: "It corrects or updates part of the older statement; the older statement also says other things that stay true",
+        fully: "It replaces, corrects, reverses or completes everything in the older statement that still matters"
       }}}]) as $qs
 | [range(0; $qs | length; $per_req) as $i | $qs[$i:$i + $per_req] | from_entries] as $chunks
 | [$chunks[] | {
