@@ -51,7 +51,10 @@ jq -n --arg d "$SCRATCH/dump.sh" --arg j "$J" '
     SubagentStop: [{hooks: [dump("SubagentStop"), jev("compact-post.sh"), jev("artifact-hook.sh")]}],
     PostToolUse: [{matcher: "Agent", hooks: [jev("artifact-hook.sh")]}],
     SessionStart: [{hooks: [dump("SessionStart")]}, {matcher: "compact", hooks: [jev("compact-session.sh")]}],
-    PostCompact: [{matcher: "manual|auto", hooks: [dump("PostCompact"), jev("compact-post.sh")]}]}}' >"$SCRATCH/.claude/settings.json"
+    PostCompact: [{matcher: "manual|auto", hooks: [dump("PostCompact"), jev("compact-post.sh")]}]},
+   # The auto-mode classifier may refuse artifact.sh as "self-modification" (it lives
+   # under ~/.claude); an explicit allow rule is what a user would add.
+   permissions: {allow: ["Bash(\($j)/artifact.sh:*)", "Bash(printf:*)"]}}' >"$SCRATCH/.claude/settings.json"
 
 pane() { tmux capture-pane -p -t "$SESS" 2>/dev/null; }
 say() { # type a line, then submit
