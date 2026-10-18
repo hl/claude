@@ -7,6 +7,9 @@
 # Writes ~/.claude/jev/artifacts/<session_id>/<name>.md, prints that path, and
 # appends an `artifact` fact to the ledger (so compaction re-injects the index).
 # Writing the same name again replaces the file and supersedes the old fact.
+# Content over JEV_ARTIFACT_MAX_BYTES (512 KB) is cut, with a note saying so.
+# With JEV_DISABLED=1 the file is still written (it was asked for) but nothing
+# goes to the ledger, so nothing can reach Jev.
 #
 # Session id, first match wins: --session, $CLAUDE_CODE_SESSION_ID (exported to
 # Bash tool commands and hooks by Claude Code 2.1.302, subagents included),
@@ -64,21 +67,31 @@ name=$(printf '%s' "$name" | tr -c 'A-Za-z0-9._-' '-' | sed -e 's/--*/-/g' -e 's
 dir="$JEV_HOME/artifacts/$sid"
 mkdir -p "$dir"
 path="$dir/$name.md"
+tmpf=$(mktemp "$dir/.tmp.XXXXXX")
+trap 'rm -f "$tmpf" "$tmpf.cut"' EXIT
 if [ -n "$from" ]; then
   [ -r "$from" ] || {
     echo "artifact.sh: cannot read $from" >&2
     exit 2
   }
-  cat "$from" >"$path.tmp"
+  cat "$from" >"$tmpf"
 else
-  cat >"$path.tmp"
+  cat >"$tmpf"
 fi
-[ -s "$path.tmp" ] || {
-  rm -f "$path.tmp"
+[ -s "$tmpf" ] || {
+  rm -f "$tmpf"
   echo "artifact.sh: empty content, nothing saved" >&2
   exit 2
 }
-mv "$path.tmp" "$path"
+size=$(wc -c <"$tmpf" | tr -d ' ')
+cap=${JEV_ARTIFACT_MAX_BYTES:-524288}
+if [ "$size" -gt "$cap" ]; then
+  head -c "$cap" "$tmpf" >"$tmpf.cut"
+  printf '\n\n[truncated by artifact.sh: %s of %s bytes kept]\n' "$cap" "$size" >>"$tmpf.cut"
+  mv "$tmpf.cut" "$tmpf"
+  echo "artifact.sh: content cut to $cap of $size bytes" >&2
+fi
+mv "$tmpf" "$path"
 
 # First meaningful line as the title in the index.
 title=$(grep -m 1 -v -e '^[[:space:]]*$' -e '^<!--' "$path" | sed -e 's/^#* *//' | cut -c1-120 || true)

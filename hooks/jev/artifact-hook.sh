@@ -20,7 +20,13 @@
 #                                the artifact index that compaction re-injects.
 #                                Foreground agents stop before their PostToolUse
 #                                fires and are left to it (it has the description).
-# Files: ~/.claude/jev/artifacts/<session_id>/agent-<n>-<slug>.md, and an
+# Every PostToolUse(Agent), long or short, also logs {action: "ran", tool_use_id,
+# agent_id, resolved_model, status} to route.jsonl: the model that actually ran,
+# joined to the PreToolUse decision by tool_use_id.
+# Files: ~/.claude/jev/artifacts/<session_id>/agent-<n>-<slug>-<agentId>.md
+# (the agent id, or the tool_use_id, keeps two same-described agents that finish
+# together apart; written to a mktemp file in the same directory, then renamed),
+# capped at JEV_ARTIFACT_MAX_BYTES (512 KB) with a truncation note, and an
 # `artifact` fact in the ledger. The compaction agent (empty agent_type) and
 # subagents' own nested state are skipped. Local only; fails open; never blocks.
 # Verified on Claude Code 2.1.302 (test/evidence/payload-*.json).
@@ -33,6 +39,7 @@ export JEV_HOOK=artifact-hook
 . "$JEV_DIR/lib.sh"
 
 MIN=${JEV_ARTIFACT_MIN_CHARS:-2000}
+CAP=${JEV_ARTIFACT_MAX_BYTES:-524288}
 [ "${JEV_ARTIFACTS:-1}" = 0 ] && exit 0
 jev_disabled && exit 0
 
@@ -49,6 +56,12 @@ case $event in
     [ "$(jq -r '.tool_name // empty' <<<"$payload")" = Agent ] || exit 0
     # tool_response is an object for foreground agents; accept a JSON string too.
     resp=$(jq -c '.tool_response | if type == "string" then (fromjson? // {}) else . end' <<<"$payload")
+    tuid=$(jq -r '.tool_use_id // empty' <<<"$payload")
+    # The model that actually ran, for every Agent call (foreground or background).
+    JEV_HOOK=agent-ran jev_log route.jsonl "$(jq -c --argjson r "$resp" '{action: "ran", tool_use_id: (.tool_use_id // null),
+      agent_id: ($r.agentId // null), resolved_model: ($r.resolvedModel // null), status: ($r.status // null),
+      subagent_type: (.tool_input.subagent_type // null), given_model: (.tool_input.model // null),
+      description: ((.tool_input.description // "")[0:120])}' <<<"$payload")"
     [ "$(jq -r '.status // empty' <<<"$resp")" = completed ] || exit 0
     agent=$(jq -r '.agentId // empty' <<<"$resp")
     text=$(jq -r '.content | if type == "array" then [.[] | select(.type == "text") | .text] | join("\n") elif type == "string" then . else "" end' <<<"$resp")
@@ -66,10 +79,11 @@ case $event in
     text=$(jq -r '.last_assistant_message // empty' <<<"$payload")
     desc=$(jq -r --arg a "$agent" '[.background_tasks[]? | select(.id == $a) | .description] | first // empty' <<<"$payload")
     model=""
+    tuid=""
     ;;
   *) exit 0 ;;
 esac
-case $agent in *[!A-Za-z0-9._-]*) exit 0 ;; esac
+case $agent$tuid in *[!A-Za-z0-9._-]*) exit 0 ;; esac
 [ "${#text}" -gt "$MIN" ] || exit 0
 
 mkdir -p "$dir/.agents"
@@ -82,13 +96,22 @@ fi
 if [ -z "$path" ]; then
   n=$(($(find "$dir" -maxdepth 1 -name 'agent-*.md' | wc -l) + 1))
   slug=$(printf '%s' "${desc:-$atype}" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9' '-' | sed -e 's/--*/-/g' -e 's/^-//' -e 's/-$//' | cut -c1-48)
-  name="agent-$n-${slug:-result}"
+  uid=${agent:-${tuid:-$$}}
+  name="agent-$n-${slug:-result}-$uid"
+  tmpf=$(mktemp "$dir/.tmp.XXXXXX")
   {
     printf '<!-- subagent %s (%s%s), %s, %s -->\n' "${agent:-?}" "${atype:-?}" "${model:+, $model}" "$(jev_now)" "${desc:-no description}"
     printf '%s\n' "$text"
-  } >"$dir/$name.md.tmp" && mv "$dir/$name.md.tmp" "$dir/$name.md"
+  } >"$tmpf"
+  size=$(wc -c <"$tmpf" | tr -d ' ')
+  if [ "$size" -gt "$CAP" ]; then
+    head -c "$CAP" "$tmpf" >"$tmpf.cut"
+    printf '\n\n[truncated by the Jev artifact hook: %s of %s bytes kept]\n' "$CAP" "$size" >>"$tmpf.cut"
+    mv "$tmpf.cut" "$tmpf"
+  fi
+  mv "$tmpf" "$dir/$name.md"
   path="$dir/$name.md"
-  [ -n "$agent" ] && printf '%s\n' "$path" >"$mark"
+  if [ -n "$agent" ]; then printf '%s\n' "$path" >"$mark.$$" && mv "$mark.$$" "$mark"; fi
   "$JEV_DIR/ledger.sh" --add "$sid" artifact 2.5 "Artifact $name: $path — subagent result: ${desc:-$atype}" "" >/dev/null 2>&1 || true
   jev_log artifact.jsonl "$(jq -cn --arg e "$event" --arg p "$path" --argjson c "${#text}" --arg a "$agent" '{event: $e, status: "saved", path: $p, chars: $c, agent_id: $a}')"
 fi

@@ -7,6 +7,8 @@
 #  2. background Agent call (run_in_background): tool_response is async_launched,
 #     so SubagentStop saves it
 #  3. the Stop hook builds the ledger, which indexes both artifacts
+#  4. route.jsonl holds, for each Agent call, the PreToolUse decision and an
+#     action "ran" record with resolved_model, joined by tool_use_id
 # Records the real Stop, PostToolUse(Agent) and SubagentStop payloads (sanitised:
 # $HOME -> ~, long strings cut) as test/evidence/payload-*.json.
 # Only project settings are loaded (--setting-sources project), so the user's
@@ -37,6 +39,7 @@ jq -n --arg d "$SCRATCH/dump.sh" --arg j "$J" '
   def jev($s): {type: "command", command: "\($j)/\($s)", timeout: 10};
   {hooks: {
     Stop: [{hooks: [dump("Stop"), jev("ledger.sh")]}],
+    PreToolUse: [{matcher: "Agent", hooks: [jev("agent-route.sh")]}],
     PostToolUse: [{matcher: "Agent", hooks: [dump("PostToolUse-Agent"), jev("artifact-hook.sh")]}],
     SubagentStop: [{hooks: [dump("SubagentStop"), jev("artifact-hook.sh")]}]}}' >"$SCRATCH/.claude/settings.json"
 
@@ -71,8 +74,8 @@ st=$(find "$SCRATCH/dump" -name '*-Stop.json' | sort | tail -n 1)
 [ -n "$st" ] && jq -e '(.session_id | type == "string") and (.transcript_path | type == "string") and has("stop_hook_active") and (has("agent_id") | not)' "$st" >/dev/null &&
   ok "Stop: session_id, transcript_path, stop_hook_active present; no agent_id on the main session" || bad "Stop payload not as relied on"
 
-fgf=$(find "$adir" -name 'agent-*-list-fruit-tastes.md' 2>/dev/null | sed -n 1p)
-bgf=$(find "$adir" -name 'agent-*-list-vegetable-tastes.md' 2>/dev/null | sed -n 1p)
+fgf=$(find "$adir" -name 'agent-*-list-fruit-tastes-*.md' 2>/dev/null | sed -n 1p)
+bgf=$(find "$adir" -name 'agent-*-list-vegetable-tastes-*.md' 2>/dev/null | sed -n 1p)
 [ -n "$fgf" ] && [ "$(wc -c <"$fgf")" -gt 2000 ] && ok "foreground result saved: $(basename "$fgf") ($(wc -c <"$fgf" | tr -d ' ') bytes)" || bad "foreground result not saved"
 [ -n "$bgf" ] && ok "background result saved on SubagentStop: $(basename "$bgf")" || bad "background result not saved"
 if [ -n "$fgf" ] && grep -qF "$fgf" <<<"$reply"; then
@@ -82,8 +85,19 @@ jq -e -s '[.[] | select(.kind == "artifact")] | length >= 2' "$JEV_HOME/ledger/$
   ok "ledger indexes both artifacts" || bad "ledger missing artifact facts"
 jq -e -s 'any(.[]; .event == "step" and .status == "ok")' "$JEV_HOME/log/ledger.jsonl" >/dev/null 2>&1 &&
   ok "Stop hook ran ledger steps in the live session ($(jq -r -s '[.[] | select(.event == "step") | .status] | join(",")' "$JEV_HOME/log/ledger.jsonl"))" || bad "no ledger step ran"
+RL="$JEV_HOME/log/route.jsonl"
+joined=$(jq -s -c '[.[] | select(.action == "ran")] as $ran
+  | [.[] | select(.hook == "agent-route" and .tool_use_id != null) as $d
+     | ($ran[] | select(.tool_use_id == $d.tool_use_id)) as $r
+     | {tool_use_id: $d.tool_use_id, description: $d.description, hook_action: $d.action, given: $d.given_model,
+        jev_final: $d.final_model, ran: $r.resolved_model, status: $r.status}]' "$RL" 2>/dev/null || echo '[]')
+[ "$(jq 'length' <<<"$joined")" -ge 2 ] && jq -e 'all(.[]; .ran | test("^claude-"))' <<<"$joined" >/dev/null &&
+  ok "route.jsonl: each Agent call's PreToolUse decision joins its \"ran\" record by tool_use_id: $(jq -c '[.[] | "\(.description): given \(.given), ran \(.ran)"]' <<<"$joined")" ||
+  bad "route.jsonl join by tool_use_id: $joined"
 {
   echo "# live-artifact.sh — $(date -u +%Y-%m-%dT%H:%MZ), $(claude --version 2>/dev/null | head -n 1)"
+  echo "## route.jsonl: PreToolUse decision joined to the model that ran (tool_use_id)"
+  jq '.' <<<"$joined"
   echo "## parent's final reply"
   sanitise <<<"$reply"
   echo "## artifacts"

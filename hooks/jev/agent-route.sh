@@ -52,12 +52,14 @@ given=$(jq -r '.model // empty' <<<"$input")
 stype=$(jq -r '.subagent_type // empty' <<<"$input")
 desc=$(jq -r '.description // empty' <<<"$input")
 cwd=$(jq -r '.cwd // empty' <<<"$payload")
+tuid=$(jq -r '.tool_use_id // empty' <<<"$payload")
 
 log_decision() { # <action> [route-json] [final] [reason]
   jev_log route.jsonl "$(jq -cn --arg action "$1" --arg mode "$mode" --arg given "$given" \
     --arg stype "$stype" --arg desc "${desc:0:120}" --arg final "${3:-}" --arg reason "${4:-}" \
-    --arg fill "$fill_ok" --argjson r "${2:-null}" '{
-      action: $action, mode: $mode, subagent_type: $stype, given_model: $given,
+    --arg fill "$fill_ok" --arg tuid "$tuid" --argjson r "${2:-null}" '{
+      action: $action, mode: $mode, tool_use_id: (if $tuid == "" then null else $tuid end),
+      subagent_type: $stype, given_model: $given,
       fill_eligible: ($fill == "yes"),
       route_id: ($r.id // null), jev_model: ($r.model // null),
       final_model: (if $final == "" then null else $final end),
