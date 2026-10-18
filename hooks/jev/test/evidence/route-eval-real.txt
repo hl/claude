@@ -1,0 +1,121 @@
+# route.sh on the real set — 2026-10-18, Jev jev-1.13.0
+#
+# Set: every Agent tool_use in the local transcripts (~/.claude/projects/**, subagents/ included;
+# scratch test sessions excluded) -> 1461 unique tasks (test/harvest.sh). Sample for labelling
+# (test/label-batches.sh): all 31 tasks with a weak under_routed label + a per-tier sample by the
+# tier that ran (haiku 120, sonnet 130, opus 150, fable 20) = 451 tasks. Labels: ONE opus agent,
+# given Claudette's tier text verbatim and the tasks in 12 batches, blind to the model that ran:
+# haiku 151, sonnet 186, opus 114. Everything task-level stays local in ~/.claude/jev/eval/;
+# only these aggregates are committed. Reproduce:
+#   hooks/jev/test/harvest.sh && hooks/jev/test/label-batches.sh   (then label, then --merge)
+#   EVAL_RUNS=3 JEV_EVAL_SET=~/.claude/jev/eval/labelled.jsonl hooks/jev/test/route-eval.sh
+#   JEV_TUNE_SPLIT=1 hooks/jev/test/tune.sh ~/.claude/jev/eval/results.jsonl
+#
+# Weak labels (harvest.sh): dup_higher_tier 16, parent_redo 8, user_redo 7 tasks (31; noisy by
+# construction: a regex over the parent's next words and the user's next prompt).
+
+## 1. tune.sh on 3 Jev runs per task (1353 rows), margin 0.1, two-fold holdout
+rows: 1353 eval (from results-tune-20261018.jsonl), 0 outcome
+grid points: 54000; margin 0.1; constraint: under_opus = 0, under_sonnet <= 0.02 of 558
+
+Pareto set over (under-routed, over-routed); best few per under-routing level:
+under  u_opus  u_son  over   acc    | haikuP mech   amb    popus  conf   signal
+0      0       0      476    0.648  | 0.5    0      0.9    0.4    0      0.7   
+0      0       0      476    0.648  | 0.5    0      1.01   0.4    0      0.7   
+1      1       0      457    0.662  | 0.5    0      0.9    0.5    0      0.7   
+1      1       0      457    0.662  | 0.5    0      1.01   0.5    0      0.7   
+3      3       0      352    0.738  | 0.5    0      0.9    0.4    0      1.01  
+3      3       0      352    0.738  | 0.5    0      1.01   0.4    0      1.01  
+4      4       0      315    0.765  | 0.5    0      0.9    0.5    0      1.01  
+4      4       0      315    0.765  | 0.5    0      1.01   0.5    0      1.01  
+10     10      0      274    0.795  | 0.5    0      0.9    0.6    0      1.01  
+10     10      0      274    0.795  | 0.5    0      1.01   0.6    0      1.01  
+18     10      8      254    0.809  | 0.4    0      0.9    0.6    0      1.01  
+18     10      8      254    0.809  | 0.4    0      1.01   0.6    0      1.01  
+21     21      0      224    0.827  | 0.5    0      0.9    0.7    0      1.01  
+21     21      0      224    0.827  | 0.5    0      1.01   0.7    0      1.01  
+29     21      8      204    0.842  | 0.4    0      0.9    0.7    0      1.01  
+29     21      8      204    0.842  | 0.4    0      1.01   0.7    0      1.01  
+47     47      0      186    0.846  | 0.5    0      0.9    0.8    0      1.01  
+47     47      0      186    0.846  | 0.5    0      1.01   0.8    0      1.01  
+55     47      8      166    0.861  | 0.4    0      0.9    0.8    0      1.01  
+55     47      8      166    0.861  | 0.4    0      1.01   0.8    0      1.01  
+
+chosen: JEV_ROUTE_HAIKU_P=0.5 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.4 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7
+        under (at margin 0.1): opus 0, sonnet 0, total 0; over 476 of 1353
+
+policy.jq at the chosen point, nominal values (eval rows only):
+
+confusion (rows = label, cols = routed):
+label/routed      haiku  sonnet    opus    FAIL
+haiku              293      94      66       0
+sonnet               0     242     316       0
+opus                 0       0     342       0
+
+N=1353 correct=877 accuracy=64.8%
+under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
+over-routed:  476 (35.2%)  haiku->sonnet=94 haiku->opus=66 sonnet->opus=316
+weak under_routed labels (real run redone/escalated): 93; route.sh picked a higher tier than the one that ran for 27 (recall 29%); already at opus or above when it ran: 33
+vs the tier that actually ran: route.sh higher on 268, same on 954, lower on 131; the tier that ran was below the label on 24
+
+=== holdout fold 0: tuned on 700 rows, tested on 653 rows
+train chosen: JEV_ROUTE_HAIKU_P=0.5 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.5 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7
+N=653 correct=433 accuracy=66.3%
+under-routed: 0 (0%)  by label: opus->lower=0 of 162, sonnet->haiku=0 of 271 (0%)
+over-routed:  220 (33.7%)  haiku->sonnet=49 haiku->opus=30 sonnet->opus=141
+
+=== holdout fold 1: tuned on 653 rows, tested on 700 rows
+train chosen: JEV_ROUTE_HAIKU_P=0.5 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.4 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7
+N=700 correct=451 accuracy=64.4%
+under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 287 (0%)
+over-routed:  249 (35.6%)  haiku->sonnet=46 haiku->opus=35 sonnet->opus=168
+
+## 2. fresh eval with the chosen defaults (3 new Jev runs per task, not the runs tuned on)
+eval set: local real set (451 tasks, labelled.jsonl), runs=3
+
+confusion (rows = label, cols = routed):
+label/routed      haiku  sonnet    opus    FAIL
+haiku              292      92      69       0
+sonnet               0     240     318       0
+opus                 0       0     342       0
+
+N=1353 correct=874 accuracy=64.6%
+under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
+over-routed:  479 (35.4%)  haiku->sonnet=92 haiku->opus=69 sonnet->opus=318
+weak under_routed labels (real run redone/escalated): 93; route.sh picked a higher tier than the one that ran for 27 (recall 29%); already at opus or above when it ran: 33
+vs the tier that actually ran: route.sh higher on 271, same on 952, lower on 130; the tier that ran was below the label on 24
+jev latency ms: {"n":1353,"p50":259,"p95":333,"max":601}
+PASS: route eval
+
+## 3. the same 1353 tuning rows under other policies, for comparison
+### Jev's raw tier choice (no policy)
+N=1353 correct=1031 accuracy=76.2%
+under-routed: 3 (0.2%)  by label: opus->lower=3 of 342, sonnet->haiku=0 of 558 (0%)
+over-routed:  319 (23.6%)  haiku->sonnet=108 haiku->opus=7 sonnet->opus=204
+### v1 policy (choice; +1 tier below confidence 0.6; opus when security or review >= 0.7)
+N=1353 correct=782 accuracy=57.8%
+under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
+over-routed:  571 (42.2%)  haiku->sonnet=62 haiku->opus=131 sonnet->opus=378
+### brief's starting thresholds (P(haiku)>=0.85, mech>=0.8, amb<=0.3; P(opus)<=0.15, conf>=0.7; signals 0.5)
+N=1353 correct=455 accuracy=33.6%
+under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
+over-routed:  898 (66.4%)  haiku->sonnet=182 haiku->opus=263 sonnet->opus=453
+### the tier that actually ran (model given, or the parent's model when none), first run rows only, haiku/sonnet/opus only
+N=429 correct=331 accuracy=77.2%
+under-routed: 8 (1.9%)  by label: opus->lower=6 of 102, sonnet->haiku=2 of 177 (1.1%)
+over-routed:  90 (21%)  haiku->sonnet=27 haiku->opus=5 sonnet->opus=58
+
+## Reading
+- Zero under-routing of opus-labelled tasks and zero sonnet->haiku, in the tuning rows, in a fresh
+  3-run eval with the chosen defaults, and in both holdout folds.
+- Over-routing is 35%: 316 of 558 sonnet-labelled rows and 66 of 453 haiku-labelled rows go to opus,
+  94 haiku rows to sonnet. That is the price of the margin: tune.sh counts under-routing with every
+  Jev value moved 0.1 toward the cheaper tier. Without the margin (0.02) the best zero-under point
+  over-routes 30%; Jev's raw choice over-routes 24% but sends 3 opus rows lower.
+- The mechanical and confidence gates came out at 0 (off): on this data they never separated tiers
+  better than P(opus) and the security/review signals. P(haiku) >= 0.5 suffices for haiku: even at
+  0.4 (the margin) no sonnet- or opus-labelled row became haiku.
+- Weak-label recall is low (27 of 93 rows; 33 of the 93 already ran on opus or fable, so they could
+  not go higher). The weak labels are noisy; the blind labels are the measure.
+- What actually ran (the model given, or the parent's when none) under-routed 8 of 429 tasks
+  (6 opus-labelled) and over-routed 21%.
