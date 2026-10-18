@@ -152,7 +152,7 @@ post() { jq -cn --arg t "$1" --arg a "$2" --arg st "${3:-completed}" '{session_i
   tool_input: {description: "Review the auth plug", subagent_type: "general-purpose", model: "opus"},
   tool_response: {status: $st, agentId: $a, resolvedModel: "claude-opus-5-5", content: [{type: "text", text: $t}]}}' | "$J/artifact-hook.sh"; }
 o=$(post "$long" ag1)
-f=$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o" | sed 's/^Subagent result saved to //')
+f=$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o" | sed 's/^Subagent result (Review the auth plug) saved to //')
 jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' <<<"$o" >/dev/null && [ -f "$f" ] && grep -q 'Finding line 60' "$f" && case $f in */artifacts/sH/agent-1-review-the-auth-plug.md) true ;; *) false ;; esac &&
   ok "artifact-hook: long foreground result saved as agent-1-review-the-auth-plug.md, parent told the path" || bad "artifact-hook PostToolUse: $o"
 [ -z "$(post "short answer" ag2)" ] && ok "artifact-hook: short result -> nothing" || bad "artifact-hook short"
@@ -164,10 +164,12 @@ jq -cn --arg t "$long" '{session_id: "sH", hook_event_name: "SubagentStop", agen
 f4=$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-survey-retry-logic.md')
 [ -n "$f4" ] && ok "artifact-hook: background agent saved on SubagentStop ($(basename "$f4"))" || bad "artifact-hook SubagentStop"
 o=$(post "$long" ag4)
-[ "$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o")" = "Subagent result saved to $f4" ] && [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] &&
+[ "$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o")" = "Subagent result (Review the auth plug) saved to $f4" ] && [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] &&
   ok "artifact-hook: SubagentStop then PostToolUse for the same agent -> one file, same path" || bad "artifact-hook dedupe: $o"
 jq -cn --arg t "<summary>$long</summary>" '{session_id: "sH", hook_event_name: "SubagentStop", agent_id: "acmp", agent_type: "", last_assistant_message: $t}' | "$J/artifact-hook.sh"
 [ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] && ok "artifact-hook: the compaction agent (empty agent_type) is skipped" || bad "artifact-hook saved the compaction summary"
+jq -cn --arg t "$long" '{session_id: "sH", hook_event_name: "SubagentStop", agent_id: "ag5", agent_type: "general-purpose", last_assistant_message: $t, background_tasks: []}' | "$J/artifact-hook.sh"
+[ "$(find "$JEV_HOME/artifacts/sH" -name 'agent-*.md' | wc -l | tr -d ' ')" = 2 ] && ok "artifact-hook: a foreground agent's SubagentStop is left to its PostToolUse" || bad "artifact-hook saved a foreground agent on SubagentStop"
 
 # --- 7. compact-session.sh without Jev: authored state and artifacts still come back
 cat >"$P/.orchestrator.md" <<'EOF'

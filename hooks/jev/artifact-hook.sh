@@ -8,15 +8,18 @@
 #                                result is longer than JEV_ARTIFACT_MIN_CHARS
 #                                (2000), it is saved (unless SubagentStop already
 #                                did) and the parent gets one line of
-#                                additionalContext: "Subagent result saved to <path>".
-#   SubagentStop                 any subagent finished, foreground or background:
-#                                last_assistant_message is its final reply. Saves
-#                                it when long. Background agents (tool_response
+#                                additionalContext: "Subagent result (<description>)
+#                                saved to <path>".
+#   SubagentStop                 a background subagent finished (its id is in
+#                                background_tasks): last_assistant_message is its
+#                                final reply. Background agents (tool_response
 #                                status "async_launched") have no PostToolUse
 #                                result, so this is their only save; the parent
 #                                is told nothing directly (SubagentStop output
 #                                would go to the subagent), but the file is in
 #                                the artifact index that compaction re-injects.
+#                                Foreground agents stop before their PostToolUse
+#                                fires and are left to it (it has the description).
 # Files: ~/.claude/jev/artifacts/<session_id>/agent-<n>-<slug>.md, and an
 # `artifact` fact in the ledger. The compaction agent (empty agent_type) and
 # subagents' own nested state are skipped. Local only; fails open; never blocks.
@@ -57,6 +60,9 @@ case $event in
     atype=$(jq -r '.agent_type // empty' <<<"$payload")
     [ -n "$atype" ] || exit 0 # the compaction agent and prompt suggestions
     agent=$(jq -r '.agent_id // empty' <<<"$payload")
+    # Foreground agents are saved by their PostToolUse, which knows the description.
+    jq -e --arg a "$agent" 'if has("background_tasks") then any(.background_tasks[]?; .id == $a) else true end' \
+      <<<"$payload" >/dev/null || exit 0
     text=$(jq -r '.last_assistant_message // empty' <<<"$payload")
     desc=$(jq -r --arg a "$agent" '[.background_tasks[]? | select(.id == $a) | .description] | first // empty' <<<"$payload")
     model=""
@@ -88,5 +94,6 @@ if [ -z "$path" ]; then
 fi
 
 if [ "$event" = PostToolUse ]; then
-  jq -cn --arg p "$path" '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: "Subagent result saved to \($p)"}}'
+  jq -cn --arg p "$path" --arg d "$desc" '{hookSpecificOutput: {hookEventName: "PostToolUse",
+    additionalContext: ("Subagent result" + (if $d == "" then "" else " (\($d))" end) + " saved to \($p)")}}'
 fi
