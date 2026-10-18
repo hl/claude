@@ -52,7 +52,7 @@ def recent($k): sort_by(-.i) | .[0:$k];
 | [ $alines[] | select((.t | length) >= 20 and (.t | todo | not) and (.t | decision))
     | {i, kind: "decision", text: (.t | trunc(300))} ] as $decisions
 | [ ($alines[], ($user[] | {i, t: (.text | ltrimstr("User said: "))}))
-    | select(.t | todo) | {i, kind: "todo", text: ("Open item: " + (.t | trunc(300)))} ] as $todos
+    | select(.t | todo) | {i, kind: "todo", text: ("Open item: " + (.t | sub("^(?:[-*] )?open item: *"; ""; "i") | trunc(300)))} ] as $todos
 
 # files touched
 | [ $recs[] | select(.type == "assistant") | ._i as $i | .c | arrays | .[]

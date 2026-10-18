@@ -39,11 +39,22 @@ jev_disabled() { [ "${JEV_DISABLED:-0}" = 1 ]; }
 jev_now() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 
 # jev_log <file-basename> <json-object>: append one line, adding ts/hook/session_id.
+# Parallel requests log at the same time and an answer line can exceed the
+# size an append writes atomically, so appends take a short mkdir lock
+# (given up after ~1 s rather than ever blocking a hook).
 jev_log() {
-  local file=$1 obj=$2
+  local file=$1 obj=$2 line i=0 lk
   mkdir -p "$JEV_LOG_DIR" 2>/dev/null || return 0
-  jq -cn --arg ts "$(jev_now)" --arg hook "$JEV_HOOK" --arg sid "$JEV_SESSION" --argjson o "$obj" \
-    '{ts: $ts, hook: $hook, session_id: $sid} + $o' >>"$JEV_LOG_DIR/$file" 2>/dev/null || true
+  line=$(jq -cn --arg ts "$(jev_now)" --arg hook "$JEV_HOOK" --arg sid "$JEV_SESSION" --argjson o "$obj" \
+    '{ts: $ts, hook: $hook, session_id: $sid} + $o' 2>/dev/null) || return 0
+  lk="$JEV_LOG_DIR/.$file.lock"
+  while ! mkdir "$lk" 2>/dev/null; do
+    i=$((i + 1))
+    [ "$i" -lt 50 ] || break
+    sleep 0.02
+  done
+  printf '%s\n' "$line" >>"$JEV_LOG_DIR/$file" 2>/dev/null || true
+  rmdir "$lk" 2>/dev/null || true
 }
 
 # jev_load_key: sets JEV_KEY; returns 1 if no key is found.

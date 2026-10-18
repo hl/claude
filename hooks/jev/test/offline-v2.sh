@@ -200,5 +200,16 @@ ctx=$(jq -r '.hookSpecificOutput.additionalContext // empty' <<<"$o")
 [ "${#ctx}" -le 9000 ] && [ "${#ctx}" -gt 7000 ] && case $ctx in *"live change number 200"*"fact number"*) true ;; *) false ;; esac &&
   ok "session: 200 sections + 300 facts -> ${#ctx} chars (<= 9000), newest sections kept, facts fill the rest" || bad "session budget: ${#ctx} chars"
 
+# --- 8. log lines larger than an atomic append, written in parallel, stay whole
+big=$(jq -cn '{status: "ok", answers: [range(0; 400) | {q: ., p: 0.123456}]}')
+pids=()
+for i in $(seq 1 12); do
+  (JEV_HOOK="par$i" bash -c '. "$1/lib.sh"; jev_log par.jsonl "$2"' _ "$J" "$big") &
+  pids+=($!)
+done
+wait "${pids[@]}" # not a bare wait: the fake Jev server is a background job too
+[ "$(wc -l <"$JEV_HOME/log/par.jsonl" | tr -d ' ')" = 12 ] && jq -e -s 'length == 12' "$JEV_HOME/log/par.jsonl" >/dev/null 2>&1 &&
+  ok "jev_log: 12 parallel $(printf '%s' "$big" | wc -c | tr -d ' ')-byte lines all parse" || bad "jev_log: interleaved lines"
+
 echo "offline-v2: $fails failure(s)"
 [ "$fails" -eq 0 ]
