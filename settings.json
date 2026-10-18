@@ -52,6 +52,16 @@
             "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/artifact-hook.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -131,6 +141,15 @@
             "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/ledger.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "StopFailure": [
@@ -158,6 +177,15 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/compact-post.sh",
             "timeout": 20
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/artifact-hook.sh",
+            "timeout": 10
           }
         ]
       }
