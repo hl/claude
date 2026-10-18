@@ -147,6 +147,7 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/ledger.sh",
+            "async": true,
             "timeout": 10
           }
         ]

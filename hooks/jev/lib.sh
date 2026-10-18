@@ -111,22 +111,34 @@ jev_start_cooldown() {
 redact() { jq -Rrs -L "$JEV_LIB_DIR" 'include "redact"; redact'; }
 
 # jev_lock <dir> [stale-seconds]: take a mkdir lock; returns 1 if another live
-# holder has it. A lock older than stale-seconds (default 60) is broken.
+# holder has it. mkdir is the lock; <dir>/at records "<epoch> <pid>" right after.
+# A lock is broken only when its holder is gone (pid not running) or it is
+# older than stale-seconds (default 60). With no `at` yet (a holder between
+# mkdir and writing it), the directory's own mtime is its age, so a fresh lock
+# is never broken. Breaking renames the directory away first, so of two
+# breakers only one can win.
 jev_lock() {
-  local d=$1 stale=${2:-60} t
+  local d=$1 stale=${2:-60} t="" pid="" now
   if mkdir "$d" 2>/dev/null; then
-    date +%s >"$d/at" 2>/dev/null
+    printf '%s %s\n' "$(date +%s)" "$$" >"$d/at" 2>/dev/null
     return 0
   fi
-  t=$(cat "$d/at" 2>/dev/null || echo 0)
-  case $t in '' | *[!0-9]*) t=0 ;; esac
-  if [ $(($(date +%s) - t)) -ge "$stale" ]; then
-    rm -rf "$d" 2>/dev/null
-    mkdir "$d" 2>/dev/null || return 1
-    date +%s >"$d/at" 2>/dev/null
-    return 0
+  now=$(date +%s)
+  read -r t pid <"$d/at" 2>/dev/null || true
+  case $t in '' | *[!0-9]*)
+    t=$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d" 2>/dev/null || echo "$now")
+    pid=""
+    ;;
+  esac
+  case $pid in *[!0-9]*) pid="" ;; esac
+  if [ $((now - t)) -lt "$stale" ] && { [ -z "$pid" ] || kill -0 "$pid" 2>/dev/null; }; then
+    return 1
   fi
-  return 1
+  mv "$d" "$d.broken.$$" 2>/dev/null || return 1
+  rm -rf "$d.broken.$$" 2>/dev/null
+  mkdir "$d" 2>/dev/null || return 1
+  printf '%s %s\n' "$(date +%s)" "$$" >"$d/at" 2>/dev/null
+  return 0
 }
 jev_unlock() { rm -rf "$1" 2>/dev/null || true; }
 

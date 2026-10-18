@@ -46,7 +46,7 @@ jq -n --arg d "$SCRATCH/dump.sh" --arg j "$J" '
   def dump($e): {type: "command", command: "\($d) \($e)"};
   def jev($s): {type: "command", command: "\($j)/\($s)", timeout: 20};
   {hooks: {
-    Stop: [{hooks: [jev("ledger.sh")]}],
+    Stop: [{hooks: [jev("ledger.sh") + {async: true}]}],
     PreCompact: [{matcher: "manual|auto", hooks: [dump("PreCompact"), jev("compact-pre.sh")]}],
     SubagentStop: [{hooks: [dump("SubagentStop"), jev("compact-post.sh"), jev("artifact-hook.sh")]}],
     PostToolUse: [{matcher: "Agent", hooks: [jev("artifact-hook.sh")]}],

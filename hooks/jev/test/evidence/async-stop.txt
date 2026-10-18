@@ -1,0 +1,10 @@
+# Live check of an async Stop hook (Claude Code 2.1.302 (Claude Code)), 2026-10-18
+# Stop hook {"type": "command", "async": true}: logs start, sleeps 4 s, logs end, then prints
+# {"decision": "block", "reason": "... say the word PINEAPPLE"}. Two prompts in a tmux session (haiku).
+hook 1792360580.530 start
+hook 1792360584.555 end
+hook 1792360588.320 start
+hook 1792360592.352 end
+prompt 1 sent at 1792360578.217; its reply was on screen at 1792360579.283, before the hook started
+(1792360580.530) and long before it ended: the turn did not wait for the hook.
+PINEAPPLE never appeared and neither turn was continued: an async hook's block output is ignored.
