@@ -17,7 +17,12 @@
 #   JEV_COOLDOWN           seconds to skip API calls after a timeout or connection
 #                          failure (default 300; 0 disables the breaker)
 #   JEV_CHARS_PER_TOKEN    chars-per-token used for the state budget (default 4)
+#
+# Every request body goes through redact.jq (secrets, Authorization headers,
+# secret-named KEY=value, emails, IPv4) inside jev_call, so no caller can send
+# unredacted text by accident.
 
+JEV_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 JEV_HOME=${JEV_HOME:-$HOME/.claude/jev}
 JEV_LOG_DIR="$JEV_HOME/log"
 JEV_BASE_URL=${TYPESAFE_BASE_URL:-https://api.typesafe.ai}
@@ -73,10 +78,11 @@ jev_state_budget_chars() {
 # Cooldown stamp: epoch of the last timeout/connection failure. While it is
 # younger than JEV_COOLDOWN seconds (default 300), jev_call fails fast. One
 # stamp per hook family, so a slow routing call does not switch off compaction
-# help (and vice versa): $JEV_HOME/cooldown.route, $JEV_HOME/cooldown.compact.
+# help (and vice versa): $JEV_HOME/cooldown.route, $JEV_HOME/cooldown.compact
+# (compaction hooks and the ledger share the state-keeping family).
 jev_cooldown_file() {
   case $JEV_HOOK in
-    compact-*) echo "$JEV_HOME/cooldown.compact" ;;
+    compact-* | ledger*) echo "$JEV_HOME/cooldown.compact" ;;
     *) echo "$JEV_HOME/cooldown.route" ;; # route.sh, agent-route.sh
   esac
 }
@@ -90,6 +96,29 @@ jev_start_cooldown() {
   mkdir -p "$JEV_HOME" 2>/dev/null && date +%s >"$(jev_cooldown_file)" 2>/dev/null || true
 }
 
+# redact: text on stdin -> redacted text on stdout (see redact.jq).
+redact() { jq -Rrs -L "$JEV_LIB_DIR" 'include "redact"; redact'; }
+
+# jev_lock <dir> [stale-seconds]: take a mkdir lock; returns 1 if another live
+# holder has it. A lock older than stale-seconds (default 60) is broken.
+jev_lock() {
+  local d=$1 stale=${2:-60} t
+  if mkdir "$d" 2>/dev/null; then
+    date +%s >"$d/at" 2>/dev/null
+    return 0
+  fi
+  t=$(cat "$d/at" 2>/dev/null || echo 0)
+  case $t in '' | *[!0-9]*) t=0 ;; esac
+  if [ $(($(date +%s) - t)) -ge "$stale" ]; then
+    rm -rf "$d" 2>/dev/null
+    mkdir "$d" 2>/dev/null || return 1
+    date +%s >"$d/at" 2>/dev/null
+    return 0
+  fi
+  return 1
+}
+jev_unlock() { rm -rf "$1" 2>/dev/null || true; }
+
 # jev_call: request body JSON on stdin -> response JSON on stdout.
 # Returns non-zero on any failure (no key, network, timeout, HTTP error, missing
 # answers). Logs one line per call to jev.jsonl. Retries once with the
@@ -98,6 +127,9 @@ jev_call() {
   local body tmp out rc http secs status extra long=${JEV_LONG_CONTEXT:-0} attempt=0 ms
   body=$(cat)
   if jev_disabled; then return 1; fi
+  # Redact before anything leaves the machine. A body that fails to parse is
+  # not sent at all.
+  body=$(jq -c -L "$JEV_LIB_DIR" 'include "redact"; redact_all' <<<"$body" 2>/dev/null) || return 1
   if ! jev_load_key; then
     jev_log jev.jsonl '{"status":"no_key","ms":0}'
     return 1
