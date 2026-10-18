@@ -23,6 +23,10 @@ def pct($a; $b): if $b == 0 then "n/a" else "\(($a * 1000 / $b | round) / 10)%" 
   (if ($weak | length) > 0 then
      "weak under_routed labels (real run redone/escalated): \($weak | length); route.sh picked a higher tier than the one that ran for \([$weak[] | select((.model | rank) > (.chosen_tier | rank))] | length) (recall \(pct([$weak[] | select((.model | rank) > (.chosen_tier | rank))] | length; $weak | length))); already at opus or above when it ran: \([$weak[] | select((.chosen_tier | rank) >= 2)] | length)"
    else empty end),
+  (if any(.[]; has("anchored")) then
+     ([$ok[] | select(.anchored == false)]) as $u
+     | "unanchored subset (no line naming a tier): N=\($u | length), opus->lower=\([$u[] | select(.label == "opus" and (.model | rank) < 2)] | length) of \([$u[] | select(.label == "opus")] | length), sonnet->haiku=\([$u[] | select(.label == "sonnet" and .model == "haiku")] | length) of \([$u[] | select(.label == "sonnet")] | length), over-routed \([$u[] | select((.model | rank) > (.label | rank))] | length) (\(pct([$u[] | select((.model | rank) > (.label | rank))] | length; $u | length))), accuracy \(pct([$u[] | select(.model == .label)] | length; $u | length))"
+   else empty end),
   (if ([.[] | select(.chosen_tier != null)] | length) > 0 then
      "vs the tier that actually ran: route.sh higher on \([$ok[] | select((.chosen_tier | rank) != null and (.model | rank) > (.chosen_tier | rank))] | length), same on \([$ok[] | select((.model | rank) == (.chosen_tier | rank))] | length), lower on \([$ok[] | select((.chosen_tier | rank) != null and (.model | rank) < (.chosen_tier | rank))] | length); the tier that ran was below the label on \([$ok[] | select((.chosen_tier | rank) != null and (.chosen_tier | rank) < (.label | rank))] | length)"
    else empty end)

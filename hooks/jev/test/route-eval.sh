@@ -15,8 +15,9 @@
 # Asserts: zero under-routing of opus-labelled tasks, sonnet-labelled tasks
 # under-routed <= EVAL_MAX_SONNET_UNDER (0.02), no route.sh failures.
 # EVAL_RUNS=N repeats the set (Jev is slightly nondeterministic); assertions
-# apply to all runs pooled. Raw results (probabilities + signals per task) are
-# kept for tune.sh: $JEV_EVAL_DIR/results.jsonl for the real set.
+# apply to all runs pooled. Raw results (probabilities + signals per task and
+# run, keyed by task id) are kept for tune.sh in a new timestamped file,
+# $JEV_EVAL_DIR/results-<UTC time>.jsonl, for the real set.
 set -euo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROUTE="$HERE/../route.sh"
@@ -43,10 +44,14 @@ echo "eval set: $([ "$real" = true ] && echo "local real set" || echo "committed
 
 # The text route.sh sees is what the Agent hook would send: description,
 # subagent_type, prompt. Fixture lines may carry a ready-made .task instead.
-jq -c '{id, label, chosen_tier: (.chosen_tier // null), under_routed: (.under_routed // false), weak: (.weak // []),
+# anchored: the brief names a tier ("Model: sonnet — ..."); route.sh strips those
+# lines, but the blind labeller saw them, so the unanchored subset is reported apart.
+jq -c -L "$HERE/.." 'include "anchors";
+  {id, label, chosen_tier: (.chosen_tier // null), under_routed: (.under_routed // false), weak: (.weak // []),
         task: (.task // ([(.description // ""), (if (.subagent_type // "") != "" then "subagent_type: " + .subagent_type else empty end), (.prompt // "")]
                          | map(select(. != "")) | join("\n\n"))),
-        context: (.context // null)}' "$SET" >"$out/set.jsonl"
+        context: (.context // null)}
+  | . + {anchored: (.task | anchored)}' "$SET" >"$out/set.jsonl"
 
 run_one() { # <run> <line-no>
   local line id res ctx
@@ -75,8 +80,10 @@ done
 wait
 
 cat "$out"/[0-9]*-*.json | jq -s '.' >"$out/all.json"
+saved=""
 if [ "$real" = true ]; then
-  jq -c '.[]' "$out/all.json" >"$EVAL_DIR/results.jsonl"
+  saved="$EVAL_DIR/results-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+  jq -c '.[]' "$out/all.json" >"$saved"
 fi
 
 if [ "${EVAL_VERBOSE:-0}" = 1 ] || [ "$real" = false ]; then
@@ -93,7 +100,7 @@ read -r under_opus under_sonnet n_sonnet fails < <(jq -r '
    (map(select(.model == "FAIL")) | length)] | @tsv' "$out/all.json")
 lat=$(jq -s -c 'map(select(.status == "ok") | .ms) | sort | {n: length, p50: .[(length / 2 | floor)], p95: .[(length * 0.95 | floor)], max: max}' "$JEV_HOME/log/jev.jsonl" 2>/dev/null || echo '{}')
 echo "jev latency ms: $lat"
-echo "results: $out/all.json$([ "$real" = true ] && echo " (copied to $EVAL_DIR/results.jsonl)")"
+echo "results: $out/all.json${saved:+ (saved as $saved)}"
 
 rc=0
 [ "$under_opus" -eq 0 ] || {

@@ -15,8 +15,8 @@ def tier_name: ["haiku", "sonnet", "opus"][.];
 def r2: . * 100 | round / 100;
 
 def default_thresholds: {
-  haiku_p: 0.5, haiku_mech: 0, haiku_amb: 0.9,
-  sonnet_popus: 0.4, sonnet_conf: 0,
+  haiku_p: 0.6, haiku_mech: 0, haiku_amb: 0.9,
+  sonnet_popus: 0.35, sonnet_conf: 0,
   sec: 0.7, review: 0.7, reviewer_opus: 0.5, deepen: 0.6,
   files_no_haiku: 5, files_opus: 12
 };
@@ -49,7 +49,12 @@ def route_policy($t0):
   | (if ($files >= $t.files_opus) and ($kind | IN("poll", "investigate") | not) then 2
      elif $files >= $t.files_no_haiku then 1 else 0 end) as $files_floor
   | (if $kind | IN("investigate", "fix-ci") then 1 else 0 end) as $kind_floor
-  | ((($c.attempt // 1) >= 2) or ((($c.prior_outcome // "") | ascii_downcase | test("thin|wrong|fail|incomplete|redo|escalat"))))
+  # a prior outcome that reads as a failure ("thin", "wrong", "review FAIL x2"), whole words
+  # only, and not a negated one ("PASS, no failures")
+  | ((($c.attempt // 1) >= 2)
+     or (($c.prior_outcome // "") | ascii_downcase
+         | test("\\b(thin|wrong|fail|failed|fails|failure|failures|incomplete|redo|re-do|escalated?|escalation)\\b")
+           and (test("\\b(no|zero|0|without) (fail|failed|fails|failure|failures)\\b") | not)))
       as $retry
   | (if $retry then ((($c.prior_model // "" | tier_rank) // $base) + 1 | [., 2] | min) else 0 end) as $retry_floor
   | ([$base, $files_floor, $kind_floor, $retry_floor] | max) as $final

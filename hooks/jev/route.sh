@@ -15,17 +15,18 @@
 #
 # Prints one JSON object:
 #   {id, model, reviewer_model, deepen, policy: [reasons], confidence,
-#    probabilities, signals, jev_choice, jev_model, prompt_tokens, above}
+#    probabilities, signals, jev_choice, jev_model, prompt_tokens, above,
+#    anchors_stripped (lines naming a tier that were removed first, see anchors.jq)}
 # and logs it (with the context, without the task text) to route.jsonl so
 # outcome.sh can attach the result later by id.
 # Exits non-zero on any failure (no key, network, timeout, bad answer) so the
 # caller can fall back to its own judgement (and should then pick opus).
 #
 # Policy (policy.jq): opus unless Jev is confident a lower tier suffices.
-#   haiku   P(haiku) >= JEV_ROUTE_HAIKU_P (0.5), mechanical >= JEV_ROUTE_HAIKU_MECH (0),
+#   haiku   P(haiku) >= JEV_ROUTE_HAIKU_P (0.6), mechanical >= JEV_ROUTE_HAIKU_MECH (0),
 #           ambiguous <= JEV_ROUTE_HAIKU_AMB (0.9), security/blast radius and
 #           non-trivial review < JEV_ROUTE_SIGNAL_MIN (0.7)
-#   sonnet  P(opus) <= JEV_ROUTE_SONNET_POPUS (0.4), confidence >= JEV_ROUTE_SONNET_CONF (0),
+#   sonnet  P(opus) <= JEV_ROUTE_SONNET_POPUS (0.35), confidence >= JEV_ROUTE_SONNET_CONF (0),
 #           same two signals < JEV_ROUTE_SIGNAL_MIN
 #   else    opus
 # Then: retries go at least one tier above the previous attempt; investigate and
@@ -34,13 +35,17 @@
 # haiku, opus when non-trivial change/review or security >= JEV_ROUTE_REVIEWER_OPUS
 # (0.5). deepen = ambiguous or needs_research >= JEV_ROUTE_DEEPEN (0.6).
 #
-# The defaults were chosen by test/tune.sh (2026-10-18) on the real labelled set:
-# 451 Agent tasks harvested from local transcripts, labelled blind by one opus
-# agent, 3 Jev runs each (1353 rows), every Jev value moved 0.1 toward the
-# cheaper tier when counting under-routing. Result: 0 under-routed (also 0 in a
-# two-fold holdout), 35% over-routed. The mechanical and confidence gates came
-# out at 0: on this data they never separated tiers better than P(opus) and
-# the signals. See test/evidence/route-eval-real.txt.
+# JEV_ROUTE_SIGNAL_MIN (0.7) is a design choice, not tuned: security-sensitive or
+# high-blast-radius work, and reviews of non-trivial diffs, go to opus. The other
+# defaults are test/tune.sh's choice (2026-10-18) on the real labelled set (451
+# Agent tasks from local transcripts, labelled blind by one opus agent, model-
+# naming lines stripped as below), with a two-fold holdout split by task, in two
+# independent sessions of 3 Jev runs per task. The folds chose P(haiku) 0.55 /
+# 0.6 / 0.5 and P(opus) 0.35 / 0.6; the shipped point takes the most conservative
+# value of each. On both sessions: 0 opus tasks under-routed and 0 sonnet tasks
+# sent to haiku, also with every Jev value moved 0.1 toward the cheaper tier and
+# on the briefs that name no tier; 48% over-routed (43% on those briefs).
+# See test/evidence/route-eval-real.txt.
 set -euo pipefail
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -62,6 +67,17 @@ ctx=$(jq -c 'if type == "object" then . else {} end' <<<"$ctx" 2>/dev/null) || {
 if [ $# -gt 0 ]; then task=$*; else task=$(cat); fi
 [ -n "${task//[[:space:]]/}" ] || {
   echo "route.sh: empty task" >&2
+  exit 2
+}
+
+# Lines that already name a tier ("Model: sonnet — ...", "jev: opus/opus ...",
+# "— opus because ...") anchor Jev on the author's guess: drop them (anchors.jq).
+# This covers the Agent hook too, which pipes the prompt through here.
+st=$(jq -Rs -c -L "$JEV_DIR" 'include "anchors"; strip_anchors' <<<"$task")
+task=$(jq -r '.text' <<<"$st")
+anchors=$(jq '.stripped' <<<"$st")
+[ -n "${task//[[:space:]]/}" ] || {
+  echo "route.sh: task is empty once model-naming lines are removed" >&2
   exit 2
 }
 
@@ -105,15 +121,15 @@ req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
 resp=$(jev_call <<<"$req") || exit 1
 
 thresholds=$(jq -cn \
-  --argjson hp "${JEV_ROUTE_HAIKU_P:-0.5}" --argjson hm "${JEV_ROUTE_HAIKU_MECH:-0}" \
-  --argjson ha "${JEV_ROUTE_HAIKU_AMB:-0.9}" --argjson sp "${JEV_ROUTE_SONNET_POPUS:-0.4}" \
+  --argjson hp "${JEV_ROUTE_HAIKU_P:-0.6}" --argjson hm "${JEV_ROUTE_HAIKU_MECH:-0}" \
+  --argjson ha "${JEV_ROUTE_HAIKU_AMB:-0.9}" --argjson sp "${JEV_ROUTE_SONNET_POPUS:-0.35}" \
   --argjson sc "${JEV_ROUTE_SONNET_CONF:-0}" --argjson sig "${JEV_ROUTE_SIGNAL_MIN:-0.7}" \
   --argjson rv "${JEV_ROUTE_REVIEWER_OPUS:-0.5}" --argjson dp "${JEV_ROUTE_DEEPEN:-0.6}" '
   {haiku_p: $hp, haiku_mech: $hm, haiku_amb: $ha, sonnet_popus: $sp, sonnet_conf: $sc,
    sec: $sig, review: $sig, reviewer_opus: $rv, deepen: $dp}')
 id="r$(date +%s)-$$-$RANDOM"
 
-out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --arg id "$id" '
+out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --arg id "$id" --argjson anchors "$anchors" '
   include "policy";
   . as $r
   | .answers as $a
@@ -125,7 +141,7 @@ out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --ar
   | {id: $id, model: $d.model, reviewer_model: $d.reviewer_model, deepen: $d.deepen, policy: $d.policy,
      confidence: $in.confidence, probabilities: $in.probabilities, signals: $in.signals,
      jev_choice: $a.tier.choice, jev_model: $r.model, prompt_tokens: $r.usage.input_tokens,
-     above: $d.above}' <<<"$resp") || exit 1
+     above: $d.above, anchors_stripped: $anchors}' <<<"$resp") || exit 1
 
 if [ "${JEV_ROUTE_NO_LOG:-0}" != 1 ]; then
   jev_log route.jsonl "$(jq -c --argjson ctx "$ctx" '{action: "route", context: $ctx} + .' <<<"$out")"
