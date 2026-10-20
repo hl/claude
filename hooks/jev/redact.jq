@@ -6,8 +6,8 @@
 def redact:
   # PEM private keys
   gsub("-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\\s\\S]*?(-----END [A-Z0-9 ]*PRIVATE KEY-----|$)"; "<private-key>")
-  # credentials in URLs: scheme://user:pass@host
-  | gsub("(?<s>[a-zA-Z][a-zA-Z0-9+.-]*://)[^/\\s:@\"'<>]+:[^/\\s@\"'<>]+@"; "\(.s)<redacted>@")
+  # credentials in URLs: scheme://user:pass@host, also with an empty user (redis://:pw@host)
+  | gsub("(?<s>[a-zA-Z][a-zA-Z0-9+.-]*://)[^/\\s:@\"'<>]*:[^/\\s@\"'<>]+@"; "\(.s)<redacted>@")
   # signed or token query parameters (presigned URLs, OAuth codes)
   | gsub("(?<k>[?&](?i:token|access_token|refresh_token|id_token|api_key|apikey|key|sig|signature|code|password|secret|x-amz-signature|x-amz-credential|x-amz-security-token|x-goog-signature|x-goog-credential)=)[^&\\s\"'<>]+"; "\(.k)<redacted>")
   # Slack incoming webhooks (the URL is the secret)
@@ -18,7 +18,13 @@ def redact:
   | gsub("(?<f>(?:^|\\s)(?:-u|--user)\\s*[\"']?[^\\s:\"']+:)[^\\s\"']+"; "\(.f)<redacted>")
   # password flags: --password x, --password=x, --passwd x; mysql/mariadb -p<pw> / -p <pw>
   | gsub("(?<f>--(?:password|passwd|pass)(?:=|\\s+))[^\\s\"']+"; "\(.f)<redacted>")
-  | gsub("(?<c>\\b(?:mysql|mariadb|mysqldump|mysqladmin)\\b[^\\n|;&]*?\\s-p)(?:\\s+)?[^\\s-][^\\s\"']*"; "\(.c)<redacted>")
+  | gsub("(?<c>\\b(?:mysql|mariadb|mysqldump|mysqladmin)\\b[^\\n|;&]*?\\s-p)(?:\\s+)?(?:'[^'\\n]*'|\"[^\"\\n]*\"|[^\\s'\"-][^\\s\"']*)"; "\(.c)<redacted>")
+  # sshpass -p / docker|podman login -p <pw>
+  | gsub("(?<c>\\b(?:sshpass|docker\\s+login|podman\\s+login)\\b[^\\n|;&]*?\\s-p)\\s*(?:'[^'\\n]*'|\"[^\"\\n]*\"|[^\\s'\"]+)"; "\(.c) <redacted>")
+  # .netrc: machine x login y password z
+  | gsub("(?<c>\\b(?:machine|login)\\b[^\\n]*?\\bpassword\\s+)[^\\s'\"]+"; "\(.c)<redacted>")
+  # JSON-form cookie: "cookie": "sid=..."
+  | gsub("(?<c>\"(?i:set-cookie|cookie)\"\\s*:\\s*)\"[^\"]*\""; "\(.c)\"<redacted>\"")
   # Authorization / Proxy-Authorization headers, any scheme
   | gsub("(?<h>(?i:(proxy-)?authorization)[\"']?\\s*[:=]\\s*[\"']?)(?i:(bearer|basic|token|digest)\\s+)?[^\\s\"',;]+"; "\(.h)<redacted>")
   # bare bearer tokens
@@ -34,6 +40,8 @@ def redact:
   | gsub("\\bgithub_pat_[A-Za-z0-9_]{20,}"; "<secret>")
   | gsub("\\bglpat-[A-Za-z0-9_-]{16,}"; "<secret>")
   | gsub("\\bxox[abposr]-[A-Za-z0-9-]{10,}"; "<secret>")
+  | gsub("\\bxapp-[0-9]-[A-Za-z0-9-]{10,}"; "<secret>")
+  | gsub("\\bdckr_pat_[A-Za-z0-9_-]{16,}"; "<secret>")
   | gsub("\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b"; "<secret>")
   | gsub("\\bAIza[0-9A-Za-z_-]{35}\\b"; "<secret>")
   | gsub("\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}"; "<jwt>")

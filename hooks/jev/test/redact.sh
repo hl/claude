@@ -66,6 +66,16 @@ digitalocean d@@op_v1_0123456789abcdef0123456789abcdef0123456789abcdef0123456789
 shopify s@@hpat_0123456789abcdef0123456789abcdef	s@@hpat_0123456789abcdef
 github app token g@@hs_FAKEabcdefghijklmnopqrstuvwxyz0123	g@@hs_FAKEabcdefghijkl
 gitlab g@@lpat-FAKEabcdefghijklmnop	g@@lpat-FAKEabcdefghij
+cache at redis://:s3cretRedisFAKEpw@localhost:6379/0	s3cretRedisFAKEpw
+queue amqp://:rabbitFAKEpw@mq:5672	rabbitFAKEpw
+sshpass -p 'Hunter2FAKEpw' ssh deploy@build-host	Hunter2FAKEpw
+docker login -u bot -p d@@ckr_pat_FAKEabcdefghijklmnop registry.example.com	d@@ckr_pat_FAKEabcdefghij
+podman login -u bot -p FAKEpodmanPw quay.example.com	FAKEpodmanPw
+token d@@ckr_pat_FAKE0123456789abcdefgh in the CI vars	d@@ckr_pat_FAKE0123456789
+machine api.example.com login bot password n3tRcFAKEpw	n3tRcFAKEpw
+slack app token x@@app-1-A0FAKE123-4567890-abcdefFAKE	x@@app-1-A0FAKE123
+{"cookie":"sid=FAKEcookieJSON0123456789"}	FAKEcookieJSON0123456789
+mysql -u root -p'Quoted QFAKEpw9' app_db	QFAKEpw9
 EOF
 # token-shaped values carry an @@ that is removed here, so the repository
 # never holds a string a secret scanner would take for a real key
