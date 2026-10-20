@@ -1,0 +1,53 @@
+# live-artifact.sh — 2026-10-20T09:23Z, 2.1.304 (Claude Code)
+## route.jsonl: PreToolUse decision joined to the model that ran (tool_use_id)
+[
+  {
+    "tool_use_id": "toolu_01P5udSAdVNNLbavbTuVr7UK",
+    "description": "List fruit tastes",
+    "hook_action": "escalated",
+    "given": "haiku",
+    "jev_final": "sonnet",
+    "ran": "claude-sonnet-5-5",
+    "status": "completed"
+  },
+  {
+    "tool_use_id": "toolu_0131LqFMYzjzAAJtfQuDDpBZ",
+    "description": "List vegetable tastes",
+    "hook_action": "escalated",
+    "given": "haiku",
+    "jev_final": "sonnet",
+    "ran": "claude-sonnet-5-5",
+    "status": "async_launched"
+  },
+  {
+    "tool_use_id": "toolu_01XVTmBVtdwTdD2PRy2aidoh",
+    "description": "Tide table",
+    "hook_action": "kept",
+    "given": "haiku",
+    "jev_final": "haiku",
+    "ran": "claude-haiku-5-5",
+    "status": "completed"
+  }
+]
+## parent's final reply
+The background agent is running. I'll wait for its notification before step 3.
+
+foreground: <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-1-list-fruit-tastes-a61dec86202721985.md
+background: NONE
+deliverable: <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tide-table.md
+## artifacts
+<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-1-list-fruit-tastes-a61dec86202721985.md 7822 bytes, first line: <!-- subagent a61dec86202721985 (general-purpose, claude-sonnet-5-5), 2026-10-20T09:23:15Z, List fruit tastes -->
+<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tide-table.md 160 bytes, first line: <!-- subagent a40767249631cd107 (general-purpose, claude-haiku-5-5), 2026-10-20T09:23:49Z, Tide table -->
+<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-2-list-vegetable-tastes-af86758573be213ab.md 8265 bytes, first line: <!-- subagent af86758573be213ab (general-purpose), 2026-10-20T09:23:44Z, List vegetable tastes -->
+## artifact.jsonl
+{"ts":"2026-10-20T09:23:15Z","hook":"artifact-hook","session_id":"2ce4ceee-7960-4891-b32d-bc7c2b1b668a","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-1-list-fruit-tastes-a61dec86202721985.md","chars":7707,"agent_id":"a61dec86202721985"}
+{"ts":"2026-10-20T09:23:44Z","hook":"artifact-hook","session_id":"2ce4ceee-7960-4891-b32d-bc7c2b1b668a","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-2-list-vegetable-tastes-af86758573be213ab.md","chars":8162,"agent_id":"af86758573be213ab"}
+{"ts":"2026-10-20T09:23:50Z","hook":"artifact-hook","session_id":"2ce4ceee-7960-4891-b32d-bc7c2b1b668a","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tide-table.md","chars":53,"agent_id":"a40767249631cd107","marker":"tide-table"}
+## ledger
+{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-fruit-tastes-a61dec86202721985: <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-1-"}
+{"id":"f2","kind":"user","score":2.07,"text":"User said: Do exactly this, then stop: 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpos"}
+{"id":"f3","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-vegetable-tastes-af86758573be213ab: <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agen"}
+{"id":"f4","kind":"artifact","score":2.5,"text":"Artifact tide-table: <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tide-table.md — deliverable, subagent res"}
+## parent transcript: hook additionalContext the parent received
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/agent-1-list-fruit-tastes-a61dec86202721985.md\"]"}
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (Tide table) saved to <scratch>/jevhome/artifacts/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tide-table.md\"]"}

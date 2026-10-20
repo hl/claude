@@ -1,0 +1,82 @@
+## 1. unit: redact()
+ok   - redacted: export ANTHROPIC_API_KEY=<redacted>
+ok   - redacted: the jev key is <secret>
+ok   - redacted: git push with <secret>
+ok   - redacted: slack bot token <secret>
+ok   - redacted: aws key <secret> in the env
+ok   - redacted: cookie <jwt>
+ok   - redacted: curl -H "Authorization: <redacted>" https://api.example.com/v1
+ok   - redacted: curl -H 'authorization: <redacted>' https://api.example.com
+ok   - redacted: DB_PASSWORD=<redacted> mix test
+ok   - redacted: STRIPE_SECRET_KEY=<redacted> in .env
+ok   - redacted: {"client_secret": <redacted>}
+ok   - redacted: the api key: <redacted>
+ok   - redacted: ask <email> about it
+ok   - redacted: the db is on <ip> behind the vpn
+ok   - redacted: clone https://<redacted>@git.example.com/acme/repo.git
+ok   - redacted: download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential
+ok   - redacted: download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential
+ok   - redacted: <private-key>
+ok   - redacted: stripe live key <secret>
+ok   - redacted: restricted key <secret>
+ok   - redacted: test key <secret>
+ok   - redacted: curl -u admin:<redacted> https://api.example.com/x
+ok   - redacted: curl --user deploy:<redacted> https://api.example.com/y
+ok   - redacted: mysql -u root -p<redacted> app_db
+ok   - redacted: mysql -h db.internal.example -u app -p<redacted> app_db
+ok   - redacted: pg_dump --password <redacted> app
+ok   - redacted: tool --password=<redacted> run
+ok   - redacted: curl -H 'Cookie: <redacted>' https://app.example.com
+ok   - redacted: post to https://hooks.slack.com/<redacted> when done
+ok   - redacted: SLACK_WEBHOOK=https://hooks.slack.com/<redacted>
+ok   - redacted: npm token <secret>
+ok   - redacted: hugging face <secret>
+ok   - redacted: digitalocean <secret>
+ok   - redacted: shopify <secret>
+ok   - redacted: github app token <secret>
+ok   - redacted: gitlab <secret>
+ok   - redacted: cache at redis://<redacted>@localhost:6379/0
+ok   - redacted: queue amqp://<redacted>@mq:5672
+ok   - redacted: sshpass -p <redacted> ssh deploy@build-host
+ok   - redacted: docker login -u bot -p <redacted> registry.example.com
+ok   - redacted: podman login -u bot -p <redacted> quay.example.com
+ok   - redacted: token <secret> in the CI vars
+ok   - redacted: machine api.example.com login bot password <redacted>
+ok   - redacted: slack app token <secret>
+ok   - redacted: {"cookie":"<redacted>"}
+ok   - redacted: mysql -u root -p<redacted> app_db
+ok   - redacted: {"passphrase": <redacted>}
+ok   - redacted: env: [{"name": "DB_PASSWORD", "value": "<redacted>"}]
+ok   - redacted: {"Name":"STRIPE_API_KEY","Value":"<redacted>"}
+ok   - redacted: env: \n   - name: API_TOKEN \n     value: <redacted> \n   - name: LOG_LEVEL \n     value: 
+ok   - redacted: - name: "SIGNING_SECRET" \n   value: <redacted>
+ok   - kept: paths, hostnames, git remotes, PR links
+## 2. on the wire (fake Jev on 127.0.0.1)
+ok   - 5 request bodies captured (hooks that called out: agent-route,compact-post,compact-pre,ledger,route)
+ok   - the API key is not in any captured body or header (Authorization recorded as <present>)
+ok   - none of the 51 planted secrets is in any captured body
+ok   - paths and hostnames still reach Jev
+--- sample of a captured body (route.sh state.task):
+    Fix the deploy script. Context: export ANTHROPIC_API_KEY=<redacted>
+    the jev key is <secret>
+    git push with <secret>
+    slack bot token <secret>
+    aws key <secret> in the env
+    cookie <jwt>
+    curl -H "Authorization: <redacted>" https://api.example.com/v1
+    curl -H 'authorization: <redacted>' https://api.example.com
+    DB_PASSWORD=<redacted> mix test
+    STRIPE_SECRET_KEY=<redacted> in .env
+    {"client_secret": <redacted>}
+    the api key: <redacted>
+    ask <email> about it
+    the db is on <ip> behind the vpn
+    clone https://<redacted>@git.example.com/acme/repo.git
+    download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential=<redacted>
+    download https://bucket.s3.amazonaws.com/f.tar?X-Amz-Signature=<redacted>&X-Amz-Credential=<redacted>
+    <private-key>
+    stripe live key <secret>
+    restricted key <secret>
+    test key <secret>
+    curl -u admin:<redacted> https://api.example.com/x
+redact: 0 failure(s)

@@ -1,0 +1,4 @@
+{"id":"f1","kind":"user","score":2.93,"superseded_by":null,"corrected_by":["f2"],"text":"User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against"}
+{"id":"f2","kind":"user","score":2.87,"superseded_by":null,"corrected_by":[],"text":"User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone."}
+{"id":"f3","kind":"artifact","score":2.5,"superseded_by":null,"corrected_by":[],"text":"Artifact rollout-checklist: /tmp/jev-live-compact/jevhome/artifacts/af2411aa-8be2-484c-b8fd-03948fa16b5e/rollout-checklist.md — Rollout chec"}
+{"id":"f4","kind":"user","score":1.54,"superseded_by":null,"corrected_by":[],"text":"User said: Without using any tools: what are the staging database host and port, the ticket number, and the full path of the saved rollout c"}

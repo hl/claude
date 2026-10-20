@@ -1,0 +1,58 @@
+# offline.sh fail-open matrix — 2026-10-20T08:41Z
+# every hook, with: no key, JEV_DISABLED=1, unreachable port, hanging listener, blackholed address,
+# JEV_LEDGER=0, bad key (401). Each must exit 0, print nothing, and stay inside the time limit.
+ok   - shellcheck clean (29 scripts)
+ok   - fail-open [no-key] ledger.sh: exit 0, no output, 0s
+ok   - fail-open [no-key] compact-pre.sh: exit 0, no output, 0s
+ok   - fail-open [no-key] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [no-key] compact-post.sh: exit 0, no output, 1s
+ok   - fail-open [no-key] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [no-key] agent-route.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] ledger.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] compact-pre.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [disabled] agent-route.sh: exit 0, no output, 0s
+ok   - fail-open [unreachable] ledger.sh: exit 0, no output, 0s
+ok   - fail-open [unreachable] compact-pre.sh: exit 0, no output, 1s
+ok   - fail-open [unreachable] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [unreachable] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [unreachable] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [unreachable] agent-route.sh: exit 0, no output, 0s
+ok   - fail-open [hanging-api] ledger.sh: exit 0, no output, 2s
+ok   - fail-open [hanging-api] compact-pre.sh: exit 0, no output, 5s
+ok   - fail-open [hanging-api] compact-post.sh: exit 0, no output, 2s
+ok   - fail-open [hanging-api] compact-post.sh: exit 0, no output, 2s
+ok   - fail-open [hanging-api] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [hanging-api] agent-route.sh: exit 0, no output, 3s
+ok   - fail-open [blackhole] ledger.sh: exit 0, no output, 2s
+ok   - fail-open [blackhole] compact-pre.sh: exit 0, no output, 0s
+ok   - fail-open [blackhole] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [blackhole] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [blackhole] compact-session.sh: exit 0, no output, 1s
+ok   - fail-open [blackhole] agent-route.sh: exit 0, no output, 2s
+ok   - fail-open [ledger-off] ledger.sh: exit 0, no output, 0s
+ok   - fail-open [ledger-off] compact-pre.sh: exit 0, no output, 0s
+ok   - fail-open [ledger-off] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [ledger-off] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [ledger-off] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [ledger-off] agent-route.sh: exit 0, no output, 0s
+ok   - fail-open [bad-key] ledger.sh: exit 0, no output, 1s
+ok   - fail-open [bad-key] compact-pre.sh: exit 0, no output, 1s
+ok   - fail-open [bad-key] compact-post.sh: exit 0, no output, 1s
+ok   - fail-open [bad-key] compact-post.sh: exit 0, no output, 0s
+ok   - fail-open [bad-key] compact-session.sh: exit 0, no output, 0s
+ok   - fail-open [bad-key] agent-route.sh: exit 0, no output, 1s
+ok   - circuit breaker: calls after a timeout fail fast (cooldown logged)
+ok   - circuit breaker: skipped call took 0s; JEV_COOLDOWN=0 calls again (2s timeout)
+ok   - circuit breaker is per family: the compaction flush still called the API during a routing cooldown (cooldown.route + cooldown.compact)
+ok   - JEV_DISABLED=1: no API call logged, no state or ledger written
+ok   - JEV_LEDGER=0: no ledger written, no ledger API call
+ok   - no-key failure logged
+ok   - timeout logged
+ok   - no key value in any log or state file
+ok   - bad key logged as http_401
+ok   - route.sh: non-zero exit without a key
+ok   - route.sh: non-zero exit when disabled
+offline: 0 failure(s)

@@ -19,6 +19,7 @@ trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=compact-post
+export JEV_ENTRY=hook # a hook run: lib.sh may move an old ~/.claude/jev
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
@@ -46,6 +47,14 @@ case $event in
     [ -z "$(jq -r '.agent_type // empty' <<<"$payload")" ] || exit 0
     jq -e '.phase == "pre"' "$state" >/dev/null || exit 0
     summary=$(jq -r '.last_assistant_message // empty' <<<"$payload")
+    if [ -z "$summary" ]; then
+      # Claude Code 2.1.304 leaves last_assistant_message out for some agents; read the transcript.
+      atp=$(jq -r '.agent_transcript_path // empty' <<<"$payload")
+      if [ -n "$atp" ] && [ -f "$atp" ]; then
+        summary=$(jq -cR 'fromjson? | select(.type == "assistant") | [.message.content[]? | select(.type == "text") | .text] | join("\n")' "$atp" 2>/dev/null |
+          jq -s -r 'map(select(length > 0)) | last // empty' 2>/dev/null || true)
+      fi
+    fi
     case $summary in *"<summary>"*) ;; *) exit 0 ;; esac
     ;;
   PostCompact)

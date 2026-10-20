@@ -4,9 +4,11 @@
 # fail-open contract: with no key, an unreachable or hanging API, a bad key, or
 # JEV_DISABLED=1, every hook exits 0 with no stdout, well inside its timeout.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures"
+unset CLAUDE_PROJECT_DIR CLAUDE_CODE_SESSION_ID CLAUDE_SESSION_ID CLAUDE_PID
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/jev-off.XXXXXX")
 fails=0
 ok() { echo "ok   - $1"; }
@@ -65,7 +67,8 @@ p_pre=$(jq -cn --arg tp "$WORK/t.jsonl" '{session_id: "off", transcript_path: $t
 p_sub=$(jq -cn --arg m "$(cat "$FIX/summary.txt")" '{session_id: "off-post", hook_event_name: "SubagentStop", agent_type: "", last_assistant_message: $m}')
 p_post=$(jq -cn --arg m "$(cat "$FIX/summary.txt")" '{session_id: "off-post", hook_event_name: "PostCompact", trigger: "auto", compact_summary: $m}')
 p_sess='{"session_id":"off","hook_event_name":"SessionStart","source":"compact"}'
-p_agent='{"session_id":"off","hook_event_name":"PreToolUse","tool_name":"Agent","tool_input":{"description":"x","prompt":"Fix the typo in README.md line 3.","subagent_type":"general-purpose"}}'
+p_agent='{"session_id":"off","hook_event_name":"PreToolUse","tool_name":"Agent","tool_input":{"description":"x","prompt":"Fix the typo in README.md line 3.","subagent_type":"general-purpose","model":"haiku"}}'
+p_stop=$(jq -cn --arg tp "$WORK/t.jsonl" '{session_id: "off-stop", transcript_path: $tp, hook_event_name: "Stop", stop_hook_active: false}')
 
 # A listener that accepts and never answers, to exercise curl --max-time.
 port=$((20000 + RANDOM % 20000))
@@ -85,7 +88,7 @@ seed_state() { # <jev-home>: a scored, unconsumed state file for session "off-po
 failopen() { # <label> <limit-seconds> <env...> -- run every hook
   local label=$1 limit=$2 h p out rc t0 t1 secs
   shift 2
-  for hp in "compact-pre.sh:$p_pre" "compact-post.sh:$p_sub" "compact-post.sh:$p_post" "compact-session.sh:$p_sess" "agent-route.sh:$p_agent"; do
+  for hp in "ledger.sh:$p_stop" "compact-pre.sh:$p_pre" "compact-post.sh:$p_sub" "compact-post.sh:$p_post" "compact-session.sh:$p_sess" "agent-route.sh:$p_agent"; do
     h=${hp%%:*} p=${hp#*:}
     # Give compact-post a valid scored state so it really calls the API.
     [ "$h" = compact-post.sh ] && [ "$label" != disabled ] && seed_state "$WORK/home-$label"
@@ -100,16 +103,21 @@ failopen() { # <label> <limit-seconds> <env...> -- run every hook
 failopen no-key 3 -u TYPESAFE_API_KEY JEV_ZSHENV=/dev/null
 failopen disabled 3 JEV_DISABLED=1
 failopen unreachable 3 TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL=http://127.0.0.1:9
-failopen hanging-api 6 TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_TIMEOUT=2 JEV_ROUTE_TIMEOUT=2
+failopen hanging-api 6 TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_TIMEOUT=2 JEV_ROUTE_TIMEOUT=2 JEV_LEDGER_TIMEOUT=2 JEV_COOLDOWN=0
+# A blackholed address (no RST, no answer): the connect itself hangs until the timeout.
+failopen blackhole 6 TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://10.255.255.1:9" JEV_TIMEOUT=2 JEV_ROUTE_TIMEOUT=2 JEV_LEDGER_TIMEOUT=2
+failopen ledger-off 3 -u TYPESAFE_API_KEY JEV_LEDGER=0 JEV_ZSHENV=/dev/null
 if [ "${JEV_OFFLINE_BADKEY:-1}" = 1 ]; then
   failopen bad-key 10 TYPESAFE_API_KEY=apikNOTAREALKEY
 fi
 
 # circuit breaker: one timeout, then fast failures until JEV_COOLDOWN expires
-h="$WORK/home-hanging-api"
+h="$WORK/home-blackhole"
 jq -e -s '[.[] | .status] | (index("timeout") != null) and (index("cooldown") != null)' "$h/log/jev.jsonl" >/dev/null 2>&1 &&
   ok "circuit breaker: calls after a timeout fail fast (cooldown logged)" || bad "circuit breaker: no cooldown after timeout"
 hang() { env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_ROUTE_TIMEOUT=2 JEV_HOME="$h" "$@" "$J/agent-route.sh" <<<"$p_agent" >/dev/null 2>&1; }
+# the blackhole run left a routing cooldown; make sure it is fresh
+date +%s >"$h/cooldown.route"
 t0=$(date +%s)
 hang
 t1=$(date +%s)
@@ -124,15 +132,17 @@ env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_ROU
 cp "$h2/cooldown.route" "$h2/cooldown.route.bak" 2>/dev/null
 env TYPESAFE_API_KEY=apikFAKE TYPESAFE_BASE_URL="http://127.0.0.1:$port" JEV_TIMEOUT=2 JEV_HOME="$h2" "$J/compact-pre.sh" <<<"$p_pre" >/dev/null 2>&1
 if [ -f "$h2/cooldown.route.bak" ] && [ -f "$h2/cooldown.compact" ] &&
-  jq -e -s '[.[] | select(.hook == "compact-pre") | .status] == ["timeout"]' "$h2/log/jev.jsonl" >/dev/null 2>&1; then
-  ok "circuit breaker is per family: compact-pre still called the API during a routing cooldown (cooldown.route + cooldown.compact)"
+  jq -e -s '[.[] | select(.hook | test("^(compact-pre|ledger)")) | .status][0] == "timeout"' "$h2/log/jev.jsonl" >/dev/null 2>&1; then
+  ok "circuit breaker is per family: the compaction flush still called the API during a routing cooldown (cooldown.route + cooldown.compact)"
 else bad "circuit breaker family isolation: $(find "$h2" -maxdepth 1 -name 'cooldown*' | paste -sd' ' -) $(jq -c -s '[.[] | {hook, status}]' "$h2/log/jev.jsonl" 2>/dev/null)"; fi
 exec 9>&-
 kill "$ncpid" 2>/dev/null
 
 # disabled means no API call at all, and no state written
-[ ! -e "$WORK/home-disabled/log/jev.jsonl" ] && [ ! -e "$WORK/home-disabled/compact" ] &&
-  ok "JEV_DISABLED=1: no API call logged, no state written" || bad "JEV_DISABLED=1 still did work"
+[ ! -e "$WORK/home-disabled/log/jev.jsonl" ] && [ ! -e "$WORK/home-disabled/compact" ] && [ ! -e "$WORK/home-disabled/ledger" ] &&
+  ok "JEV_DISABLED=1: no API call logged, no state or ledger written" || bad "JEV_DISABLED=1 still did work"
+[ ! -e "$WORK/home-ledger-off/ledger" ] && ! grep -qs '"hook":"ledger' "$WORK/home-ledger-off/log/jev.jsonl" &&
+  ok "JEV_LEDGER=0: no ledger written, no ledger API call" || bad "JEV_LEDGER=0 still ran the ledger"
 # failures are logged with a status, and the key never reaches a log
 jq -e -s 'any(.[]; .status == "no_key")' "$WORK/home-no-key/log/jev.jsonl" >/dev/null 2>&1 && ok "no-key failure logged" || bad "no-key failure not logged"
 jq -e -s 'any(.[]; .status == "timeout")' "$WORK/home-hanging-api/log/jev.jsonl" >/dev/null 2>&1 && ok "timeout logged" || bad "timeout not logged"

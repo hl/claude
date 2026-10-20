@@ -1,0 +1,88 @@
+{
+  "session_id": "2ce4ceee-7960-4891-b32d-bc7c2b1b668a",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/2ce4ceee-7960-4891-b32d-bc7c2b1b668a.jsonl",
+  "cwd": "<scratch>",
+  "prompt_id": "e03228d9-5074-4b69-84bd-baf6d42f21ba",
+  "permission_mode": "auto",
+  "effort": {
+    "level": "medium"
+  },
+  "hook_event_name": "PostToolUse",
+  "tool_name": "Agent",
+  "tool_input": {
+    "description": "List fruit tastes",
+    "prompt": "Reply with a numbered list of 40 different fruits, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
+    "subagent_type": "general-purpose",
+    "model": "sonnet",
+    "run_in_background": false
+  },
+  "tool_response": {
+    "status": "completed",
+    "prompt": "Reply with a numbered list of 40 different fruits, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
+    "agentId": "a61dec86202721985",
+    "agentType": "general-purpose",
+    "handback": "send",
+    "handbackReport": {
+      "text": "1. Apple: An apple tastes sweet with a bright, tangy edge that varies from mellow to sharp depending on the variety. Its flesh is crisp and juicy, giving a satisfying snap when you bite into it.\n\n2. Banana: A ripe banana tastes sweet and creamy, with mild notes of vanilla and honey. Its texture is s …[7707 chars]"
+    },
+    "harnessNoteCount": 1,
+    "harnessTailCount": 0,
+    "harnessSectionHash": "6408e2a00945bd51",
+    "content": [
+      {
+        "type": "text",
+        "text": "This agent's report was delivered to you as a message from \"a61dec86202721985\" (its SubagentHandback call). Read it there; it is not repeated here.\n"
+      }
+    ],
+    "resolvedModel": "claude-sonnet-5-5",
+    "totalDurationMs": 23751,
+    "totalTokens": 14498,
+    "totalToolUseCount": 1,
+    "usage": {
+      "output_tokens_details": {
+        "thinking_tokens": 0
+      },
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 11365,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 3131,
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 0,
+        "ephemeral_5m_input_tokens": 11365
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 3131,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 11365,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 11365,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "toolStats": {
+      "readCount": 0,
+      "searchCount": 0,
+      "bashCount": 0,
+      "editFileCount": 0,
+      "linesAdded": 0,
+      "linesRemoved": 0,
+      "otherToolCount": 1
+    },
+    "canContinueAgent": true
+  },
+  "tool_use_id": "toolu_01P5udSAdVNNLbavbTuVr7UK",
+  "duration_ms": 23752
+}

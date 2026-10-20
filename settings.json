@@ -24,6 +24,16 @@
             "command": "$HOME/.claude/hooks/mix_format_edited.sh"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/artifact-hook.sh",
+            "timeout": 10
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -69,6 +79,18 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/ledger.sh",
+            "async": true,
+            "timeout": 10
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [
@@ -76,6 +98,15 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/compact-post.sh",
             "timeout": 20
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/artifact-hook.sh",
+            "timeout": 10
           }
         ]
       }

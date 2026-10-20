@@ -1,0 +1,9 @@
+# live-async-stop.sh — 2026-10-20T09:27Z, 2.1.304 (Claude Code)
+# Stop hook {"type": "command", "async": true}: logs start, sleeps 4 s, logs end, then prints
+# {"decision": "block", "reason": "... say the word PINEAPPLE"}. Two prompts in a tmux session (haiku).
+hook 1792488415.563 start
+hook 1792488419.590 end
+hook 1792488424.794 start
+hook 1792488428.820 end
+prompt 1 sent at 1792488413.155; its reply was on screen at 1792488415.596; the first hook run ended at 1792488419.590.
+PINEAPPLE in the pane: 0
