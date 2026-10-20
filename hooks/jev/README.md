@@ -215,7 +215,7 @@ Latency (`test/latency.sh`, Jev p50 ≈ 0.23 s):
 - **The scope is a file.** A Claudette session with no `.orchestrator.md` yet (before her first report) is out of scope. The Agent hook then does nothing, and compaction re-injects only the artifact index. `route.sh` still works, because it is run explicitly.
 - **Egress in Claudette repos.** See "What leaves the machine": redaction is not an NDA.
 - **Coverage noise.** Jev sometimes marks a kept fact as missing. The cost is bounded over-injection, never loss.
-- **Heuristic extraction.** Facts come from regexes over transcript records. A correction is injected next to what it corrects, in transcript order, not in its place.
+- **Heuristic extraction.** Facts come from regexes over transcript records, and a fact is a whole message. A correction is injected next to what it corrects, in transcript order, not in its place. A message that is later partly corrected can be scored down as a whole. In the live test, Jev scored the original "pg-staging-7, never run migrations, branch …" message 1.3 once it had been corrected, so its other facts were not re-injected. Only the correction and the `.orchestrator.md` section came back.
 - **Background subagents** are saved, but the parent learns the path only from the next compaction's index.
 - **The hooks cannot change the summary**; they can only add context after it.
 - **One state location.** Hooks and the Bash tool each work out `$JEV_HOME` from their own environment. Set `XDG_STATE_HOME` and `JEV_HOME` in one place that both read, or leave them unset.
