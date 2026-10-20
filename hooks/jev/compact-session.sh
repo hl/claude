@@ -6,7 +6,7 @@
 #       exists, the heading, first line and Status line of every section not
 #       marked DONE or BLOCKED (orchestrator.awk); most recent sections win
 #       when over JEV_COMPACT_ORCH_MAX (4500) chars
-#   (b) the artifact index: one line per file in ~/.local/state/jev/artifacts/<session>/
+#   (b) the artifact index: one line per file in ~/.local/state/jev/artifacts/<session>/ (not INDEX.md)
 #       (newest first when over JEV_COMPACT_ARTIFACT_MAX, 2000 chars)
 #   (a) facts, only when compact-pre.sh left a scored state file: with coverage
 #       (compact-post.sh ran), facts scored >= important that the summary did
@@ -76,10 +76,10 @@ done
 : >"$tmpd/art.tsv"
 if [ -d "$adir" ]; then
   # shellcheck disable=SC2010,SC2012 # names are ours (sanitised); ls -t gives mtime order portably
-  ls -t "$adir" 2>/dev/null | grep '\.md$' | while IFS= read -r f; do
+  ls -t "$adir" 2>/dev/null | grep '\.md$' | grep -v -x 'INDEX\.md' | while IFS= read -r f; do
     t=$(grep -m 1 -v -e '^[[:space:]]*$' "$adir/$f" 2>/dev/null | sed -e 's/^<!-- *//' -e 's/ *-->$//' -e 's/^#* *//' | cut -c1-140 || true)
     printf '%s\t%s\n' "$adir/$f" "$t"
-  done >"$tmpd/art.tsv"
+  done >"$tmpd/art.tsv" || true
 fi
 
 ctx=$(jq -n -r --slurpfile fa "$tmpd/facts.json" --rawfile orch "$tmpd/orch.tsv" --rawfile art "$tmpd/art.tsv" \

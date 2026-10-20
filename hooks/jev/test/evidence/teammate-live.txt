@@ -1,0 +1,34 @@
+# Live agent-team teammate, Claude Code 2.1.304 (Claude Code), teammate mode tmux
+# hooks that fired (start order):
+lead      UserPromptSubmit  Spawn one agent-team teammate with the A
+lead      PostToolUse  teammate_spawned
+teammate  TeammateIdle  live-writer
+lead      UserPromptSubmit  Now run one foreground subagent with the
+lead      PostToolUse  async_launched
+lead      UserPromptSubmit  <agent-message from="af8f5572912e1cbb8">
+
+# TeammateIdle payload:
+{"session_id":"3a7c60d0-59a9-47cc-b1aa-265fc07f3819","transcript_path":"~/.claude/projects/-private-tmp-jev-live-team/3a7c60d0-59a9-47cc-b1aa-265fc07f3819.jsonl","cwd":"/tmp/jev-live-team","permission_mode":"auto","agent_type":"general-purpose","hook_event_name":"TeammateIdle","teammate_name":"live-writer","team_name":"session-2d6e2651"}
+
+# /tmp/jev-live-team/jevhome/artifacts/2d6e2651-188a-437d-a2f9-3c1cc6cd54e5/INDEX.md:
+- 2026-10-20T14:45:17Z teammate live-writer (reply): /tmp/jev-live-team/jevhome/artifacts/2d6e2651-188a-437d-a2f9-3c1cc6cd54e5/live-demo.md — Artifact: live-demo
+
+# live-demo.md:
+<!-- teammate live-writer@session-2d6e2651 (general-purpose, claude-haiku-5-5), 2026-10-20T14:45:17Z, live-writer -->
+Artifact: live-demo
+The live teammate deliverable.
+END-OF-LIVE-DEMO.
+
+# artifact.jsonl:
+{"ts":"2026-10-20T14:45:17Z","hook":"artifact-hook","session_id":"2d6e2651-188a-437d-a2f9-3c1cc6cd54e5","event":"TeammateIdle","status":"saved","path":"/tmp/jev-live-team/jevhome/artifacts/2d6e2651-188a-437d-a2f9-3c1cc6cd54e5/live-demo.md","chars":68,"agent_id":"live-writer@session-2d6e2651","who":"teammate live-writer (reply)","marker":"live-demo","waited_s":0.2}
+
+# lead pane, lines naming the teammate or the hook:
+⏺ I've spawned the teammate "live-writer" (haiku). I'm
+⏺ Teammate @live-writer finished                           
+⏺ live-writer has finished. Its idle notification contained
+  Agent call, one per line, prefixed with HOOK:.           
+⏺ HOOK: Background subagent running on claude-haiku-5-5.
+  HOOK: Teammate live-writer reply saved to                
+  ◯ live-writer  live demo deliverable              1m 2s
+
+live-teammate: 0 failure(s)

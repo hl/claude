@@ -12,6 +12,8 @@
 # zero-traffic.sh    10 turns through every Jev hook in settings.json: 0 requests in an ordinary
 #                    project; in a Claudette project only on Agent spawns and compaction
 # redact.sh          redaction unit tests + planted secrets never reach a captured request body
+# teammate-replay.sh captured agent-team teammate lifecycles (tmux and in-process) through
+#                    artifact-hook.sh: saved in the lead's dir, INDEX.md, announced once
 # route-eval.sh      routing eval on the committed sanitised fixture (JEV_EVAL_SET=<file> for a
 #                    local labelled set); zero opus under-routing, <= 2% sonnet
 # agent-route-api.sh escalation, route ids and scope against the live API
@@ -21,6 +23,7 @@
 #                    "Subagent ran on <model>" reaching the parent
 # live-artifact.sh   real PostToolUse(Agent) / SubagentStop payloads; results saved and cited
 # live-compact.sh    tmux /compact: order, Jev traffic per session, injection after the boundary
+# live-teammate.sh   tmux agent-team teammate: its "Artifact:" reply saved and the path reaching the lead
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=SCRIPTDIR/../lib.sh
@@ -38,6 +41,7 @@ run offline offline.sh
 run offline-hooks offline-hooks.sh
 run zero-traffic zero-traffic.sh
 run redact redact.sh
+run teammate-replay teammate-replay.sh
 api=(route-eval agent-route-api compact-fixture latency)
 if [ "${JEV_DISABLED:-0}" = 1 ]; then
   for t in "${api[@]}"; do skip "$t" "JEV_DISABLED=1"; done
@@ -50,8 +54,9 @@ if [ "${JEV_LIVE:-0}" = 1 ]; then
   run live-agent live-agent.sh
   run live-artifact live-artifact.sh
   run live-compact live-compact.sh
+  run live-teammate live-teammate.sh
 else
-  for t in live-agent live-artifact live-compact; do skip "$t" "set JEV_LIVE=1"; done
+  for t in live-agent live-artifact live-compact live-teammate; do skip "$t" "set JEV_LIVE=1"; done
 fi
 
 echo

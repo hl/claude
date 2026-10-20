@@ -1,0 +1,20 @@
+{
+  "name": "session-4233033d",
+  "leadAgentId": "team-lead@session-4233033d",
+  "leadSessionId": "4233033d-a65a-4ed0-b3b6-1c5eb09c4a7d",
+  "members": [
+    {
+      "agentId": "team-lead@session-4233033d",
+      "name": "team-lead",
+      "agentType": "team-lead",
+      "backendType": "in-process"
+    },
+    {
+      "agentId": "demo-writer@session-4233033d",
+      "name": "demo-writer",
+      "agentType": "general-purpose",
+      "model": "haiku",
+      "backendType": "tmux"
+    }
+  ]
+}
