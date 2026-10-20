@@ -1,6 +1,6 @@
 # eval-report.jq — `jq -r -f eval-report.jq results.json` (an array of route
 # results, each with .label and .model; real-set rows also carry .chosen_tier
-# and .under_routed). Used by route-eval.sh and tune.sh.
+# and .under_routed). Used by route-eval.sh.
 def rank: {haiku: 0, sonnet: 1, opus: 2, fable: 3}[.] // null;
 def pct($a; $b): if $b == 0 then "n/a" else "\(($a * 1000 / $b | round) / 10)%" end;
 . as $all

@@ -1,51 +1,99 @@
 {
-  "session_id": "f2ae640e-8a1b-4b97-ba28-7c4c78b3b220",
-  "mode": "ledger",
-  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/f2ae640e-8a1b-4b97-ba28-7c4c78b3b220.jsonl",
+  "session_id": "8bc67751-02b5-4011-892c-8592e0a863e7",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-20T09:26:06Z",
-  "extracted_epoch": 1792488366,
+  "extracted_at": "2026-10-20T11:31:14Z",
+  "extracted_epoch": 1792495874,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
-  "work_type": null,
-  "mid_operation": null,
-  "superseded": 0,
+  "mid_operation": 0.04,
   "facts": [
     {
-      "n": 1,
-      "id": "f1",
+      "n": 2,
       "kind": "user",
-      "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821. [later corrected: User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.]",
-      "score": 2.93,
+      "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
+      "src": "35916880-f4ac-4075-8db4-55deb3e64941",
+      "score": 2.47,
+      "legend": "Important",
       "covered_p": 0.01,
       "covered": false
     },
     {
-      "n": 2,
-      "id": "f2",
+      "n": 1,
       "kind": "user",
-      "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
-      "score": 2.93,
+      "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
+      "src": "0a6d1a43-35df-459e-ad1b-b8c6cbf864aa",
+      "score": 1.32,
+      "legend": "Nice to have",
       "covered_p": 0.01,
       "covered": false
     },
     {
       "n": 3,
-      "id": "f3",
       "kind": "user",
       "text": "User said: Use the Agent tool once in the foreground with subagent_type general-purpose, model haiku, description Rollout checklist, and this prompt: Reply with exactly these three lines and nothing else, the slashes being line breaks: Artifact: rollout-checklist / 1. drain the queue / 2. flip fanout_streams_enabled. Then reply DONE.",
-      "score": 1.51,
+      "src": "6cc69421-6dc5-405b-a3b6-20eb63423426",
+      "score": 0.9,
+      "legend": "Nice to have",
       "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 6,
+      "kind": "file",
+      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
+      "src": "417e5139-e358-477d-b725-3b3742651bf7",
+      "score": 0.63,
+      "legend": "Nice to have",
+      "covered_p": 0.02,
+      "covered": false
+    },
+    {
+      "n": 7,
+      "kind": "user",
+      "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
+      "src": "56a1c1f5-17e9-4100-80a3-5ca3a9c2cf96",
+      "score": 0.51,
+      "legend": "Nice to have",
+      "covered_p": 0.2,
+      "covered": false
+    },
+    {
+      "n": 4,
+      "kind": "decision",
+      "text": "The subagent is still running, so I don't have its output yet. It launched in the background even though you asked for the foreground. A hook also raised its model from haiku to claude-opus-5-5. I'll reply DONE once it finishes.",
+      "src": "fe785718-a42f-4221-b678-3bba8a47ccde",
+      "score": 0.48,
+      "legend": "Irrelevant",
+      "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 5,
+      "kind": "user",
+      "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
+      "src": "1c91ca02-7cf6-4e7d-b67a-af0f32f5a574",
+      "score": 0.46,
+      "legend": "Irrelevant",
+      "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 8,
+      "kind": "error",
+      "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
+      "src": "16b4f011-711f-4cd4-9cf5-1a1e0f50ad25",
+      "score": 0.36,
+      "legend": "Irrelevant",
+      "covered_p": 0.06,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "1446202678-480",
+    "summary_id": "1294994851-642",
     "source": "SubagentStop",
-    "at": "2026-10-20T09:26:09Z",
-    "summary_quality": 1.2
+    "at": "2026-10-20T11:31:17Z"
   },
-  "consumed_at": "2026-10-20T09:26:09Z"
+  "consumed_at": "2026-10-20T11:31:17Z"
 }

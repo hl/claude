@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2015 # ok() always succeeds, so `A && ok || bad` is a safe if-then-else.
-# live-compact.sh — tmux-driven /compact in a scratch project with the Jev
-# hooks (Stop ledger, compaction, artifacts) plus a dump hook that records each
-# hook's real stdin and start time. Costs tokens; run with JEV_LIVE=1 via run.sh.
-# Only project settings are loaded (--setting-sources project), so the user's
-# own hooks do not run in the scratch session.
+# live-compact.sh — tmux-driven /compact in a scratch Claudette project (it has
+# an .orchestrator.md) with every Jev hook wired as in settings.json, plus a dump
+# hook that records each hook's real stdin and start time. Costs tokens; run
+# with JEV_LIVE=1 via run.sh. Only project settings are loaded
+# (--setting-sources project), so the user's own hooks do not run.
 #
-# The session states background facts, corrects one of them, has a subagent return
-# a deliverable marked "Artifact: rollout-checklist" (saved by the hook), and has a
-# live and a DONE section in .orchestrator.md.
-# Proves: the Stop hook builds the ledger (correction supersedes), the hook
-# order, that the snapshot is covered, that the injection (live orchestrator
-# section, artifact index, uncovered live facts, no superseded fact) sits after
-# the compact_boundary, and that the model answers from it.
+# The session states background facts, corrects one of them, has a haiku
+# subagent return a deliverable marked "Artifact: rollout-checklist" (saved by
+# the hook), and has a live and a DONE section in .orchestrator.md.
+# Proves: the hook order; that the whole session made Jev calls only from the
+# Agent hook (at most one) and the compaction (at most two); that the snapshot
+# is covered; that the injection (live orchestrator section, artifact index,
+# uncovered facts in transcript order) sits after the compact_boundary; and
+# that the model answers the corrected host from it.
 # Writes sanitised evidence to test/evidence/compact-*.
 set -uo pipefail
-export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 EVID="$HERE/evidence"
@@ -48,7 +48,7 @@ jq -n --arg d "$SCRATCH/dump.sh" --arg j "$J" '
   def dump($e): {type: "command", command: "\($d) \($e)"};
   def jev($s): {type: "command", command: "\($j)/\($s)", timeout: 20};
   {hooks: {
-    Stop: [{hooks: [jev("ledger.sh") + {async: true}]}],
+    PreToolUse: [{matcher: "Agent", hooks: [jev("agent-route.sh")]}],
     PreCompact: [{matcher: "manual|auto", hooks: [dump("PreCompact"), jev("compact-pre.sh")]}],
     SubagentStop: [{hooks: [dump("SubagentStop"), jev("compact-post.sh"), jev("artifact-hook.sh")]}],
     PostToolUse: [{matcher: "Agent", hooks: [jev("artifact-hook.sh")]}],
@@ -182,26 +182,21 @@ if [ -f "$tp" ]; then
   fi
 else bad "no transcript at $tp"; fi
 
-# 4. the ledger and what was injected
-L="$JEV_HOME/ledger/$sid.jsonl"
-if [ -f "$L" ]; then
-  jq -c '{id, kind, score, superseded_by, corrected_by, text: .text[0:140]}' "$L" | sanitise >"$EVIDP-ledger.jsonl"
-  # The first message holds several facts (host, migrations rule, branch, ticket), so a
-  # partial correction (corrected_by) is right; a full one (superseded_by) is accepted too.
-  jq -e -s '(map({key: .id, value: .}) | from_entries) as $by
-    | any(.[]; (.text | test("is pg-staging-7")) and ((.superseded_by != null) or ((.corrected_by // []) | length > 0)))
-      and any(.[]; .superseded_by == null and (.text | test("moved to pg-staging-9")))' "$L" >/dev/null &&
-    ok "ledger (built by the Stop hook): the pg-staging-7 statement is marked $(jq -r -s '[.[] | select(.text | test("is pg-staging-7"))][0] | if .superseded_by then "superseded" else "partly corrected" end' "$L") by the pg-staging-9 correction" ||
-    bad "ledger correction not recorded: see $EVIDP-ledger.jsonl"
-  jq -e -s 'any(.[]; .kind == "artifact" and (.text | test("rollout-checklist")))' "$L" >/dev/null && ok "ledger indexes the artifact" || bad "artifact not in ledger"
-else bad "no ledger at $L"; fi
+# 4. Jev traffic for the whole session: only the Agent hook and the compaction
+jl="$JEV_HOME/log/jev.jsonl"
+by=$(jq -s -c 'group_by(.hook) | map({key: .[0].hook, value: length}) | from_entries' "$jl" 2>/dev/null || echo '{}')
+jq -e '(keys - ["agent-route", "compact-pre", "compact-post"] | length == 0) and ((."agent-route" // 0) <= 1)
+  and (((."compact-pre" // 0) + (."compact-post" // 0)) <= 2) and (."compact-pre" // 0) == 1' <<<"$by" >/dev/null &&
+  ok "Jev requests over the whole session: $by (5 turns, 1 Agent call, 1 compaction; nothing per turn)" || bad "unexpected Jev traffic: $by"
 inj=$(jq -r 'select(.type == "attachment" and .attachment.type == "hook_additional_context" and .attachment.hookEvent == "SessionStart") | .attachment.content | if type == "array" then join("\n") else . end' "$tp" 2>/dev/null | tail -n 40)
 case $inj in *"fan-out rollout (OPS-4821)"*) ok "injection: live .orchestrator.md section" ;; *) bad "injection lacks the live orchestrator section" ;; esac
 case $inj in *"flag documentation"*) bad "injection has the DONE section" ;; *) ok "injection: DONE section left out" ;; esac
 case $inj in *rollout-checklist.md*) ok "injection: artifact index line" ;; *) bad "injection lacks the artifact line" ;; esac
-if grep '^- ' <<<"$inj" | grep 'is pg-staging-7' | grep -qv 'later corrected: .*pg-staging-9'; then
-  bad "injection has the pg-staging-7 statement without its correction"
-else ok "injection: the pg-staging-7 statement is absent or carries its correction"; fi
+f7=$(grep -n '^- .*is pg-staging-7' <<<"$inj" | head -n 1 | awk -F: '{ print $1 }')
+f9=$(grep -n '^- .*pg-staging-9' <<<"$inj" | head -n 1 | awk -F: '{ print $1 }')
+if [ -n "$f7" ] && { [ -z "$f9" ] || [ "$f9" -lt "$f7" ]; }; then
+  bad "injection has the pg-staging-7 statement without the later correction after it"
+else ok "injection: the pg-staging-7 statement is absent or followed by its correction (transcript order)"; fi
 
 echo "live-compact: $fails failure(s)"
 [ "$fails" -eq 0 ]

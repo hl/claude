@@ -8,21 +8,20 @@
 #       when over JEV_COMPACT_ORCH_MAX (4500) chars
 #   (b) the artifact index: one line per file in ~/.local/state/jev/artifacts/<session>/
 #       (newest first when over JEV_COMPACT_ARTIFACT_MAX, 2000 chars)
-#   (a) facts: with coverage (compact-post.sh ran), facts scored >= important
-#       that the summary did not keep; without, the top-ranked facts. Chosen by
-#       score (highest first, until the size cap), listed in transcript order.
-#       In ledger mode these are live (non-superseded) ledger facts only.
-#   (d) one line saying where the ledger and the artifacts live
+#   (a) facts, only when compact-pre.sh left a scored state file: with coverage
+#       (compact-post.sh ran), facts scored >= important that the summary did
+#       not keep; without, the top-ranked facts. Chosen by score (highest first,
+#       until the size cap), listed in transcript order, plus where the full list is.
 # Priority when space runs out: (c) > (b) > (a).
 #
-# (c) and (b) need no Jev call and no state file, so they are injected even
-# when Jev is unreachable. Marks the state file consumed. Nothing to say -> no output.
+# No Jev call. (c) and (b) need no state file, so they are injected in every
+# session, Claudette or not, and when Jev is unreachable. Marks the state file
+# consumed. Nothing to say -> no output.
 set -euo pipefail
 trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=compact-session
-export JEV_ENTRY=hook # a hook run: lib.sh may move an old ~/.claude/jev
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
@@ -43,36 +42,24 @@ export JEV_SESSION
 case $JEV_SESSION in '' | *[!A-Za-z0-9._-]*) exit 0 ;; esac
 cwd=$(jq -r '.cwd // empty' <<<"$payload")
 state="$JEV_HOME/compact/$JEV_SESSION.json"
-ledger="$JEV_HOME/ledger/$JEV_SESSION.jsonl"
 adir="$JEV_HOME/artifacts/$JEV_SESSION"
 tmpd=$(mktemp -d "${TMPDIR:-/tmp}/jev-sess.XXXXXX")
 trap 'rm -rf "$tmpd"; exit 0' EXIT
 
-# --- (a) facts: from the state file (coverage or ranking), else straight from the ledger
+# --- (a) facts from the state file (coverage or ranking)
 facts_mode=none
-: >"$tmpd/facts.json"
+echo '{"mode":"none","facts":[]}' >"$tmpd/facts.json"
 if [ -f "$state" ] && jq -e '(.consumed_at // null) == null' "$state" >/dev/null 2>&1; then
   age=$(($(date +%s) - $(jq -r '.extracted_epoch // 0' "$state")))
   if [ "$age" -le "$MAX_AGE" ] && jq -e '.jev_ok == true' "$state" >/dev/null; then
     jq -c --argjson min "$MIN_SCORE" '(.coverage != null) as $cov
-      | {mode: (if $cov then "coverage" else "ranking" end), state_mode: (.mode // "v1"), work_type, mid_operation,
+      | {mode: (if $cov then "coverage" else "ranking" end), mid_operation,
          facts: [.facts[] | select((.score // 0) >= $min) | select(if $cov then (.covered | not) else true end)]}' "$state" >"$tmpd/facts.json"
     facts_mode=$(jq -r .mode "$tmpd/facts.json")
   fi
   s=$(jq -c --arg at "$(jev_now)" '.consumed_at = $at | .phase = "consumed"' "$state") &&
     printf '%s\n' "$s" >"$state.tmp" && mv "$state.tmp" "$state"
-elif [ -s "$ledger" ]; then
-  # No snapshot (PreCompact failed or was skipped): rank the live ledger facts.
-  jq -s -c --argjson min "$MIN_SCORE" '{mode: "ledger-ranking", state_mode: "ledger", work_type: null, mid_operation: null,
-    facts: ((map({key: .id, value: .text}) | from_entries) as $txt
-      | [.[] | select(.superseded_by == null and .kind != "artifact" and (.score // 0) >= $min)
-         | if ((.corrected_by // []) | length) > 0
-           then .text += " [later corrected: " + ([.corrected_by[] | $txt[.] // empty | .[0:200]] | join("; ")) + "]" else . end]
-      | to_entries | map(.value + {n: (.key + 1)}))}' \
-    "$ledger" >"$tmpd/facts.json"
-  facts_mode="ledger-ranking"
 fi
-[ -s "$tmpd/facts.json" ] || echo '{"mode":"none","facts":[]}' >"$tmpd/facts.json"
 
 # --- (c) live .orchestrator.md sections
 orch=""
@@ -96,9 +83,7 @@ if [ -d "$adir" ]; then
 fi
 
 ctx=$(jq -n -r --slurpfile fa "$tmpd/facts.json" --rawfile orch "$tmpd/orch.tsv" --rawfile art "$tmpd/art.tsv" \
-  --arg orch_path "$orch" --arg ledger "$ledger" --arg adir "$adir" --arg state "$state" \
-  --arg has_ledger "$([ -s "$ledger" ] && echo 1)" --arg has_art "$([ -s "$tmpd/art.tsv" ] && echo 1)" \
-  --argjson max "$MAX_CHARS" --argjson omax "$ORCH_MAX" --argjson amax "$ART_MAX" '
+  --arg orch_path "$orch" --arg state "$state" --argjson max "$MAX_CHARS" --argjson omax "$ORCH_MAX" --argjson amax "$ART_MAX" '
   def lines: split("\n") | map(select(length > 0) | split("\t"));
   # keep_last($cap): the longest suffix of an array of strings that fits in $cap chars
   def keep_last($cap): reduce (reverse[]) as $l ({out: [], len: 0};
@@ -118,23 +103,21 @@ ctx=$(jq -n -r --slurpfile fa "$tmpd/facts.json" --rawfile orch "$tmpd/orch.tsv"
   | (if ($afit | length) > 0
      then ["Artifacts saved this session (read the file instead of redoing the work)" + (if ($afit | length) < ($alines | length) then ", newest \($afit | length) of \($alines | length):" else ":" end)] + $afit
      else [] end) as $b
-  # (d)
-  | (if $has_ledger == "1" then "Full record: ledger \($ledger) (all facts; superseded ones marked)" + (if $has_art == "1" then ", artifacts \($adir)/." else "." end)
-     else "The full ranked fact list is in \($state)." end) as $d
   # (a) whatever room is left
+  | "The full ranked fact list is in \($state)." as $d
   | (([$c[], $b[], $d] | map(length + 1) | add) // 0) as $used
   | "Facts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical; a fact that conflicts with the summary may be stale, so check the file or PR):" as $head
   | ($f.facts | sort_by(-.score, -.n) | map({n, l: "- \(.text)"})) as $cand
-  | ([] + (if $f.work_type then ["Work type before compaction: \($f.work_type)."] else [] end)
-        + (if ($f.mid_operation // 0) >= 0.6
-           then ["Before compaction the last turn was probably mid-operation (p=\($f.mid_operation)): an edit, command or review whose result had not been recorded yet."]
-           else [] end)) as $session
+  | (if ($f.mid_operation // 0) >= 0.6
+     then ["Before compaction the last turn was probably mid-operation (p=\($f.mid_operation)): an edit, command or review whose result had not been recorded yet."]
+     else [] end) as $session
   | (reduce $cand[] as $x ({out: [], len: ($used + ($head | length) + 1 + ([$session[] | length + 1] | add // 0) + 2)};
        if .len + ($x.l | length) + 1 <= $max then .out += [$x] | .len += ($x.l | length) + 1 else . end)
      | .out | sort_by(.n) | map(.l)) as $afacts
-  | (if ($afacts | length) > 0 then [$head] + $afacts + $session else [] end) as $a
+  | (if ($afacts | length) > 0 then [$head] + $afacts + $session + [$d] else [] end) as $a
   | if ($c | length) + ($b | length) + ($a | length) == 0 then ""
-    else ($c + (if ($c | length) > 0 then [""] else [] end) + $b + (if ($b | length) > 0 then [""] else [] end) + $a + [$d]) | join("\n") end
+    else ($c + (if ($c | length) > 0 and ($b | length) + ($a | length) > 0 then [""] else [] end)
+          + $b + (if ($b | length) > 0 and ($a | length) > 0 then [""] else [] end) + $a) | join("\n") end
 ')
 [ "${#ctx}" -le "$MAX_CHARS" ] || ctx=${ctx:0:$MAX_CHARS}
 

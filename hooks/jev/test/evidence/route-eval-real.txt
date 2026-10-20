@@ -1,206 +1,40 @@
-# route.sh on the real set — 2026-10-18/19, Jev jev-1.13.0 (review round 2)
+# route.sh v3 (opus-first policy) on the local real set — 2026-10-20, Jev jev-1.13.0
 #
-# Set: every Agent tool_use in the local transcripts (~/.claude/projects/**, subagents/ included;
-# scratch test sessions excluded) -> 1461 unique tasks (test/harvest.sh). Sample for labelling
-# (test/label-batches.sh): all 31 tasks with a weak under_routed label + a per-tier sample by the
-# tier that ran (haiku 120, sonnet 130, opus 150, fable 20) = 451 tasks. Labels: ONE opus agent,
-# prompt in test/label-prompt.txt, blind to the model that ran: haiku 151, sonnet 186, opus 114.
-# Task-level data stays local in ~/.local/state/jev/eval/; only aggregates are committed.
+# Set: 451 real Agent tasks harvested from local transcripts in v2 and labelled blind by one opus
+# agent (haiku 151, sonnet 186, opus 114; 30% of briefs carry a line naming the tier that ran,
+# which route.sh strips first). Task-level data stayed in ~/.local/state/jev/eval/ and was deleted
+# after this run (v3 sweep: raw briefs from work repos are not kept). Only aggregates are here.
 #
-# Anchoring (N15). 136 of 451 briefs (30%) carry a line naming a tier ("Model: haiku — ...":
-# 62 haiku, 61 sonnet, 13 opus), and every one of them names the tier that actually ran. They are
-# 71 of the 151 haiku labels (47%). The labeller agreed with that line in 126 of 136 (92.6%);
-# where there is no such line, label and tier-that-ran agree in 205 of 293 (70%). route.sh now
-# strips these lines (anchors.jq) before asking Jev, so every number below is on stripped text;
-# the labels are what they are, so the unanchored subset (945 rows, 315 tasks) is the cleaner one.
-#
-# Policy: the security/blast-radius and non-trivial-review gate (0.7 -> opus) is a design choice
-# and is not tuned. Swept: P(haiku), mechanical, ambiguity, P(opus), confidence. Under-routing is
-# counted with every Jev value moved 0.1 toward the cheaper tier. Holdout: two folds split BY TASK
-# (all runs of a task on one side). Rule for the shipped point: the most conservative value of each
-# threshold over the folds (higher P(haiku) bar, lower P(opus) bar).
-#
-# Reproduce (local):
-#   EVAL_RUNS=3 JEV_EVAL_SET=~/.local/state/jev/eval/labelled.jsonl hooks/jev/test/route-eval.sh
-#   JEV_TUNE_SPLIT=1 hooks/jev/test/tune.sh ~/.local/state/jev/eval/results-<time>.jsonl
+# Policy (policy.jq): opus by default and whenever security/blast radius or non-trivial review
+# >= 0.7; haiku for kind poll/fetch/lookup or P(haiku) >= 0.85 with mechanical >= 0.7 and
+# security < 0.5; sonnet when P(opus) <= 0.15 and neither signal reaches 0.5. The real set has
+# no `kind`, so every haiku below comes from Jev alone.
 
-## 1. Session 1 (results-20261018T220034Z: 3 Jev runs per task on stripped briefs) — tune.sh, task-split holdout
-rows: 1353 eval rows over 451 tasks (from results-20261018T220034Z.jsonl), 0 outcome
-security/blast-radius and non-trivial-review gate fixed at 0.7 (design choice); margin 0.1; constraint: under_opus = 0, under_sonnet <= 0.02
-grid points: 4480
+## 1. Live: route-eval.sh, 1 run, fresh Jev answers (5 questions per brief)
+confusion (rows = label, cols = routed):
+label/routed      haiku  sonnet    opus    FAIL
+haiku                5      70      76       0
+sonnet               0      27     159       0
+opus                 0       0     114       0
 
-Pareto set over (under-routed at the margin, over-routed); best two per under-routing level:
-under  u_opus  u_son  over   acc    | haikuP mech   amb    popus  conf  
-0      0       0      635    0.531  | 0.55   0      0.9    0.35   0     
-0      0       0      635    0.531  | 0.55   0      1.01   0.35   0     
-2      2       0      621    0.541  | 0.55   0      0.9    0.4    0     
-2      2       0      621    0.541  | 0.55   0      1.01   0.4    0     
-3      3       0      604    0.554  | 0.55   0      0.9    0.45   0     
-3      3       0      604    0.554  | 0.55   0      1.01   0.45   0     
-6      6       0      586    0.567  | 0.55   0      0.9    0.5    0     
-6      6       0      586    0.567  | 0.55   0      1.01   0.5    0     
-8      0       8      581    0.568  | 0.4    0      0.9    0.35   0     
-8      0       8      581    0.568  | 0.4    0      1.01   0.35   0     
-9      6       3      569    0.579  | 0.5    0      0.9    0.5    0     
-9      6       3      569    0.579  | 0.5    0      1.01   0.5    0     
-10     2       8      567    0.579  | 0.4    0      0.9    0.4    0     
-10     2       8      567    0.579  | 0.4    0      1.01   0.4    0     
-11     3       8      550    0.591  | 0.4    0      0.9    0.45   0     
-11     3       8      550    0.591  | 0.4    0      1.01   0.45   0     
-14     6       8      532    0.605  | 0.4    0      0.9    0.5    0     
-14     6       8      532    0.605  | 0.4    0      1.01   0.5    0     
-21     18      3      528    0.608  | 0.5    0      0.9    0.6    0     
-21     18      3      528    0.608  | 0.5    0      1.01   0.6    0     
-26     18      8      491    0.633  | 0.4    0      0.9    0.6    0     
-26     18      8      491    0.633  | 0.4    0      1.01   0.6    0     
+N=451 correct=146 accuracy=32.4%
+under-routed: 0 (0%)  by label: opus->lower=0 of 114, sonnet->haiku=0 of 186 (0%)
+over-routed:  305 (67.6%)  haiku->sonnet=70 haiku->opus=76 sonnet->opus=159
+weak under_routed labels (real run redone/escalated): 31; route.sh picked a higher tier than the one that ran for 15 (recall 48.4%); already at opus or above when it ran: 11
+unanchored subset (no line naming a tier): N=315, opus->lower=0 of 102, sonnet->haiku=0 of 133, over-routed 192 (61%), accuracy 39%
+vs the tier that actually ran: route.sh higher on 236, same on 184, lower on 31; the tier that ran was below the label on 8
+jev latency ms: {"n":451,"p50":228,"p95":274,"max":851}
+PASS: route eval
 
-chosen on the full set: JEV_ROUTE_HAIKU_P=0.55 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.35 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-        under (at margin 0.1): opus 0, sonnet 0, total 0; over 635 of 1353
+## 2. Replay: the v3 policy applied to every stored v2 Jev answer for this set (no new calls)
+# 14 result files from 2026-10-18..20, 9,914 answers (22 independent runs of the 451 tasks).
+nominal:                  opus->lower 0 of 2,507   sonnet->haiku 0 of 4,090   over-routed 67.2%   routed haiku 150 / sonnet 2,135 / opus 7,629
+every value 0.1 cheaper:  opus->lower 0 of 2,507   sonnet->haiku 0 of 4,090   over-routed 60.4%
+unanchored rows only:     opus->lower 0 of 1,938   sonnet->haiku 0 of 2,527   over-routed 61.2%
+# For comparison, the v2 policy (P(haiku) 0.6, P(opus) 0.35, gate 0.7) on the same 9,914 answers:
+# 0 under-routed, 46.5% over-routed. v3 trades about 20 points more over-routing for a wider
+# margin: no opus task comes near a lower tier even with every Jev value moved 0.1 the cheap way.
 
-=== holdout fold 0 (by task): tuned on 227 tasks / 681 rows, tested on 224 tasks / 672 rows
-fold 0 chose: JEV_ROUTE_HAIKU_P=0.55 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.35 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-  test half, nominal:
-    N=672 correct=379 accuracy=56.4%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-    over-routed:  293 (43.6%)  haiku->sonnet=61 haiku->opus=57 sonnet->opus=175
-    unanchored subset (no line naming a tier): N=486, opus->lower=0 of 165, sonnet->haiku=0 of 204, over-routed 187 (38.5%), accuracy 61.5%
-  test half, Jev values moved 0.1 toward the cheaper tier:
-    N=672 correct=444 accuracy=66.1%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-
-=== holdout fold 1 (by task): tuned on 224 tasks / 672 rows, tested on 227 tasks / 681 rows
-fold 1 chose: JEV_ROUTE_HAIKU_P=0.5 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.6 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-  test half, nominal:
-    N=681 correct=392 accuracy=57.6%
-    under-routed: 3 (0.4%)  by label: opus->lower=3 of 162, sonnet->haiku=0 of 297 (0%)
-    over-routed:  286 (42%)  haiku->sonnet=79 haiku->opus=44 sonnet->opus=163
-    unanchored subset (no line naming a tier): N=459, opus->lower=0 of 141, sonnet->haiku=0 of 195, over-routed 175 (38.1%), accuracy 61.9%
-  test half, Jev values moved 0.1 toward the cheaper tier:
-    N=681 correct=457 accuracy=67.1%
-    under-routed: 21 (3.1%)  by label: opus->lower=18 of 162, sonnet->haiku=3 of 297 (1%)
-
-=== shipped: the conservative combination of the two folds
-JEV_ROUTE_HAIKU_P=0.55 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.35 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-  full set, nominal:
-    
-    confusion (rows = label, cols = routed):
-    label/routed      haiku  sonnet    opus    FAIL
-    haiku              206     142     105       0
-    sonnet               0     170     388       0
-    opus                 0       0     342       0
-    
-    N=1353 correct=718 accuracy=53.1%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-    over-routed:  635 (46.9%)  haiku->sonnet=142 haiku->opus=105 sonnet->opus=388
-    weak under_routed labels (real run redone/escalated): 93; route.sh picked a higher tier than the one that ran for 42 (recall 45.2%); already at opus or above when it ran: 33
-    unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 399 (42.2%), accuracy 57.8%
-    vs the tier that actually ran: route.sh higher on 430, same on 798, lower on 125; the tier that ran was below the label on 24
-  full set, Jev values moved 0.1 toward the cheaper tier:
-    N=1353 correct=831 accuracy=61.4%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-    unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 349 (36.9%), accuracy 63.1%
-  fold 0 test half with the shipped point: nominal / at the margin:
-    nominal: under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-    margin:  under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-  fold 1 test half with the shipped point: nominal / at the margin:
-    nominal: under-routed: 0 (0%)  by label: opus->lower=0 of 162, sonnet->haiku=0 of 297 (0%)
-    margin:  under-routed: 0 (0%)  by label: opus->lower=0 of 162, sonnet->haiku=0 of 297 (0%)
-
-## 2. Session 2 (results-20261018T220455Z: 3 new Jev runs per task) — tune.sh, task-split holdout (summary)
-rows: 1353 eval rows over 451 tasks (from results-20261018T220455Z.jsonl), 0 outcome
-chosen on the full set: JEV_ROUTE_HAIKU_P=0.6 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.35 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-=== holdout fold 0 (by task): tuned on 227 tasks / 681 rows, tested on 224 tasks / 672 rows
-fold 0 chose: JEV_ROUTE_HAIKU_P=0.6 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.35 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-  test half, nominal:
-    N=672 correct=374 accuracy=55.7%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-    over-routed:  298 (44.3%)  haiku->sonnet=66 haiku->opus=59 sonnet->opus=173
-    unanchored subset (no line naming a tier): N=486, opus->lower=0 of 165, sonnet->haiku=0 of 204, over-routed 189 (38.9%), accuracy 61.1%
-    N=672 correct=435 accuracy=64.7%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-=== holdout fold 1 (by task): tuned on 224 tasks / 672 rows, tested on 227 tasks / 681 rows
-fold 1 chose: JEV_ROUTE_HAIKU_P=0.5 JEV_ROUTE_HAIKU_MECH=0 JEV_ROUTE_HAIKU_AMB=0.9 JEV_ROUTE_SONNET_POPUS=0.6 JEV_ROUTE_SONNET_CONF=0 JEV_ROUTE_SIGNAL_MIN=0.7 (fixed)
-  test half, nominal:
-    N=681 correct=394 accuracy=57.9%
-    under-routed: 3 (0.4%)  by label: opus->lower=3 of 162, sonnet->haiku=0 of 297 (0%)
-    over-routed:  284 (41.7%)  haiku->sonnet=80 haiku->opus=43 sonnet->opus=161
-    unanchored subset (no line naming a tier): N=459, opus->lower=0 of 141, sonnet->haiku=0 of 195, over-routed 174 (37.9%), accuracy 62.1%
-    N=681 correct=459 accuracy=67.4%
-    under-routed: 16 (2.3%)  by label: opus->lower=15 of 162, sonnet->haiku=1 of 297 (0.3%)
-=== shipped: the conservative combination of the two folds
-  full set, nominal:
-    N=1353 correct=702 accuracy=51.9%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-    over-routed:  651 (48.1%)  haiku->sonnet=156 haiku->opus=106 sonnet->opus=389
-    unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 402 (42.5%), accuracy 57.5%
-    N=1353 correct=814 accuracy=60.2%
-    under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-    unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 355 (37.6%), accuracy 62.4%
-  fold 0 test half with the shipped point: nominal / at the margin:
-    nominal: under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-    margin:  under-routed: 0 (0%)  by label: opus->lower=0 of 180, sonnet->haiku=0 of 261 (0%)
-  fold 1 test half with the shipped point: nominal / at the margin:
-    nominal: under-routed: 0 (0%)  by label: opus->lower=0 of 162, sonnet->haiku=0 of 297 (0%)
-    margin:  under-routed: 0 (0%)  by label: opus->lower=0 of 162, sonnet->haiku=0 of 297 (0%)
-
-## 3. Shipped: P(haiku) 0.6, P(opus) 0.35 (the most conservative fold values over both sessions:
-##    haiku 0.55 / 0.6 / 0.5 -> 0.6; P(opus) 0.35 / 0.6 / 0.35 / 0.6 -> 0.35), mechanical 0,
-##    ambiguity 0.9, confidence 0, signal gate 0.7 (fixed). m = Jev values moved toward the cheaper tier.
-== results-20261018T220034Z
-m=0 N=1353 correct=701 accuracy=51.8%
-m=0 under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-m=0 over-routed:  652 (48.2%)  haiku->sonnet=159 haiku->opus=105 sonnet->opus=388
-m=0 unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 404 (42.8%), accuracy 57.2%
-m=0.1 N=1353 correct=814 accuracy=60.2%
-m=0.1 under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-m=0.1 over-routed:  539 (39.8%)  haiku->sonnet=135 haiku->opus=64 sonnet->opus=340
-m=0.1 unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 353 (37.4%), accuracy 62.6%
-== results-20261018T220455Z
-m=0 N=1353 correct=702 accuracy=51.9%
-m=0 under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-m=0 over-routed:  651 (48.1%)  haiku->sonnet=156 haiku->opus=106 sonnet->opus=389
-m=0 unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 402 (42.5%), accuracy 57.5%
-m=0.1 N=1353 correct=814 accuracy=60.2%
-m=0.1 under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-m=0.1 over-routed:  539 (39.8%)  haiku->sonnet=132 haiku->opus=63 sonnet->opus=344
-m=0.1 unanchored subset (no line naming a tier): N=945, opus->lower=0 of 306, sonnet->haiku=0 of 399, over-routed 355 (37.6%), accuracy 62.4%
-
-## 4. Session 1 answers under other policies, for comparison
-### Jev's raw tier choice (no policy)
-N=1353 correct=943 accuracy=69.7%
-under-routed: 5 (0.4%)  by label: opus->lower=5 of 342, sonnet->haiku=0 of 558 (0%)
-over-routed:  405 (29.9%)  haiku->sonnet=132 haiku->opus=18 sonnet->opus=255
-### v1 policy (choice; +1 tier below confidence 0.6; opus when security or review >= 0.7)
-N=1353 correct=621 accuracy=45.9%
-under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-over-routed:  732 (54.1%)  haiku->sonnet=96 haiku->opus=190 sonnet->opus=446
-### brief's starting thresholds (P(haiku)>=0.85, mech>=0.8, amb<=0.3; P(opus)<=0.15, conf>=0.7; signals 0.5)
-N=1353 correct=406 accuracy=30%
-under-routed: 0 (0%)  by label: opus->lower=0 of 342, sonnet->haiku=0 of 558 (0%)
-over-routed:  947 (70%)  haiku->sonnet=113 haiku->opus=337 sonnet->opus=497
-### the tier that actually ran (model given, or the parent's model when none), first run rows only, haiku/sonnet/opus only
-N=429 correct=331 accuracy=77.2%
-under-routed: 8 (1.9%)  by label: opus->lower=6 of 102, sonnet->haiku=2 of 177 (1.1%)
-over-routed:  90 (21%)  haiku->sonnet=27 haiku->opus=5 sonnet->opus=58
-
-## Reading
-- Zero under-routing on the shipped point: 0 of 342 opus rows lower, 0 of 558 sonnet rows to haiku,
-  in both sessions, nominally and with every Jev value moved 0.1 toward the cheaper tier, and on the
-  unanchored subset (0 of 306 opus, 0 of 399 sonnet). Each fold's test half under the shipped point:
-  0 and 0 (also at the margin) — in-sample (conservative combination of both folds), since each test
-  half is the other fold's training data. Out of sample: fold 0's own choice (0.55 / 0.35, next to the
-  shipped point) under-routed 0 on its unseen half; fold 1's own choice (0.5 / 0.6) under-routed 3 of
-  162 opus rows (18 at the margin).
-- The folds disagree. Session 1: fold 0 picked P(haiku) 0.55 / P(opus) 0.35 and its test half had 0
-  under-routed; fold 1 picked 0.5 / 0.6 and under-routed 3 opus rows on its test half (18 at the
-  margin). Session 2 the same shape (0.6 / 0.35 and 0.5 / 0.6). The opus guarantee rests on the
-  conservative choice, and on one opus task with P(opus) 0.17-0.19 that only the 0.7 security gate
-  (0.88) keeps on opus; the next lowest are 0.47 (security 0.75), 0.56 and 0.64.
-- Over-routing is 48% overall and 43% on the unanchored subset. Stripping the anchors raised it (the
-  labels kept the anchored answers, Jev no longer sees them) and so did the stricter bars: round 1
-  (P(haiku) 0.5, P(opus) 0.4, unstripped text) over-routed 35%. Most of it is sonnet-labelled work
-  going to opus (388 of 558 rows).
-- Weak redo/escalate labels: route.sh picks a higher tier than the one that ran for 42 of 93 rows;
-  33 of the 93 already ran on opus or fable.
-- What actually ran under-routed 8 of 429 tasks (6 opus-labelled); Jev's raw choice under-routes 5 opus
-  rows on stripped text.
+## 3. Committed fixture (route-eval.sh, 36 sanitised real tasks, 2 separate runs; route-eval.txt)
+# 0 of 12 opus tasks routed lower and 0 of 12 sonnet tasks to haiku in both; over-routed 21 and
+# 20 of 36 (58% / 56%); no task carries a `kind`, so no haiku.

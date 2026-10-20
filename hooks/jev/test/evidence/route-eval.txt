@@ -1,88 +1,52 @@
-eval set: committed fixture (24 tasks, route-eval.jsonl), runs=3
+eval set: committed fixture (36 tasks, route-eval-real.jsonl), runs=1
 
 id           label   routed   conf  policy
-h1           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.46, ambiguous 0.68
-h1           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.48, ambiguous 0.67
-h1           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.52, ambiguous 0.66
-h2           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.73, ambiguous 0.56
-h2           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.71, ambiguous 0.55
-h2           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.71, ambiguous 0.55
-h3           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.93, ambiguous 0.32
-h3           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.93, ambiguous 0.32
-h3           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.93, ambiguous 0.31
-h4           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.86, ambiguous 0.48
-h4           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.87, ambiguous 0.46
-h4           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.87, ambiguous 0.45
-h5           haiku   haiku    0.98  haiku: P(haiku) 0.99 >= 0.6, mechanical 0.91, ambiguous 0.3
-h5           haiku   haiku    0.98  haiku: P(haiku) 0.99 >= 0.6, mechanical 0.92, ambiguous 0.28
-h5           haiku   haiku    0.98  haiku: P(haiku) 0.99 >= 0.6, mechanical 0.91, ambiguous 0.28
-h6           haiku   haiku    0.41  haiku: P(haiku) 0.61 >= 0.6, mechanical 0.48, ambiguous 0.75
-h6           haiku   haiku    0.43  haiku: P(haiku) 0.62 >= 0.6, mechanical 0.45, ambiguous 0.76
-h6           haiku   sonnet   0.37  sonnet: P(opus) 0.07 <= 0.35, confidence 0.37 >= 0
-h7           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.57, ambiguous 0.64
-h7           haiku   haiku     1.0  haiku: P(haiku) 1 >= 0.6, mechanical 0.58, ambiguous 0.63
-h7           haiku   haiku    0.98  haiku: P(haiku) 0.99 >= 0.6, mechanical 0.6, ambiguous 0.64
-h8           haiku   haiku    0.73  haiku: P(haiku) 0.82 >= 0.6, mechanical 0.65, ambiguous 0.57
-h8           haiku   haiku     0.7  haiku: P(haiku) 0.8 >= 0.6, mechanical 0.67, ambiguous 0.57
-h8           haiku   haiku    0.74  haiku: P(haiku) 0.83 >= 0.6, mechanical 0.65, ambiguous 0.59
-o1           opus    opus     0.79  opus: P(opus) 0.86 > 0.35
-o1           opus    opus     0.74  opus: P(opus) 0.83 > 0.35, security/blast radius 0.7
-o1           opus    opus     0.76  opus: P(opus) 0.84 > 0.35, security/blast radius 0.73
-o2           opus    opus      1.0  opus: P(opus) 1 > 0.35, security/blast radius 0.98, non-trivial review 0.98
-o2           opus    opus      1.0  opus: P(opus) 1 > 0.35, security/blast radius 0.98, non-trivial review 0.98
-o2           opus    opus      1.0  opus: P(opus) 1 > 0.35, security/blast radius 0.98, non-trivial review 0.98
-o3           opus    opus     0.95  opus: P(opus) 0.97 > 0.35
-o3           opus    opus     0.95  opus: P(opus) 0.97 > 0.35
-o3           opus    opus     0.95  opus: P(opus) 0.97 > 0.35
-o4           opus    opus     0.89  opus: P(opus) 0.93 > 0.35, security/blast radius 0.85
-o4           opus    opus     0.88  opus: P(opus) 0.92 > 0.35, security/blast radius 0.85
-o4           opus    opus     0.86  opus: P(opus) 0.91 > 0.35, security/blast radius 0.84
-o5           opus    opus     0.92  opus: P(opus) 0.95 > 0.35, security/blast radius 0.98
-o5           opus    opus     0.91  opus: P(opus) 0.94 > 0.35, security/blast radius 0.98
-o5           opus    opus     0.92  opus: P(opus) 0.95 > 0.35, security/blast radius 0.98
-o6           opus    opus     0.98  opus: P(opus) 0.99 > 0.35, security/blast radius 0.98
-o6           opus    opus     0.98  opus: P(opus) 0.99 > 0.35, security/blast radius 0.98
-o6           opus    opus     0.98  opus: P(opus) 0.99 > 0.35, security/blast radius 0.98
-o7           opus    opus     0.36  opus: P(opus) 0.57 > 0.35, security/blast radius 0.78
-o7           opus    opus     0.48  opus: P(opus) 0.65 > 0.35, security/blast radius 0.75
-o7           opus    opus     0.37  opus: P(opus) 0.58 > 0.35, security/blast radius 0.76
-o8           opus    opus     0.98  opus: P(opus) 0.99 > 0.35
-o8           opus    opus     0.98  opus: P(opus) 0.99 > 0.35
-o8           opus    opus     0.98  opus: P(opus) 0.99 > 0.35
-s1           sonnet  sonnet   0.98  sonnet: P(opus) 0.01 <= 0.35, confidence 0.98 >= 0
-s1           sonnet  sonnet   0.98  sonnet: P(opus) 0.01 <= 0.35, confidence 0.98 >= 0
-s1           sonnet  sonnet   0.98  sonnet: P(opus) 0.01 <= 0.35, confidence 0.98 >= 0
-s2           sonnet  sonnet   0.64  sonnet: P(opus) 0.24 <= 0.35, confidence 0.64 >= 0
-s2           sonnet  sonnet   0.59  sonnet: P(opus) 0.27 <= 0.35, confidence 0.59 >= 0
-s2           sonnet  sonnet   0.67  sonnet: P(opus) 0.22 <= 0.35, confidence 0.67 >= 0
-s3           sonnet  sonnet    0.7  sonnet: P(opus) 0 <= 0.35, confidence 0.7 >= 0
-s3           sonnet  sonnet   0.73  sonnet: P(opus) 0 <= 0.35, confidence 0.73 >= 0
-s3           sonnet  sonnet   0.74  sonnet: P(opus) 0 <= 0.35, confidence 0.74 >= 0
-s4           sonnet  sonnet   0.91  sonnet: P(opus) 0.01 <= 0.35, confidence 0.91 >= 0
-s4           sonnet  sonnet   0.89  sonnet: P(opus) 0.01 <= 0.35, confidence 0.89 >= 0
-s4           sonnet  sonnet   0.91  sonnet: P(opus) 0.01 <= 0.35, confidence 0.91 >= 0
-s5           sonnet  sonnet   0.98  sonnet: P(opus) 0 <= 0.35, confidence 0.98 >= 0
-s5           sonnet  sonnet   0.98  sonnet: P(opus) 0 <= 0.35, confidence 0.98 >= 0
-s5           sonnet  sonnet   0.98  sonnet: P(opus) 0 <= 0.35, confidence 0.98 >= 0
-s6           sonnet  sonnet   0.86  sonnet: P(opus) 0.07 <= 0.35, confidence 0.86 >= 0
-s6           sonnet  sonnet   0.88  sonnet: P(opus) 0.06 <= 0.35, confidence 0.88 >= 0
-s6           sonnet  sonnet   0.88  sonnet: P(opus) 0.06 <= 0.35, confidence 0.88 >= 0
-s7           sonnet  sonnet   0.92  sonnet: P(opus) 0.05 <= 0.35, confidence 0.92 >= 0
-s7           sonnet  sonnet   0.92  sonnet: P(opus) 0.05 <= 0.35, confidence 0.92 >= 0
-s7           sonnet  sonnet   0.92  sonnet: P(opus) 0.05 <= 0.35, confidence 0.92 >= 0
-s8           sonnet  sonnet   0.98  sonnet: P(opus) 0 <= 0.35, confidence 0.98 >= 0
-s8           sonnet  sonnet    1.0  sonnet: P(opus) 0 <= 0.35, confidence 1 >= 0
-s8           sonnet  sonnet   0.98  sonnet: P(opus) 0.01 <= 0.35, confidence 0.98 >= 0
+r01          haiku   sonnet   0.91  sonnet: P(opus) 0.02 <= 0.15
+r02          haiku   sonnet    1.0  sonnet: P(opus) 0 <= 0.15
+r03          haiku   sonnet   0.72  sonnet: P(opus) 0 <= 0.15
+r04          haiku   sonnet   0.52  sonnet: P(opus) 0.13 <= 0.15
+r05          haiku   sonnet    0.3  sonnet: P(opus) 0.02 <= 0.15
+r06          haiku   sonnet   0.34  sonnet: P(opus) 0.05 <= 0.15
+r07          haiku   sonnet   0.76  sonnet: P(opus) 0.06 <= 0.15
+r08          haiku   sonnet    0.3  sonnet: P(opus) 0.09 <= 0.15
+r09          haiku   opus      1.0  opus: default (P(opus) 0)
+r10          haiku   sonnet   0.45  sonnet: P(opus) 0.03 <= 0.15
+r11          haiku   opus     0.48  opus: default (P(opus) 0.18)
+r12          haiku   sonnet    0.7  sonnet: P(opus) 0.01 <= 0.15
+r13          opus    opus     0.97  opus: security/blast radius 0.79, non-trivial review 0.97
+r14          opus    opus     0.53  opus: non-trivial review 0.92
+r15          opus    opus     0.73  opus: default (P(opus) 0.82)
+r16          opus    opus     0.28  opus: security/blast radius 0.74
+r17          opus    opus     0.83  opus: default (P(opus) 0.89)
+r18          opus    opus     0.98  opus: non-trivial review 0.98
+r19          opus    opus     0.98  opus: non-trivial review 0.98
+r20          opus    opus     0.53  opus: default (P(opus) 0.69)
+r21          opus    opus     0.97  opus: default (P(opus) 0.98)
+r22          opus    opus     0.85  opus: security/blast radius 0.89, non-trivial review 0.98
+r23          opus    opus      1.0  opus: security/blast radius 0.94, non-trivial review 0.98
+r24          opus    opus     0.94  opus: default (P(opus) 0.96)
+r25          sonnet  opus     0.28  opus: security/blast radius 0.95
+r26          sonnet  opus     0.45  opus: default (P(opus) 0.37)
+r27          sonnet  sonnet   0.76  sonnet: P(opus) 0.14 <= 0.15
+r28          sonnet  sonnet   0.97  sonnet: P(opus) 0.02 <= 0.15
+r29          sonnet  opus     0.64  opus: non-trivial review 0.89
+r30          sonnet  opus     0.55  opus: default (P(opus) 0.27)
+r31          sonnet  opus     0.72  opus: default (P(opus) 0.19)
+r32          sonnet  sonnet   0.92  sonnet: P(opus) 0.03 <= 0.15
+r33          sonnet  opus     0.85  opus: default (P(opus) 0.9)
+r34          sonnet  sonnet   0.97  sonnet: P(opus) 0.02 <= 0.15
+r35          sonnet  opus     0.89  opus: default (P(opus) 0.93)
+r36          sonnet  opus     0.55  opus: default (P(opus) 0.3)
 
 confusion (rows = label, cols = routed):
 label/routed      haiku  sonnet    opus    FAIL
-haiku               23       1       0       0
-sonnet               0      24       0       0
-opus                 0       0      24       0
+haiku                0      10       2       0
+sonnet               0       4       8       0
+opus                 0       0      12       0
 
-N=72 correct=71 accuracy=98.6%
-under-routed: 0 (0%)  by label: opus->lower=0 of 24, sonnet->haiku=0 of 24 (0%)
-over-routed:  1 (1.4%)  haiku->sonnet=1 haiku->opus=0 sonnet->opus=0
-unanchored subset (no line naming a tier): N=72, opus->lower=0 of 24, sonnet->haiku=0 of 24, over-routed 1 (1.4%), accuracy 98.6%
-jev latency ms: {"n":72,"p50":243,"p95":284,"max":489}
+N=36 correct=16 accuracy=44.4%
+under-routed: 0 (0%)  by label: opus->lower=0 of 12, sonnet->haiku=0 of 12 (0%)
+over-routed:  20 (55.6%)  haiku->sonnet=10 haiku->opus=2 sonnet->opus=8
+unanchored subset (no line naming a tier): N=30, opus->lower=0 of 11, sonnet->haiku=0 of 12, over-routed 15 (50%), accuracy 50%
+jev latency ms: {"n":36,"p50":234,"p95":292,"max":330}
 PASS: route eval

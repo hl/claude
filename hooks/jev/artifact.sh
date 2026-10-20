@@ -1,20 +1,16 @@
 #!/usr/bin/env bash
 # artifact.sh — save a deliverable (report, review, findings) where it survives
-# compaction, and index it in the session's ledger.
+# compaction: the artifact index is re-injected after every compaction.
 #
 #   artifact.sh <name> [--from-file <path>] [--session <id>]     (content on stdin otherwise)
 #
-# Writes ~/.local/state/jev/artifacts/<session_id>/<name>.md, prints that path, and
-# appends an `artifact` fact to the ledger (so compaction re-injects the index).
-# Writing the same name again replaces the file and supersedes the old fact.
-# Content over JEV_ARTIFACT_MAX_BYTES (512 KB) is cut, with a note saying so.
-# With JEV_DISABLED=1 the file is still written (it was asked for) but nothing
-# goes to the ledger, so nothing can reach Jev.
+# Writes ~/.local/state/jev/artifacts/<session_id>/<name>.md and prints that
+# path. Writing the same name again replaces the file. Content over
+# JEV_ARTIFACT_MAX_BYTES (512 KB) is cut, with a note saying so.
 #
 # Session id, first match wins: --session, $CLAUDE_CODE_SESSION_ID (exported to
 # Bash tool commands and hooks by Claude Code 2.1.302, subagents included),
-# $CLAUDE_SESSION_ID, the pointer ledger.sh keeps for $CLAUDE_PID, the pointer
-# for the current directory (or $CLAUDE_PROJECT_DIR). Exits 2 when none is found.
+# $CLAUDE_SESSION_ID. Exits 2 when none is found.
 # Local only: nothing is sent anywhere.
 set -euo pipefail
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -46,16 +42,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-pointer() { sed -n 1p "$JEV_HOME/sessions/$1" 2>/dev/null || true; }
-cwd_key() { # physical path, as ledger.sh writes it
-  local p
-  p=$(cd "$1" 2>/dev/null && pwd -P) || p=$1
-  printf '%s' "$p" | cksum | cut -d' ' -f1
-}
 [ -n "$sid" ] || sid=${CLAUDE_CODE_SESSION_ID:-${CLAUDE_SESSION_ID:-}}
-[ -n "$sid" ] || [ -z "${CLAUDE_PID:-}" ] || sid=$(pointer "pid-$CLAUDE_PID")
-[ -n "$sid" ] || sid=$(pointer "cwd-$(cwd_key "$PWD")")
-[ -n "$sid" ] || [ -z "${CLAUDE_PROJECT_DIR:-}" ] || sid=$(pointer "cwd-$(cwd_key "$CLAUDE_PROJECT_DIR")")
 case $sid in
   '') echo "artifact.sh: no session id (pass --session <id>)" >&2 && exit 2 ;;
   *[!A-Za-z0-9._-]*) echo "artifact.sh: bad session id" >&2 && exit 2 ;;
@@ -92,8 +79,4 @@ if [ "$size" -gt "$cap" ]; then
   echo "artifact.sh: content cut to $cap of $size bytes" >&2
 fi
 mv "$tmpf" "$path"
-
-# First meaningful line as the title in the index.
-title=$(grep -m 1 -v -e '^[[:space:]]*$' -e '^<!--' "$path" | sed -e 's/^#* *//' | cut -c1-120 || true)
-"$JEV_DIR/ledger.sh" --add "$sid" artifact 2.5 "Artifact $name: $path${title:+ — $title}" "" "$path" >/dev/null 2>&1 || true
 echo "$path"

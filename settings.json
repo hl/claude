@@ -1,8 +1,7 @@
 {
   "env": {
     "BASH_MAX_TIMEOUT_MS": "3600000",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "JEV_LEDGER": "0"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
   "permissions": {
     "allow": [
@@ -76,18 +75,6 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/compact-session.sh",
             "timeout": 20
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$HOME/.claude/hooks/jev/ledger.sh",
-            "async": true,
-            "timeout": 10
           }
         ]
       }

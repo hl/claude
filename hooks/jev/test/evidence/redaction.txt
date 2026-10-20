@@ -52,7 +52,7 @@ ok   - redacted: env: \n   - name: API_TOKEN \n     value: <redacted> \n   - nam
 ok   - redacted: - name: "SIGNING_SECRET" \n   value: <redacted>
 ok   - kept: paths, hostnames, git remotes, PR links
 ## 2. on the wire (fake Jev on 127.0.0.1)
-ok   - 5 request bodies captured (hooks that called out: agent-route,compact-post,compact-pre,ledger,route)
+ok   - 4 request bodies captured (hooks that called out: agent-route,compact-post,compact-pre,route)
 ok   - the API key is not in any captured body or header (Authorization recorded as <present>)
 ok   - none of the 51 planted secrets is in any captured body
 ok   - paths and hostnames still reach Jev

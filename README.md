@@ -6,7 +6,7 @@ Personal Claude Code configuration.
 |---|---|
 | `settings.json` | Hooks, permissions, statusline, model |
 | `agents/` | Personal subagents (`claudette` orchestrator) |
-| `hooks/` | Formatting on edit, silent-bash wrapper, herdr agent-state reporting, Jev routing, session ledger and compaction (`hooks/jev/`) |
+| `hooks/` | Formatting on edit, silent-bash wrapper, herdr agent-state reporting, Jev model routing, compaction help and artifacts (`hooks/jev/`) |
 | `statusline-command.sh` | Statusline renderer |
 | `tools/beads-status/` | Small TUI for `bd` status (source only; `go build -o ~/.claude/bin/beads-status .`) |
 | `tools/clash/` | zsh plugin: `: <message>` at the prompt talks to Claude Code, forgecode-style (`source` it from `~/.zshrc`; `:help` lists commands) |
@@ -22,9 +22,20 @@ model names, no config-dir paths. Per-runner specifics live in that runner's own
 
 `hooks/jev/` uses Jev, TypeSafe AI's decision model, to stop long sessions wasting work: retries after a too-light model, research done twice, and state lost at compaction.
 
-- **Model choice.** `route.sh` picks haiku, sonnet or opus for a brief, plus a reviewer model and whether to investigate first. It routes to opus unless Jev is confident a lower tier suffices; the thresholds were tuned on 451 real Agent calls from local transcripts, labelled blind, with model-naming lines stripped from the briefs (0 opus tasks under-routed, 48% over-routed). Claudette calls it with `--context`; a PreToolUse hook on `Agent` raises an explicit haiku or sonnet when Jev is sure it falls short.
-- **Long sessions.** A Stop hook keeps a per-session ledger of important facts, turn by turn, and marks the ones later corrected. At compaction the hooks re-inject the live `.orchestrator.md` sections, the index of saved artifacts and the facts the summary dropped. `artifact.sh` saves deliverables to disk, and every subagent result over 2,000 characters is saved automatically.
+- **Model choice.** `route.sh` picks the model for a brief, plus a reviewer model, starting from opus:
+  - haiku for `kind` poll, fetch or lookup, or when Jev is sure the task is mechanical and safe;
+  - sonnet only when Jev is sure it is routine and low-risk;
+  - opus otherwise.
 
-To enable the hooks, set `TYPESAFE_API_KEY` in the environment or in `~/.zshenv`; nothing else is needed, the first run sets up its own state in `~/.local/state/jev` (moving an older `~/.claude/jev` there). To disable them, set `JEV_DISABLED=1` (`JEV_LEDGER=0` and `JEV_ROUTE_MODE=off` switch off single parts).
+  On 451 real Agent tasks labelled blind, no opus task was routed lower, and about two thirds of the tasks ran a tier above their label. Claudette calls `route.sh` and puts its id in the brief. In Claudette sessions, a PreToolUse hook on `Agent` raises an explicit haiku or sonnet that carries no route id when Jev would pick higher. A PostToolUse hook tells the parent which model ran.
+- **Compaction.** The hooks re-inject the live `.orchestrator.md` sections and the index of saved artifacts after every compaction, in any session. In Claudette sessions they also re-inject the facts the summary dropped. Every subagent result over 2,000 characters is saved to disk, and `artifact.sh` saves deliverables by hand.
 
-**What leaves the machine:** each turn's new facts and up to 20k characters of that turn's text, the compaction summary, and each Agent call's prompt go to `api.typesafe.ai`, all redacted first (keys, tokens, Authorization headers, secret-named variables, emails, IPs; paths and hostnames are kept). Ledger, artifacts and logs stay in `~/.local/state/jev/`. Every hook fails open. `hooks/jev/README.md` documents the design, the knobs, the observed hook payloads, the limits and the tests (`hooks/jev/test/run.sh`).
+Jev is called only in Claudette sessions (an `.orchestrator.md` at the project root):
+
+- once per `route.sh` call;
+- once per Agent spawn that is an explicit haiku or sonnet with no logged route id;
+- at most twice per compaction.
+
+A routine turn sends nothing. `JEV_SCOPE=all` extends this to every session, and `JEV_DISABLED=1` switches everything off. To enable the hooks, set `TYPESAFE_API_KEY` in the environment or in `~/.zshenv`. State lives in `~/.local/state/jev`.
+
+**What leaves the machine:** the brief, an unrouted Agent prompt, or the compaction facts with up to 40k characters of the transcript tail and the summary. All of it goes to `api.typesafe.ai`, redacted first: keys, tokens, Authorization headers, secret-named variables, emails and IPs are removed, while paths and hostnames are kept. Redaction does not hide code or business details. Every hook fails open. `hooks/jev/README.md` documents the design, the knobs, the limits and the tests (`hooks/jev/test/run.sh`).

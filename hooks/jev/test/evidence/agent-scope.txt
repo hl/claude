@@ -1,0 +1,20 @@
+# live-agent.sh — 2026-10-20T11:27Z, 2.1.304 (Claude Code)
+## case: plain (.orchestrator.md: no)
+--- route.jsonl
+{"hook":"agent-ran","action":"ran","given_model":null,"final_model":null,"resolved_model":"claude-haiku-5-5","reason":null}
+--- Jev requests: 0
+--- subagent message.model values: claude-haiku-5-5
+--- parent reply:
+hook said: Subagent ran on claude-haiku-5-5.
+
+--- PostToolUse additionalContext in the parent transcript: Subagent ran on claude-haiku-5-5.
+## case: claudette (.orchestrator.md: yes)
+--- route.jsonl
+{"hook":"agent-route","action":"escalated","given_model":"haiku","final_model":"opus","resolved_model":null,"reason":"jev: haiku→opus (opus: security/blast radius 0.97, non-trivial review 0.9)"}
+{"hook":"agent-ran","action":"ran","given_model":null,"final_model":null,"resolved_model":"claude-opus-5-5","reason":null}
+--- Jev requests: 1
+--- subagent message.model values: claude-opus-5-5
+--- parent reply:
+hook said: Subagent ran on claude-opus-5-5 (raised from haiku by the Jev Agent hook).
+
+--- PostToolUse additionalContext in the parent transcript: Subagent ran on claude-opus-5-5
