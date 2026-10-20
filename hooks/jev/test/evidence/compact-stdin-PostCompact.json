@@ -1,9 +1,9 @@
 {
-  "session_id": "8bc67751-02b5-4011-892c-8592e0a863e7",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/8bc67751-02b5-4011-892c-8592e0a863e7.jsonl",
+  "session_id": "5c862eeb-11ff-42ac-82f1-14f57b1ac730",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/5c862eeb-11ff-42ac-82f1-14f57b1ac730.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "b36d9c6d-daab-4861-872a-28d04f35283b",
+  "prompt_id": "aa4efdd3-220d-4589-ac30-cf1603000335",
   "hook_event_name": "PostCompact",
   "trigger": "manual",
-  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and to drop every background fact, name, number and path. So the summary is a single line. Earlier requests were all completed. The last task was running `ls` on a nonexistent directory and reporting the error in one line. The command ran and failed with exit code 2, \"No such file or directory\". That one-line error report has not been given to the user yet.\n</analysis>\n\n<summary>\nCurrent task: report in one line the error from the failed directory-listing command the user asked me to run, which w …[truncated]"
+  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and to drop every background fact, name, number and path. The summary below therefore holds just that one line. The staging-database constraint was stated in the conversation, but the instructions override the usual preservation rule, so I have left it out.\n</analysis>\n\n<summary>\nCurrent task: report in one line the error from running `ls` on a nonexistent directory. The command failed with exit code 2 and the message `No such file or directory (os error 2)`.\n</summary> …[truncated]"
 }
