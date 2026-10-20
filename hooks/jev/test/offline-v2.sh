@@ -461,17 +461,17 @@ wait "${pids[@]}" # not a bare wait: the fake Jev server is a background job too
   ok "jev_log: 12 parallel $(printf '%s' "$big" | wc -c | tr -d ' ')-byte lines all parse" || bad "jev_log: interleaved lines"
 
 # --- 9. autotune: applies only a safe, more conservative point; otherwise a proposal
-autotune_home() { # <dir> <current thresholds json>: synthetic real set + 60 outcomes
+autotune_home() { # <dir> <current thresholds json> [sonnet rows' P(opus)]: synthetic real set + 60 outcomes
   local h=$1
   mkdir -p "$h/eval" "$h/log" "$h/tune"
-  jq -cn '
+  jq -cn --argjson spo "${3:-0.1}" '
     def row($id; $label; $ph; $ps; $po; $sec; $anch):
       {id: $id, run: "1", label: $label, model: "opus", anchored: $anch,
        probabilities: {haiku: $ph, sonnet: $ps, opus: $po}, confidence: 0.9,
        signals: {mechanical: 0.5, ambiguous: 0.4, needs_research: 0.3, security_or_high_blast_radius: $sec, review_of_nontrivial_diff: 0.1, nontrivial_change: 0.3}};
     range(0; 60) as $i | ("t" + ("0123456789abcdef" | .[($i % 16):($i % 16) + 1]) + ($i | tostring)) as $id
     | if $i % 3 == 0 then row($id; "haiku"; 0.92; 0.08; 0; 0.1; ($i % 2 == 0))
-      elif $i % 3 == 1 then row($id; "sonnet"; 0.05; 0.85; 0.1; 0.2; ($i % 2 == 0))
+      elif $i % 3 == 1 then row($id; "sonnet"; 0.05; 0.85; $spo; 0.2; ($i % 2 == 0))
       else row($id; "opus"; 0; 0.15; 0.85; 0.3; ($i % 2 == 0)) end' >"$h/eval/results-20260101T000000Z.jsonl"
   for i in $(seq 1 60); do
     jq -cn --arg id "r$i" '{action: "route", id: $id, model: "sonnet", probabilities: {haiku: 0.05, sonnet: 0.85, opus: 0.1}, confidence: 0.9,
@@ -487,16 +487,26 @@ jq -e '.haiku_p >= 0.4 and .sonnet_popus <= 0.6 and .provenance.under_routed.all
   jq -e -s 'any(.[]; .status == "autotune_applied")' "$AT1/log/jev.jsonl" >/dev/null 2>&1 && [ ! -e "$AT1/tune/proposal.json" ] &&
   ok "autotune: 60 outcomes, a safer point (P(haiku) $(jq .haiku_p "$AT1/tune/thresholds.json"), P(opus) $(jq .sonnet_popus "$AT1/tune/thresholds.json")) with 0 under-routing -> applied, logged" ||
   bad "autotune apply: $(cat "$AT1/tune/thresholds.json" 2>/dev/null | head -c 300) $(tail -n 1 "$AT1/log/jev.jsonl" 2>/dev/null | head -c 300)"
-AT2="$W/at-proposal"
+# the baseline is the shipped defaults, not the current file: a point looser than a
+# strict file but still stricter than the defaults is applied
+AT2="$W/at-strict"
 autotune_home "$AT2" '{"haiku_p": 0.95, "haiku_mech": 0, "haiku_amb": 0.9, "sonnet_popus": 0.05, "sonnet_conf": 0}'
 JEV_HOME="$AT2" "$J/autotune.sh"
-jq -e '.haiku_p == 0.95 and .sonnet_popus == 0.05' "$AT2/tune/thresholds.json" >/dev/null 2>&1 && [ -s "$AT2/tune/proposal.json" ] &&
-  jq -e '(.why_not_applied.not_conservative | length) > 0' "$AT2/tune/proposal.json" >/dev/null &&
-  jq -e -s 'any(.[]; .status == "autotune_proposal")' "$AT2/log/jev.jsonl" >/dev/null 2>&1 &&
-  ok "autotune: a looser point (not conservative: $(jq -c '.why_not_applied.not_conservative' "$AT2/tune/proposal.json")) -> proposal.json, thresholds untouched, logged" ||
-  bad "autotune proposal: $(head -c 300 "$AT2/tune/proposal.json" 2>/dev/null)"
-JEV_HOME="$AT2" "$J/autotune.sh"
-[ "$(jq -s '[.[] | select(.status | startswith("autotune"))] | length' "$AT2/log/jev.jsonl")" = 1 ] &&
+jq -e '.haiku_p >= 0.6 and .haiku_p < 0.95 and .sonnet_popus <= 0.35 and .provenance.under_routed.all_at_margin == 0' "$AT2/tune/thresholds.json" >/dev/null 2>&1 &&
+  [ ! -e "$AT2/tune/proposal.json" ] &&
+  ok "autotune: baseline is the shipped defaults: strict file (0.95/0.05), tuned point $(jq -c '[.haiku_p, .sonnet_popus]' "$AT2/tune/thresholds.json") still at or past the defaults -> applied" ||
+  bad "autotune strict file: $(head -c 300 "$AT2/tune/thresholds.json" 2>/dev/null)"
+# sonnet tasks at P(opus) 0.45: the tuned P(opus) bar lands above the shipped 0.35 -> proposal only
+AT4="$W/at-proposal"
+autotune_home "$AT4" '{}' 0.45
+JEV_HOME="$AT4" "$J/autotune.sh"
+jq -e '. == {}' "$AT4/tune/thresholds.json" >/dev/null 2>&1 && [ -s "$AT4/tune/proposal.json" ] &&
+  jq -e '.thresholds.sonnet_popus > 0.35 and (.why_not_applied.not_conservative | index("sonnet_popus"))' "$AT4/tune/proposal.json" >/dev/null 2>&1 &&
+  jq -e -s 'any(.[]; .status == "autotune_proposal")' "$AT4/log/jev.jsonl" >/dev/null 2>&1 &&
+  ok "autotune: tuned looser than the shipped defaults (P(opus) bar $(jq .thresholds.sonnet_popus "$AT4/tune/proposal.json") > 0.35) -> proposal.json, thresholds untouched, logged" ||
+  bad "autotune proposal: $(head -c 300 "$AT4/tune/proposal.json" 2>/dev/null)"
+JEV_HOME="$AT4" "$J/autotune.sh"
+[ "$(jq -s '[.[] | select(.status | startswith("autotune"))] | length' "$AT4/log/jev.jsonl")" = 1 ] &&
   ok "autotune: does nothing until another JEV_AUTOTUNE_MIN (50) outcomes arrive" || bad "autotune ran again without new outcomes"
 # the daily sweep of the first ledger run starts it (synchronously here)
 AT3="$W/at-sweep"
@@ -509,6 +519,17 @@ jq -e -s 'any(.[]; .status == "autotune_applied")' "$AT3/log/jev.jsonl" >/dev/nu
 # route.sh reads the applied thresholds (the fake Jev answers)
 o=$(JEV_HOME="$AT1" "$J/route.sh" "Fix the typo on line 3 of README.md." 2>/dev/null)
 jq -e '.tuned == true' <<<"$o" >/dev/null 2>&1 && ok "route.sh: uses \$JEV_HOME/tune/thresholds.json when present (tuned: true)" || bad "route.sh ignored tuned thresholds: $o"
+# ... clamped to the shipped defaults or stricter, whoever wrote it
+CL="$W/clamp"
+mkdir -p "$CL/tune"
+echo '{"haiku_p": 0.2, "haiku_mech": -1, "haiku_amb": 1, "sonnet_popus": 0.9, "sonnet_conf": "0.5", "sec": 0.99}' >"$CL/tune/thresholds.json"
+o=$(JEV_HOME="$CL" "$J/route.sh" "Fix the typo on line 3 of README.md." 2>/dev/null)
+jq -e '.thresholds == {haiku_p: 0.6, haiku_mech: 0, haiku_amb: 0.9, sonnet_popus: 0.35, sonnet_conf: 0, sec: 0.7}' <<<"$o" >/dev/null 2>&1 &&
+  ok "route.sh: a looser thresholds.json is clamped to the shipped defaults (signal gate and non-numbers ignored)" || bad "route.sh clamp: $(jq -c .thresholds <<<"$o" 2>/dev/null)"
+echo '{"haiku_p": 0.8, "haiku_mech": 0.2, "haiku_amb": 0.5, "sonnet_popus": 0.2, "sonnet_conf": 0.3}' >"$CL/tune/thresholds.json"
+o=$(JEV_HOME="$CL" "$J/route.sh" "Fix the typo on line 3 of README.md." 2>/dev/null)
+jq -e '.thresholds == {haiku_p: 0.8, haiku_mech: 0.2, haiku_amb: 0.5, sonnet_popus: 0.2, sonnet_conf: 0.3, sec: 0.7}' <<<"$o" >/dev/null 2>&1 &&
+  ok "route.sh: a stricter thresholds.json is used as is" || bad "route.sh strict file: $(jq -c .thresholds <<<"$o" 2>/dev/null)"
 
 echo "offline-v2: $fails failure(s)"
 [ "$fails" -eq 0 ]

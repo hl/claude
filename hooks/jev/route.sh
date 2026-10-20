@@ -124,12 +124,21 @@ req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
 resp=$(jev_call <<<"$req") || exit 1
 
 # Thresholds: the defaults below, then $JEV_HOME/tune/thresholds.json if autotune
-# applied one (only ever a more conservative point, see autotune.sh), then any
-# JEV_ROUTE_* variable. The security/review gate is never tuned.
+# applied one, then any JEV_ROUTE_* variable. The file is clamped to the shipped
+# defaults or stricter, so neither autotune nor a hand edit can loosen routing
+# (P(haiku), mechanical and confidence bars only up; ambiguity and P(opus) bars
+# only down); non-numbers are ignored. The security/review gate is never read
+# from it. An explicit JEV_ROUTE_* variable is a person's choice and is not clamped.
 tuned='{}'
 tf="$JEV_HOME/tune/thresholds.json"
 if [ -f "$tf" ]; then
-  tuned=$(jq -c '{haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf} | with_entries(select(.value | type == "number"))' "$tf" 2>/dev/null) || tuned='{}'
+  tuned=$(jq -c 'if type == "object" then . else {} end
+    | {haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf} | with_entries(select(.value | type == "number"))
+    | (if .haiku_p then .haiku_p |= ([., 0.6] | max) else . end)
+    | (if .haiku_mech then .haiku_mech |= ([., 0] | max) else . end)
+    | (if .sonnet_conf then .sonnet_conf |= ([., 0] | max) else . end)
+    | (if .haiku_amb then .haiku_amb |= ([., 0.9] | min) else . end)
+    | (if .sonnet_popus then .sonnet_popus |= ([., 0.35] | min) else . end)' "$tf" 2>/dev/null) || tuned='{}'
 fi
 thresholds=$(jq -cn --argjson t "$tuned" \
   --arg hp "${JEV_ROUTE_HAIKU_P:-}" --arg hm "${JEV_ROUTE_HAIKU_MECH:-}" --arg ha "${JEV_ROUTE_HAIKU_AMB:-}" \
@@ -154,7 +163,8 @@ out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --ar
   | {id: $id, model: $d.model, reviewer_model: $d.reviewer_model, deepen: $d.deepen, policy: $d.policy,
      confidence: $in.confidence, probabilities: $in.probabilities, signals: $in.signals,
      jev_choice: $a.tier.choice, jev_model: $r.model, prompt_tokens: $r.usage.input_tokens,
-     above: $d.above, anchors_stripped: $anchors, tuned: ($tuned != {})}' <<<"$resp") || exit 1
+     above: $d.above, anchors_stripped: $anchors, tuned: ($tuned != {}),
+     thresholds: ($t | {haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf, sec})}' <<<"$resp") || exit 1
 
 if [ "${JEV_ROUTE_NO_LOG:-0}" != 1 ]; then
   jev_log route.jsonl "$(jq -c --argjson ctx "$ctx" '{action: "route", context: $ctx} + .' <<<"$out")"
