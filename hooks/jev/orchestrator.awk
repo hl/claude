@@ -1,21 +1,30 @@
 # orchestrator.awk — live sections of a .orchestrator.md, for compact-session.sh.
 # Prints one TSV line per section that is not finished: heading, first content
-# line, status line (may be empty). A section is finished when the LAST " — "
-# segment of its heading starts with DONE or BLOCKED (Claudette's convention:
-# "## 2026-10-18 — change X — DONE: merged #12"), or when a "Status:" in its body
-# starts with done / blocked / merged. A heading that merely mentions DONE
-# ("Make the DONE marker visible") is live. Deeper headings under a finished
+# line, status line (may be empty). A section is finished when its heading
+#   - has a last " — " segment (em dash, en dash or spaced hyphen) that starts with
+#     DONE or BLOCKED (Claudette's convention: "## 2026-10-18 — change X — DONE: merged #12"),
+#   - ends in "(DONE)" / "[DONE]" (or BLOCKED), or
+#   - starts with "DONE:" / "BLOCKED:",
+# or when a "Status:" in its body starts with done / blocked / merged. A heading
+# that merely mentions DONE ("Make the DONE marker visible") is live. Deeper headings under a finished
 # section are finished too. Table rows marked DONE or BLOCKED, table separators
 # and blank lines are never the "first line". H1 is the file title and is
 # skipped unless the file has no deeper headings.
 function trim(s) { sub(/^[ \t>*-]+/, "", s); sub(/[ \t]+$/, "", s); gsub(/\t/, " ", s); return s }
 function cut(s, n) { return length(s) > n ? substr(s, 1, n - 1) "…" : s }
 function level(h) { match(h, /^#+/); return RLENGTH }
-# finished_heading: the text after the last " — " starts with DONE or BLOCKED
-function finished_heading(h,    rest, k) {
-  rest = h
+function finished_heading(h,    t, rest, k) {
+  t = h
+  sub(/^#+[ \t]*/, "", t)
+  sub(/[ \t]+$/, "", t)
+  if (t ~ /^[*_]*(DONE|BLOCKED)[*_]*:/) return 1
+  if (t ~ /[(\[][*_]*(DONE|BLOCKED)[*_]*[)\]]$/) return 1
+  # the text after the last separator, whichever dash it uses
+  gsub(/ – /, " — ", t)
+  gsub(/ - /, " — ", t)
+  rest = t
   while ((k = index(rest, " — ")) > 0) rest = substr(rest, k + length(" — "))
-  if (rest == h) return 0
+  if (rest == t) return 0
   return rest ~ /^[*_]*(DONE|BLOCKED)([^A-Za-z]|$)/
 }
 function flush() {

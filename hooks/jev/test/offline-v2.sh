@@ -355,6 +355,27 @@ case $ctx in *"live change A"*"change D"*) ok "session: live .orchestrator.md se
 case $ctx in *"finished change B"* | *"stuck change C"*) bad "session: DONE/BLOCKED section injected" ;; *) ok "session: DONE and BLOCKED sections left out" ;; esac
 case $ctx in *"| merged thing"*) bad "session: DONE table row used as a first line" ;; *) ok "session: table rows marked DONE are not used as a section's first line" ;; esac
 case $ctx in *"$JEV_HOME/artifacts/sA/review-r1.md"*) ok "session: artifact index injected" ;; *) bad "session: artifact index missing" ;; esac
+# heading shapes (R4): the dash variants, trailing (DONE)/[DONE], leading DONE:
+cat >"$W/o2.md" <<'EOF'
+# Orchestrator log
+## 2026-10-18 — a — DONE
+## 2026-10-18 — b — DONE: merged #12
+## 2026-10-18 — c (DONE)
+## 2026-10-18 — c2 [BLOCKED]
+## DONE: d
+## 2026-10-18 - e - DONE
+## 2026-10-18 – h – DONE
+## 2026-10-18 — g — **BLOCKED** on CI
+### sub of g
+## Make the DONE marker visible
+- Status: implementing
+## 2026-10-18 — live one
+EOF
+live=$(awk -f "$J/orchestrator.awk" "$W/o2.md" | cut -f1 | paste -sd'|' -)
+[ "$live" = "## Make the DONE marker visible|## 2026-10-18 — live one" ] &&
+  ok "orchestrator: em/en dash and hyphen separators, (DONE)/[BLOCKED] and DONE: are finished; a heading that only mentions DONE is live" ||
+  bad "orchestrator heading shapes: live = $live"
+
 # size: 200 live sections and a long ledger still fit, authored state first
 for i in $(seq 1 200); do printf '## 2026-10-%02d — live change number %s with a long descriptive heading\n- Brief: %s\n- Status: implementing\n' $((i % 28 + 1)) "$i" "$(printf 'x%.0s' $(seq 1 150))"; done >"$P/.orchestrator.md"
 for i in $(seq 1 300); do jq -cn --argjson i "$i" '{id: "f\($i)", kind: "user", text: ("User said: fact number \($i) " + ("y" * 120)), score: 2.5, supersedes: [], superseded_by: null}'; done >"$JEV_HOME/ledger/sBig.jsonl"
