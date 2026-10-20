@@ -45,6 +45,43 @@ expect "non-trivial change -> reviewer opus over a sonnet implementer" "$(jq -c 
 expect "ambiguous 0.7 -> deepen" "$(jq -c '.signals.ambiguous = 0.7' <<<"$mid")" '.deepen == true'
 expect "above: how sure a cheaper tier falls short" "$mid" '.above.haiku >= 0.7 and .above.sonnet <= 0.2'
 
+# --- 1b. anchor lines: stripped only when a tier follows the label (26 probe lines)
+anchor_probe() { jq -R -r -L "$J" 'include "anchors"; if anchor_line then "strip" else "keep" end'; }
+strip_lines=(
+  "Model: opus — cross-cutting change across three services"
+  "**Model:** opus (first-round review of a non-trivial diff)"
+  "jev: sonnet/opus 0.81 [bumped]"
+  "jev: opus/opus 0.92 [opus: P(opus) 0.92 > 0.35]"
+  "Model: haiku — poll CI, no judgement"
+  "- Model: haiku — poll CI"
+  "> model: sonnet"
+  "Why opus: the change touches auth and billing"
+  "Tier: sonnet — routine fix with tests"
+  "Chosen model: opus, because the design is open"
+  "Model (opus): first-round review"
+  "Model choice: sonnet"
+  "  * model tier: haiku"
+)
+keep_lines=(
+  "jev: route.sh returns a wrong reviewer_model when kind is review; fix it"
+  "JEV: the Jev hooks under hooks/jev need a README fix"
+  "Model: User schema lives in lib/app/accounts/user.ex"
+  "model: claude-haiku-5-5"
+  "- the model haiku - and the model sonnet differ in context size"
+  "Model picker Opus gate"
+  "data model: users table has a unique email index"
+  "## Model choice"
+  "Fix the Model: field validation in the form"
+  "Use opus-level care here; the migration is risky"
+  "We chose sonnet last time and it worked"
+  "jev: compaction hooks: keep facts"
+  "Model: see the ADR for the data model"
+)
+bad_anchor=0
+for l in "${strip_lines[@]}"; do [ "$(printf '%s\n' "$l" | anchor_probe)" = strip ] || { bad_anchor=$((bad_anchor + 1)); echo "     should strip: $l"; }; done
+for l in "${keep_lines[@]}"; do [ "$(printf '%s\n' "$l" | anchor_probe)" = keep ] || { bad_anchor=$((bad_anchor + 1)); echo "     should keep: $l"; }; done
+[ "$bad_anchor" -eq 0 ] && ok "anchors: ${#strip_lines[@]} tier-naming lines stripped, ${#keep_lines[@]} look-alikes kept" || bad "anchors: $bad_anchor probe lines wrong"
+
 # --- fake Jev for everything below
 port=$((20000 + RANDOM % 20000))
 FAKE_JEV_FULLY='Change of plan' FAKE_JEV_LOW='Pin the base image to debian' python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
