@@ -9,8 +9,7 @@
       "Bash(elixir /tmp/**/*.exs)",
       "Bash(cat /tmp/*)",
       "Bash(cat /tmp/**/*)",
-      "Bash(say *)",
-      "Bash(~/.claude/hooks/jev/artifact.sh:*)"
+      "Bash(say *)"
     ],
     "defaultMode": "auto"
   },
