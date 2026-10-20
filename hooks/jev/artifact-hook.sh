@@ -19,7 +19,8 @@
 #                                running on <model>.", or "Teammate <name> spawned
 #                                (model <m>)."; when the result was saved, "Subagent
 #                                result (<description>) saved to <path>"; and any
-#                                teammate saves not yet announced (.pending, below).
+#                                teammate saves not yet announced (.pending, below;
+#                                only on the lead's own calls, which have no agent_id).
 #   SubagentStop                 a background subagent finished (its id is in
 #                                background_tasks): its final reply is
 #                                last_assistant_message (2.1.302) or, when that is
@@ -96,7 +97,7 @@ jq_turn_items() {
       else {u: (.uuid // ""), m: (.message.model // null), b: [$c[]
         | if .type == "text" then {text}
           elif .type == "tool_use" and .name == "SendMessage" then {id: (.id // ""), send: .input}
-          elif .type == "tool_use" then {tool: true} else empty end]} end' "$1" 2>/dev/null |
+          elif .type == "tool_use" then {tool: true} else empty end]} end' < <(tail -c "${JEV_TEAMMATE_TAIL:-1048576}" "$1" 2>/dev/null) 2>/dev/null |
     jq -s -c --argjson turns "${JEV_TEAMMATE_TURNS:-3}" '
       def short: if test("^toolu_") then .[6:] | .[-16:] else .[0:8] end | gsub("[^A-Za-z0-9_-]"; "");
       def results:
@@ -113,16 +114,17 @@ jq_turn_items() {
            items: ((if $final.text and ([$msgs[].text] | index($final.text) | not)
              then [{key: ($final.u | short), kind: "reply", summary: "", model: $model, text: $final.text}] else [] end) + $msgs)};
       . as $r
-      | [range(length) | select($r[.].p == true)] as $starts
+      | ([-1] + [range(length) | select($r[.].p == true)]) as $starts
       | [$starts[-$turns:][] as $s | ($starts | map(select(. > $s)) | first // ($r | length)) as $e | $r[($s + 1):$e] | results] as $t
       | {done: (($t | last | .done) // false)}, ($t[].items[])' 2>/dev/null || true
 }
 
-# team_lead <team> <payload session> <transcript path>: the lead session id of a team
+# team_lead <team> <payload session> <transcript path> <teammate>: the lead session id of a team
+# (a config that does not list the teammate is not trusted: team names can be reused)
 team_lead() {
   local cfg lead="" pre m
   cfg="${JEV_TEAMS_DIR:-${CLAUDE_CONFIG_DIR:-$HOME/.claude}/teams}/$1/config.json"
-  [ -f "$cfg" ] && lead=$(jq -r '.leadSessionId // empty' "$cfg" 2>/dev/null || true)
+  [ -f "$cfg" ] && lead=$(jq -r --arg n "$4" 'select(any(.members[]?; .name == $n)) | .leadSessionId // empty' "$cfg" 2>/dev/null || true)
   if [ -z "$lead" ]; then
     # default team names are session-<first 8 of the lead's id>
     case $1 in session-????????) pre=${1#session-} ;; *) pre="" ;; esac
@@ -204,7 +206,9 @@ ran=""
 finish() {
   local pend=""
   if [ "$event" = PostToolUse ]; then
-    if [ -s "$dir/.pending" ] && mv "$dir/.pending" "$dir/.pending.$$" 2>/dev/null; then
+    # only the lead's own Agent calls: an in-process teammate's carry its agent_id
+    if [ -z "$(jq -r '.agent_id // empty' <<<"$payload")" ] && [ -s "$dir/.pending" ] &&
+      mv "$dir/.pending" "$dir/.pending.$$" 2>/dev/null; then
       pend=$(cat "$dir/.pending.$$" 2>/dev/null || true)
       rm -f "$dir/.pending.$$"
     fi
@@ -288,7 +292,7 @@ case $event in
     # in-process teammates share the lead's process: their transcript sits under the lead's
     if [ -n "$aid" ]; then atp="${tp%.jsonl}/subagents/agent-$aid.jsonl"; else atp=$tp; fi
     [ -n "$atp" ] && [ -f "$atp" ] || exit 0
-    if ! lead=$(team_lead "$team" "$sid" "$tp"); then
+    if ! lead=$(team_lead "$team" "$sid" "$tp" "$tname"); then
       jev_log artifact.jsonl "$(jq -cn --arg t "$team" --arg n "$tname" '{event: "TeammateIdle", status: "no_lead", team: $t, teammate: $n}')"
       exit 0
     fi
@@ -298,13 +302,26 @@ case $event in
     atype=$(jq -r '.agent_type // empty' <<<"$payload")
     tsid=${aid:-$sid}
     # TeammateIdle can fire before the turn's last message is on disk (seen live,
-    # about 0.1 s): wait up to JEV_TEAMMATE_WAIT (3) s for the last turn to end in text.
+    # about 0.1 s): wait up to JEV_TEAMMATE_WAIT (3) s for the last turn to end in
+    # text, re-reading the transcript's tail only when its size changes, and giving
+    # up once the size has not changed for 0.8 s (a turn that ended without text).
+    fsize() { stat -f %z "$1" 2>/dev/null || stat -c %s "$1" 2>/dev/null || echo 0; }
     items=$(jq_turn_items "$atp")
-    i=0
-    while ! jq -e -n 'input | .done' <<<"$items" >/dev/null 2>&1 && [ "$i" -lt "$((${JEV_TEAMMATE_WAIT:-3} * 5))" ]; do
+    tdone=$(head -n 1 <<<"$items" | jq -r '.done' 2>/dev/null || true)
+    size=$(fsize "$atp")
+    i=0 still=0
+    while [ "$tdone" != true ] && [ "$i" -lt "$((${JEV_TEAMMATE_WAIT:-3} * 5))" ] && [ "$still" -lt 4 ]; do
       sleep 0.2
       i=$((i + 1))
+      now=$(fsize "$atp")
+      if [ "$now" = "$size" ]; then
+        still=$((still + 1))
+        continue
+      fi
+      still=0
+      size=$now
       items=$(jq_turn_items "$atp")
+      tdone=$(head -n 1 <<<"$items" | jq -r '.done' 2>/dev/null || true)
     done
     waited=$(awk -v i="$i" 'BEGIN { printf "%.1f", i * 0.2 }')
     while IFS= read -r item; do

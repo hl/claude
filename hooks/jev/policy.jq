@@ -11,7 +11,8 @@
 # requested haiku stays when P(haiku) >= 0.95 with security and non-trivial review
 # both < 0.5, whatever `mechanical` says; or when the description or prompt opens
 # (first 200 chars) with a poll/fetch verb (poll_verb, ctx.poll_verb) and
-# P(haiku) >= 0.8. The opus gate (a signal >= 0.7) still wins.
+# P(haiku) >= 0.8 with security < 0.5 (review is not capped there: a poll brief
+# that names a PR reads as one). The opus gate (a signal >= 0.7) still wins.
 # Then floors that only ever raise: a retry goes one tier above the previous
 # attempt; investigate and fix-ci are at least sonnet; 5+ files rule out haiku
 # and 12+ mean opus (not for poll/fetch/lookup); paths under auth, payments,
@@ -69,7 +70,7 @@ def route_policy:
   # haiku-keep: an explicitly requested haiku that Jev is sure about, or a poll/fetch brief
   | (($c.requested // "") == "haiku") as $req_haiku
   | ($req_haiku and (($p.haiku // 0) >= $t.keep_haiku_p) and ($sec < $t.keep_haiku_signal) and ($rev < $t.keep_haiku_signal)) as $keep_sure
-  | ($req_haiku and ($c.poll_verb == true) and (($p.haiku // 0) >= $t.keep_poll_p)) as $keep_poll
+  | ($req_haiku and ($c.poll_verb == true) and (($p.haiku // 0) >= $t.keep_poll_p) and ($sec < $t.keep_haiku_signal)) as $keep_poll
   | (if $gate then 2 elif $quick or $haiku_jev or $keep_sure or $keep_poll then 0 elif $sonnet_ok then 1 else 2 end) as $base
   | [ if $gate then "opus: " + ([
           (if $sec >= $t.signal then "security/blast radius \($sec | r2)" else empty end),
@@ -77,7 +78,7 @@ def route_policy:
       elif $quick then "haiku: kind \($kind)"
       elif $haiku_jev then "haiku: P(haiku) \($p.haiku | r2) >= \($t.haiku_p), mechanical \($s.mechanical | r2)"
       elif $keep_sure then "haiku: requested haiku kept, P(haiku) \($p.haiku | r2) >= \($t.keep_haiku_p), security \($sec | r2), review \($rev | r2)"
-      elif $keep_poll then "haiku: requested haiku kept, poll/fetch brief, P(haiku) \($p.haiku | r2) >= \($t.keep_poll_p)"
+      elif $keep_poll then "haiku: requested haiku kept, poll/fetch brief, P(haiku) \($p.haiku | r2) >= \($t.keep_poll_p), security \($sec | r2)"
       elif $sonnet_ok then "sonnet: P(opus) \($p.opus | r2) <= \($t.sonnet_popus)"
       else "opus: default (P(opus) \(($p.opus // 1) | r2))" end ] as $why
   # --- floors (only ever raise)

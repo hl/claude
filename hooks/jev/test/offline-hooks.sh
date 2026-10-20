@@ -62,6 +62,8 @@ expect "requested haiku, P(haiku) 0.94, no poll verb -> not kept" "$(jq -c '.ctx
 expect "requested haiku, P(haiku) 0.99 but security 0.5 -> not kept" "$(jq -c '.ctx = {requested: "haiku"} | .probabilities = {haiku: 0.99, sonnet: 0.01, opus: 0} | .signals.mechanical = 0.3 | .signals.security_or_high_blast_radius = 0.5' <<<"$easy")" '.model == "opus"'
 expect "poll verb, P(haiku) 0.79 -> not kept" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .probabilities = {haiku: 0.79, sonnet: 0.01, opus: 0.2} | .signals.mechanical = 0.3' <<<"$easy")" '.model == "opus"'
 expect "poll verb with security 0.8 -> opus (the gate wins)" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .signals.security_or_high_blast_radius = 0.8' <<<"$bos2")" '.model == "opus"'
+expect "poll verb with security 0.6 (under the gate) -> not kept" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .signals.security_or_high_blast_radius = 0.6' <<<"$bos2")" '.model == "opus"'
+expect "poll verb, review 0.6, security 0.13 -> kept (review is not capped)" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .signals.review_of_nontrivial_diff = 0.6' <<<"$bos2")" '.model == "haiku"'
 expect "poll verb but sonnet requested -> no keep rule" "$(jq -c '.ctx = {requested: "sonnet", poll_verb: true}' <<<"$bos1")" '.model == "opus"'
 hc() { jq -c -L "$J" 'include "policy"; hook_context' <<<"$1"; }
 [ "$(hc '{"model":"haiku","description":"Watch PR 487 checks","prompt":"x"}')" = '{"requested":"haiku","poll_verb":true}' ] &&

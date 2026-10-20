@@ -83,7 +83,7 @@ The policy (`policy.jq`) is a single decision, and it starts from opus:
 - **haiku** is chosen for `kind` poll, fetch or lookup. It is also chosen when P(haiku) ≥ 0.85, mechanical ≥ 0.7 and security < 0.5.
 - **haiku-keep** applies only to the Agent hook, when a call asks for haiku and has no `Route:` id. The hook cannot see `kind`, so it passes `{requested, poll_verb}` as context (`hook_context` in `policy.jq`), and route.sh never sends those fields to Jev. The requested haiku stays haiku when either of these holds:
   - P(haiku) ≥ 0.95, security < 0.5 and non-trivial review < 0.5, whatever `mechanical` says;
-  - the description or the prompt has a poll/fetch verb in its first 200 characters (poll, watch, wait for, check CI/PR/status, fetch, download, tail, as whole words) and P(haiku) ≥ 0.8.
+  - the description or the prompt has a poll/fetch verb in its first 200 characters (poll, watch, wait for, check CI/PR/status, fetch, download, tail, as whole words), P(haiku) ≥ 0.8 and security < 0.5. Review is not capped on this branch, because a poll brief that names a PR reads as a review (the bos pollers scored 0.56 and 0.50).
 
   The opus gate (a signal of 0.7 or higher) still wins. This is the rule that would have kept both bos pollers that v3 raised to opus. Their Jev answers were P(haiku) 0.99 and 1.0, with mechanical 0.52 and 0.67. Their review signal was 0.56 and 0.50, so the first branch alone would not have kept them; the poll verb ("Poll PR …", "Watch PR …") does.
 - **sonnet** is chosen only when P(opus) ≤ 0.15 and neither signal reaches 0.5.
@@ -164,16 +164,16 @@ So teammate results are saved from **TeammateIdle**, which fires when a teammate
 - **tmux or iTerm teammates** are separate processes. TeammateIdle fires in the teammate's own process, with its own `session_id` and `transcript_path`, plus `teammate_name`, `team_name` and `agent_type`.
 - **In-process teammates** fire TeammateIdle in the lead's process. The payload has the lead's `session_id` and `transcript_path`, plus `agent_id`, and the teammate's transcript is `<lead transcript>/subagents/agent-<agent_id>.jsonl`. Their SubagentStop is left alone, because its background task id is not the agent id.
 
-The hook finds the lead from `leadSessionId` in `~/.claude/teams/<team_name>/config.json`. Claude Code deletes that directory when the lead session ends. If the config is missing, the default team name `session-<first 8 of the lead id>` is used: either the payload session is the lead, or exactly one `<8>*.jsonl` exists next to the transcript. If the lead still cannot be found, the hook logs `no_lead` and saves nothing.
+The hook finds the lead from `leadSessionId` in `~/.claude/teams/<team_name>/config.json`, but only trusts a config that lists the teammate in `members`, because a custom team name can be reused. Team directories can outlive their leads; a stale config only sends files to the old lead's directory, inside `$JEV_HOME`. If no config can be used, the default team name `session-<first 8 of the lead id>` is tried: either the payload session is the lead, or exactly one `<8>*.jsonl` exists next to the transcript. If the lead still cannot be found, the hook logs `no_lead` and saves nothing.
 
 From the teammate's last three turns, the hook takes each turn's final reply (when the turn's last block is text) and every `SendMessage` to `team-lead`. Each one that has the marker or is longer than 2,000 characters is saved in the **lead's** directory, under the same naming rules. A reply that repeats its own `SendMessage` is saved once. Message ids keep replays idempotent, and since a teammate idles after every turn, that matters.
 
-TeammateIdle can fire about 0.1 s before the turn's last message is on disk; this was seen live. The hook takes about 0.25 s on a 4.7 MB teammate transcript. It waits up to `JEV_TEAMMATE_WAIT` (3 s) for the last turn to end in text, and logs the wait as `waited_s`. A reply that is still missed is picked up at the next idle.
+TeammateIdle can fire about 0.1 s before the turn's last message is on disk; this was seen live. The hook reads only the last `JEV_TEAMMATE_TAIL` (1 MB) of the transcript, so a final reply after 36 MB of tool output is saved in about 0.5 s. It waits up to `JEV_TEAMMATE_WAIT` (3 s) for the last turn to end in text. It polls the file size every 0.2 s, re-reads only when the size changes, and gives up once the size has been stable for 0.8 s; a turn that ends in a tool call costs about 1.2 s. The wait is logged as `waited_s`, and a reply that is still missed is picked up at the next idle.
 
 No hook can tell the lead at that moment, because TeammateIdle output goes to the teammate. The path reaches the lead in three ways:
 
 1. the line in the lead's `INDEX.md`, which claudette.md tells her to read when a teammate reports;
-2. a `.pending` queue that the lead's next PostToolUse(Agent) turns into `Teammate <name> reply saved to <path>` (or `message (<summary>) saved to …`), announced once;
+2. a `.pending` queue that the lead's next own PostToolUse(Agent) turns into `Teammate <name> reply saved to <path>` (or `message (<summary>) saved to …`), announced once. An in-process teammate's Agent calls share the lead's session but carry an `agent_id`, so they leave the queue alone;
 3. the artifact index that compaction re-injects. `INDEX.md` itself is left out of that index.
 
 This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's `Artifact: live-demo` reply was saved as `artifacts/<lead>/live-demo.md`, after a 0.2 s wait for the flush. It got its INDEX.md line, and the lead quoted `Teammate live-writer reply saved to <path>` from its next Agent call.
@@ -213,7 +213,7 @@ This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's 
 | `JEV_ROUTE_MODE` | `escalate` | `off` turns the Agent hook off. |
 | `JEV_ROUTE_NO_LOG` | unset | `1`: route.sh does not log (the Agent hook and the eval set it). |
 | `JEV_ARTIFACTS`, `JEV_ARTIFACT_MIN_CHARS`, `JEV_ARTIFACT_MAX_BYTES` | `1`, `2000`, `524288` | Automatic saving; length threshold; per-file cap. |
-| `JEV_TEAMMATE_WAIT`, `JEV_TEAMMATE_TURNS`, `JEV_TEAMS_DIR` | `3` s, `3`, `${CLAUDE_CONFIG_DIR:-~/.claude}/teams` | TeammateIdle: how long to wait for the last message to reach disk; how many recent turns to look at; where team configs live. |
+| `JEV_TEAMMATE_WAIT`, `JEV_TEAMMATE_TURNS`, `JEV_TEAMMATE_TAIL`, `JEV_TEAMS_DIR` | `3` s, `3`, `1048576`, `${CLAUDE_CONFIG_DIR:-~/.claude}/teams` | TeammateIdle: how long to wait at most for the last message to reach disk; how many recent turns to look at; how many bytes of the transcript tail to read; where team configs live. |
 | `JEV_COMPACT_MAX_FACTS`, `JEV_COMPACT_TAIL_CHARS` | `60`, `40000` | Facts scored per compaction (most recent kept); transcript tail sent. |
 | `JEV_COMPACT_MIN_SCORE`, `JEV_COMPACT_COVERED_MIN` | `1.5`, `0.5` | Score that counts as important; probability at which the summary keeps a fact. |
 | `JEV_COMPACT_MAX_CHARS`, `JEV_COMPACT_ORCH_MAX`, `JEV_COMPACT_ARTIFACT_MAX` | `9000`, `4500`, `2000` | Injection caps: total, `.orchestrator.md` part, artifact index. |

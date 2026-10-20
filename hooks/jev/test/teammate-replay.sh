@@ -134,10 +134,10 @@ fx idle-tmux.json | hook >/dev/null
 jq -cn '{type: "user", uuid: "u-0010", message: {role: "user", content: "<teammate-message teammate_id=\"team-lead\">\nLast one.\n</teammate-message>"}}' >>"$PD/$MATE.jsonl"
 fx idle-tmux.json | hook >/dev/null &
 hp=$!
-sleep 0.6
+sleep 0.3
 jq -cn '{type: "assistant", uuid: "a-0011", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "text", text: "Artifact: late-flush\nWritten after the idle event."}]}}' >>"$PD/$MATE.jsonl"
 wait "$hp"
-[ -f "$ad/late-flush.md" ] && ok "flush race: the final message lands 0.6 s after TeammateIdle -> the hook waits and saves late-flush.md" || bad "flush race: $(ls "$ad")"
+[ -f "$ad/late-flush.md" ] && ok "flush race: the final message lands 0.3 s after TeammateIdle -> the hook waits and saves late-flush.md" || bad "flush race: $(ls "$ad")"
 # a reply missed at its own idle is caught at the next one (the last 3 turns are looked at)
 jq -cn '{type: "user", uuid: "u-0012", message: {role: "user", content: "<teammate-message teammate_id=\"team-lead\">\nMissed?\n</teammate-message>"}},
   {type: "assistant", uuid: "a-0013", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "text", text: "Artifact: missed-once\nNo idle saw this turn."}]}},
@@ -145,6 +145,45 @@ jq -cn '{type: "user", uuid: "u-0012", message: {role: "user", content: "<teamma
   {type: "assistant", uuid: "a-0015", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "text", text: "You are welcome."}]}}' >>"$PD/$MATE.jsonl"
 fx idle-tmux.json | hook >/dev/null
 [ -f "$ad/missed-once.md" ] && ok "a turn whose idle saved nothing is saved at the next idle" || bad "missed turn: $(ls "$ad")"
+# in-process teammates share the lead's session: their own Agent calls (they carry
+# agent_id) must not take the lead's announcement
+jq -cn '{type: "user", uuid: "u-0016", message: {role: "user", content: "<teammate-message teammate_id=\"team-lead\">\nOne more.\n</teammate-message>"}},
+  {type: "assistant", uuid: "a-0017", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "text", text: "Artifact: for-the-lead\nOnly the lead should hear of this."}]}}' >>"$PD/$MATE.jsonl"
+fx idle-tmux.json | hook >/dev/null
+o=$(jq -cn --arg s "$LEAD" '{session_id: $s, agent_id: "amate-caller-0123456789abcdef", agent_type: "mate-caller", hook_event_name: "PostToolUse", tool_name: "Agent", tool_use_id: "toolu_mate1",
+  tool_input: {description: "sub", prompt: "x", model: "haiku"}, tool_response: {status: "completed", agentId: "a9", resolvedModel: "claude-haiku-5-5", content: [{type: "text", text: "ok"}]}}' | hook)
+c1=$(ctxof "$o")
+o=$(post "$LEAD" toolu_next3)
+c2=$(ctxof "$o")
+! printf '%s\n' "$c1" | grep -q 'Teammate' && printf '%s\n' "$c2" | grep -q -F "Teammate demo-writer reply saved to $ad/for-the-lead.md" &&
+  ok "an in-process teammate's own Agent call (agent_id set) leaves the announcement for the lead's next call" || bad "announcement went to: teammate=[$c1] lead=[$c2]"
+# a config that does not list the teammate is not trusted (team names can be reused)
+H5="$W/home5"
+mkdir -p "$W/teams5/session-4233033d"
+jq '.members |= map(select(.name != "demo-writer"))' "$FX/team-config.json" >"$W/teams5/session-4233033d/config.json"
+fx idle-tmux.json | JEV_HOME="$H5" JEV_TEAMS_DIR="$W/teams5" hook >/dev/null
+[ ! -d "$H5/artifacts/$LEAD" ] && jq -e -s 'any(.status == "no_lead")' "$H5/log/artifact.jsonl" >/dev/null &&
+  ok "a team config that does not list the teammate (and no lead transcript to fall back on) -> no_lead, nothing saved" || bad "untrusted config: $(find "$H5" -type f)"
+# a 36 MB transcript: the hook reads only the tail, and a turn that ended without
+# text costs about 1 s of waiting (the size stops changing), not 3 s of re-reads
+BIG="$W/big.jsonl"
+cp "$PD/$MATE.jsonl" "$BIG"
+filler=$(jq -cn '{type: "user", uuid: "u-fill", message: {role: "user", content: [{type: "tool_result", tool_use_id: "toolu_fill", content: ("x" * 4000)}]}}')
+for _ in $(seq 1 9000); do printf '%s\n' "$filler"; done >>"$BIG"
+jq -cn '{type: "assistant", uuid: "a-big1", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "text", text: "Artifact: big-done\nAfter 36 MB of tool output."}]}}' >>"$BIG"
+bigp() { fx idle-tmux.json | jq -c --arg t "$BIG" '.transcript_path = $t'; }
+t0=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+bigp | hook >/dev/null
+t1=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+jq -cn '{type: "user", uuid: "u-big2", message: {role: "user", content: "<teammate-message teammate_id=\"team-lead\">\nStill there?\n</teammate-message>"}},
+  {type: "assistant", uuid: "a-big3", message: {role: "assistant", model: "claude-haiku-5-5", content: [{type: "tool_use", id: "toolu_01BigToolOnly0000000000", name: "Bash", input: {command: "true"}}]}}' >>"$BIG"
+t2=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+bigp | hook >/dev/null
+t3=$(perl -MTime::HiRes=time -e 'printf "%.3f", time')
+mb=$(($(wc -c <"$BIG") / 1048576))
+awk -v a="$t0" -v b="$t1" -v c="$t2" -v d="$t3" 'BEGIN { exit !(b - a < 1.5 && d - c < 1.5) }' && [ -f "$ad/big-done.md" ] &&
+  ok "a ${mb} MB transcript: final reply after 36 MB saved in $(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.2f", b - a }') s; a turn ending in a tool call returns in $(awk -v a="$t2" -v b="$t3" 'BEGIN { printf "%.2f", b - a }') s (< 1.5 s each)" ||
+  bad "36 MB case: $(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.2f", b - a }') s / $(awk -v a="$t2" -v b="$t3" 'BEGIN { printf "%.2f", b - a }') s, big-done.md: $([ -f "$ad/big-done.md" ] && echo yes || echo no)"
 JEV_ARTIFACTS=0 JEV_HOME="$W/home4" hook < <(fx idle-tmux.json) >/dev/null
 [ ! -d "$W/home4/artifacts" ] && ok "JEV_ARTIFACTS=0: TeammateIdle saves nothing" || bad "JEV_ARTIFACTS=0 saved"
 

@@ -16,7 +16,7 @@
 # when route.sh's tier is higher. Never lowers. route.sh gets --context from
 # policy.jq hook_context ({requested, poll_verb}), so a requested haiku stays
 # haiku when Jev is sure of it (P(haiku) >= 0.95, security and review < 0.5) or
-# the brief opens with a poll/fetch verb and P(haiku) >= 0.8 (the haiku-keep rule
+# the brief opens with a poll/fetch verb, P(haiku) >= 0.8 and security < 0.5 (the haiku-keep rule
 # in policy.jq; the hook cannot see route.sh's `kind`).
 #
 # JEV_ROUTE_MODE=off turns it off. No permissionDecision is returned, so
