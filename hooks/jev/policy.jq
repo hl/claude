@@ -7,6 +7,11 @@
 #   haiku    kind poll, fetch or lookup; or P(haiku) >= 0.85, mechanical >= 0.7
 #            and security/blast radius < 0.5
 #   sonnet   P(opus) <= 0.15 and neither signal reaches 0.5
+# Haiku-keep (the Agent hook only: ctx.requested == "haiku", no Route: id): the
+# requested haiku stays when P(haiku) >= 0.95 with security and non-trivial review
+# both < 0.5, whatever `mechanical` says; or when the description or prompt opens
+# (first 200 chars) with a poll/fetch verb (poll_verb, ctx.poll_verb) and
+# P(haiku) >= 0.8. The opus gate (a signal >= 0.7) still wins.
 # Then floors that only ever raise: a retry goes one tier above the previous
 # attempt; investigate and fix-ci are at least sonnet; 5+ files rule out haiku
 # and 12+ mean opus (not for poll/fetch/lookup); paths under auth, payments,
@@ -16,7 +21,8 @@
 #
 # Input: {probabilities: {haiku, sonnet, opus}, confidence, signals: {...}, ctx: {...}}
 #   ctx (all optional): attempt, prior_model, prior_outcome, kind, files (count),
-#                       risky_paths ([paths that matched the high-blast-radius list])
+#                       risky_paths ([paths that matched the high-blast-radius list]),
+#                       requested, poll_verb (set by the Agent hook, see hook_context)
 # Output: {model, reviewer_model, policy: [reasons]}
 
 def tier_rank: {haiku: 0, sonnet: 1, opus: 2}[.] // null;
@@ -27,8 +33,23 @@ def thresholds: {
   signal: 0.7,                              # security or review at/above: opus
   haiku_p: 0.85, haiku_mech: 0.7, haiku_sec: 0.5,
   sonnet_popus: 0.15, sonnet_signal: 0.5,
-  reviewer_opus: 0.5, files_no_haiku: 5, files_opus: 12
+  reviewer_opus: 0.5, files_no_haiku: 5, files_opus: 12,
+  keep_haiku_p: 0.95, keep_haiku_signal: 0.5, keep_poll_p: 0.8, poll_window: 200
 };
+
+# poll_verb: the text reads as polling or fetching (poll, watch, wait for, check
+# CI/PR/status, fetch, download, tail), whole words, any case.
+def poll_verb:
+  test("\\b(poll(s|ed|ing)?|watch(es|ed|ing)?|wait(s|ed|ing)? for|check(s|ed|ing)? (the )?(ci|pr|prs|status)|fetch(es|ed|ing)?|download(s|ed|ing)?|tail(s|ed|ing)?)\\b"; "i");
+
+# hook_context: the --context the Agent hook gives route.sh for an explicit model
+# with no Route: id. Input: the Agent tool_input. route.sh does not send these
+# two fields to Jev; only route_policy reads them.
+def hook_context:
+  thresholds.poll_window as $w
+  | {requested: (.model // null),
+     poll_verb: ([(.description // ""), (.prompt // "")] | any(.[0:$w] | poll_verb))}
+  | with_entries(select(.value != null));
 
 def route_policy:
   thresholds as $t
@@ -45,12 +66,18 @@ def route_policy:
   | (($sec >= $t.signal) or ($rev >= $t.signal)) as $gate
   | ((($p.haiku // 0) >= $t.haiku_p) and (($s.mechanical // 0) >= $t.haiku_mech) and ($sec < $t.haiku_sec)) as $haiku_jev
   | ((($p.opus // 1) <= $t.sonnet_popus) and ($sec < $t.sonnet_signal) and ($rev < $t.sonnet_signal)) as $sonnet_ok
-  | (if $gate then 2 elif $quick or $haiku_jev then 0 elif $sonnet_ok then 1 else 2 end) as $base
+  # haiku-keep: an explicitly requested haiku that Jev is sure about, or a poll/fetch brief
+  | (($c.requested // "") == "haiku") as $req_haiku
+  | ($req_haiku and (($p.haiku // 0) >= $t.keep_haiku_p) and ($sec < $t.keep_haiku_signal) and ($rev < $t.keep_haiku_signal)) as $keep_sure
+  | ($req_haiku and ($c.poll_verb == true) and (($p.haiku // 0) >= $t.keep_poll_p)) as $keep_poll
+  | (if $gate then 2 elif $quick or $haiku_jev or $keep_sure or $keep_poll then 0 elif $sonnet_ok then 1 else 2 end) as $base
   | [ if $gate then "opus: " + ([
           (if $sec >= $t.signal then "security/blast radius \($sec | r2)" else empty end),
           (if $rev >= $t.signal then "non-trivial review \($rev | r2)" else empty end)] | join(", "))
       elif $quick then "haiku: kind \($kind)"
       elif $haiku_jev then "haiku: P(haiku) \($p.haiku | r2) >= \($t.haiku_p), mechanical \($s.mechanical | r2)"
+      elif $keep_sure then "haiku: requested haiku kept, P(haiku) \($p.haiku | r2) >= \($t.keep_haiku_p), security \($sec | r2), review \($rev | r2)"
+      elif $keep_poll then "haiku: requested haiku kept, poll/fetch brief, P(haiku) \($p.haiku | r2) >= \($t.keep_poll_p)"
       elif $sonnet_ok then "sonnet: P(opus) \($p.opus | r2) <= \($t.sonnet_popus)"
       else "opus: default (P(opus) \(($p.opus // 1) | r2))" end ] as $why
   # --- floors (only ever raise)

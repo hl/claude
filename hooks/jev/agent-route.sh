@@ -13,7 +13,11 @@
 #     routed it. The model is raised to that answer if lower, never re-scored.
 # Any other explicit haiku/sonnet, including one whose id is not in route.jsonl,
 # is scored (one Jev request, description + subagent_type + prompt) and raised
-# when route.sh's tier is higher. Never lowers.
+# when route.sh's tier is higher. Never lowers. route.sh gets --context from
+# policy.jq hook_context ({requested, poll_verb}), so a requested haiku stays
+# haiku when Jev is sure of it (P(haiku) >= 0.95, security and review < 0.5) or
+# the brief opens with a poll/fetch verb and P(haiku) >= 0.8 (the haiku-keep rule
+# in policy.jq; the hook cannot see route.sh's `kind`).
 #
 # JEV_ROUTE_MODE=off turns it off. No permissionDecision is returned, so
 # permission rules apply as usual. Fails open: any problem -> exit 0, no output.
@@ -91,7 +95,8 @@ fi
 
 text=$(jq -r '[(.description // ""), (if .subagent_type then "subagent_type: " + .subagent_type else empty end), (.prompt // "")] | map(select(. != "")) | join("\n\n")' <<<"$input")
 [ -n "$text" ] || exit 0
-if ! route=$(printf '%s' "$text" | JEV_ROUTE_NO_LOG=1 JEV_TIMEOUT=${JEV_ROUTE_TIMEOUT:-4} "$JEV_DIR/route.sh" 2>/dev/null); then
+hctx=$(jq -c -L "$JEV_DIR" 'include "policy"; hook_context' <<<"$input" 2>/dev/null || echo '{}')
+if ! route=$(printf '%s' "$text" | JEV_ROUTE_NO_LOG=1 JEV_TIMEOUT=${JEV_ROUTE_TIMEOUT:-4} "$JEV_DIR/route.sh" --context "$hctx" 2>/dev/null); then
   log_decision route_failed
   exit 0
 fi

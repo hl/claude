@@ -5,7 +5,7 @@
 Writes every request body to <capture-dir>/body-<n>.json (and the headers, minus
 Authorization, to headers-<n>.txt), and answers every question with a fixed,
 valid answer: score -> level 2 ("important"), noul -> 0.1, choice -> the first
-option. Prints "ready" once listening. Test-only; never used by the hooks.
+option at 0.9 (the second at 0.1). Prints "ready" once listening. Test-only; never used by the hooks.
 """
 import json
 import os
@@ -27,10 +27,15 @@ def answer(q):
         return {"type": "score", "score": float(lv), "confidence": 1.0,
                 "legend": {str(i): l for i, l in enumerate(levels)}, "probabilities": probs}
     if t == "choice":
+        # first option at 0.9, the second at 0.1: sure enough to be the answer, not
+        # sure enough for the Agent hook's haiku-keep rule (P >= 0.95)
         opts = list((q.get("criteria") or {"a": None}).keys())
         pick = opts[0]
-        return {"type": "choice", "choice": pick, "confidence": 1.0,
-                "probabilities": {o: (1.0 if o == pick else 0.0) for o in opts}}
+        probs = {o: 0.0 for o in opts}
+        probs[pick] = 0.9 if len(opts) > 1 else 1.0
+        if len(opts) > 1:
+            probs[opts[1]] = 0.1
+        return {"type": "choice", "choice": pick, "confidence": probs[pick], "probabilities": probs}
     return {"type": "noul", "noul": 0.1}
 
 

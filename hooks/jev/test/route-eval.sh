@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # route-eval.sh — labelled eval for route.sh (needs a Jev key; hits the live API).
 #
-#   route-eval.sh                                committed fixture (36 sanitised real tasks)
+#   route-eval.sh                                committed fixture (38 sanitised real tasks)
+#   EVAL_AS_HAIKU=1 route-eval.sh                every task as an Agent call asking for haiku
 #   JEV_EVAL_SET=<labelled.jsonl> route-eval.sh  a local labelled set (never committed)
 #
 # Reports: accuracy, confusion table, under-routing per label, over-routing,
@@ -32,11 +33,17 @@ echo "eval set: $([ "$real" = true ] && echo "local real set" || echo "committed
 # subagent_type, prompt. Fixture lines may carry a ready-made .task instead.
 # anchored: the brief names a tier ("Model: sonnet — ..."); route.sh strips those
 # lines, but the blind labeller saw them, so the unanchored subset is reported apart.
-jq -c -L "$HERE/.." 'include "anchors";
-  {id, label, chosen_tier: (.chosen_tier // null), under_routed: (.under_routed // false), weak: (.weak // []),
+# A line with given_model (the model the Agent call asked for) is scored the way
+# the Agent hook scores it, with policy.jq hook_context ({requested, poll_verb});
+# EVAL_AS_HAIKU=1 does that for every line as if each had asked for haiku, the
+# worst case for the haiku-keep rule.
+jq -c -L "$HERE/.." --arg as_haiku "${EVAL_AS_HAIKU:-0}" 'include "anchors"; include "policy";
+  (if $as_haiku == "1" then . + {given_model: "haiku"} else . end) as $l
+  | {id, label, chosen_tier: (.chosen_tier // null), under_routed: (.under_routed // false), weak: (.weak // []),
         task: (.task // ([(.description // ""), (if (.subagent_type // "") != "" then "subagent_type: " + .subagent_type else empty end), (.prompt // "")]
                          | map(select(. != "")) | join("\n\n"))),
-        context: (.context // null)}
+        context: (if $l.given_model then (.context // {}) + ({model: $l.given_model, description: (.description // .task // ""), prompt: (.prompt // "")} | hook_context)
+                  else (.context // null) end)}
   | . + {anchored: (.task | anchored)}' "$SET" >"$out/set.jsonl"
 
 run_one() { # <run> <line-no>

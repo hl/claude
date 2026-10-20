@@ -3,7 +3,7 @@
 # offline-hooks.sh — hook behaviour without the real API: the routing policy as
 # code, and route.sh, the Agent hook, artifacts, compaction requests, injection
 # and the daily sweep against a local fake Jev (fake-jev.py: every score
-# "important", every noul 0.1, every choice its first option).
+# "important", every noul 0.1, every choice its first option at 0.9).
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
@@ -50,6 +50,25 @@ expect "risky path on an implement task -> opus" "$(jq -c '.ctx = {kind: "implem
 expect "investigate is at least sonnet" "$(jq -c '.ctx = {kind: "investigate"}' <<<"$easy")" '.model == "sonnet" and any(.policy[]; test("kind investigate"))'
 expect "6 files rule out haiku" "$(jq -c '.ctx = {files: 6}' <<<"$easy")" '.model == "sonnet"'
 expect "12 files mean opus" "$(jq -c '.ctx = {files: 12}' <<<"$mid")" '.model == "opus"'
+# haiku-keep (Agent hook, requested haiku, no Route: id): the two bos pollers raised to opus in v3
+bos1='{"probabilities":{"haiku":0.99,"sonnet":0.01,"opus":0},"signals":{"mechanical":0.52,"security_or_high_blast_radius":0.1,"review_of_nontrivial_diff":0.56,"nontrivial_change":0.03}}'
+bos2='{"probabilities":{"haiku":1,"sonnet":0,"opus":0},"signals":{"mechanical":0.67,"security_or_high_blast_radius":0.13,"review_of_nontrivial_diff":0.5,"nontrivial_change":0.06}}'
+expect "bos poller 1 without hook context -> opus (the v3 raise)" "$bos1" '.model == "opus"'
+expect "bos poller 1, requested haiku + poll verb -> haiku kept" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true}' <<<"$bos1")" '.model == "haiku" and (.policy[0] | test("poll/fetch"))'
+expect "bos poller 2, requested haiku + poll verb -> haiku kept" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true}' <<<"$bos2")" '.model == "haiku"'
+expect "bos poller 1, no poll verb: review 0.56 >= 0.5 -> opus" "$(jq -c '.ctx = {requested: "haiku", poll_verb: false}' <<<"$bos1")" '.model == "opus"'
+expect "requested haiku, P(haiku) 0.96, mechanical 0.3, signals low -> haiku kept" "$(jq -c '.ctx = {requested: "haiku"} | .probabilities = {haiku: 0.96, sonnet: 0.04, opus: 0} | .signals.mechanical = 0.3' <<<"$easy")" '.model == "haiku" and (.policy[0] | test("requested haiku kept, P"))'
+expect "requested haiku, P(haiku) 0.94, no poll verb -> not kept" "$(jq -c '.ctx = {requested: "haiku"} | .probabilities = {haiku: 0.94, sonnet: 0.06, opus: 0} | .signals.mechanical = 0.3' <<<"$easy")" '.model != "haiku"'
+expect "requested haiku, P(haiku) 0.99 but security 0.5 -> not kept" "$(jq -c '.ctx = {requested: "haiku"} | .probabilities = {haiku: 0.99, sonnet: 0.01, opus: 0} | .signals.mechanical = 0.3 | .signals.security_or_high_blast_radius = 0.5' <<<"$easy")" '.model == "opus"'
+expect "poll verb, P(haiku) 0.79 -> not kept" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .probabilities = {haiku: 0.79, sonnet: 0.01, opus: 0.2} | .signals.mechanical = 0.3' <<<"$easy")" '.model == "opus"'
+expect "poll verb with security 0.8 -> opus (the gate wins)" "$(jq -c '.ctx = {requested: "haiku", poll_verb: true} | .signals.security_or_high_blast_radius = 0.8' <<<"$bos2")" '.model == "opus"'
+expect "poll verb but sonnet requested -> no keep rule" "$(jq -c '.ctx = {requested: "sonnet", poll_verb: true}' <<<"$bos1")" '.model == "opus"'
+hc() { jq -c -L "$J" 'include "policy"; hook_context' <<<"$1"; }
+[ "$(hc '{"model":"haiku","description":"Watch PR 487 checks","prompt":"x"}')" = '{"requested":"haiku","poll_verb":true}' ] &&
+  [ "$(hc '{"model":"haiku","description":"Run the suite","prompt":"Download the build log and report it"}')" = '{"requested":"haiku","poll_verb":true}' ] &&
+  [ "$(hc "$(jq -cn '{model: "haiku", description: "Rename a module", prompt: (("x" * 200) + " then poll CI")}')")" = '{"requested":"haiku","poll_verb":false}' ] &&
+  [ "$(hc '{"model":"haiku","description":"Review the detail view","prompt":"Check the retail totals"}')" = '{"requested":"haiku","poll_verb":false}' ] &&
+  ok "policy: hook_context finds a poll/fetch verb in the first 200 chars only, whole words" || bad "policy: hook_context"
 
 # --- 1b. anchor lines: stripped only when a tier follows the label
 anchor_probe() { jq -R -r -L "$J" 'include "anchors"; if anchor_line then "strip" else "keep" end'; }

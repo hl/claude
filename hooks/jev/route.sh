@@ -13,6 +13,8 @@
 #   kind           implement | review | investigate | fix-ci | address-comments |
 #                  poll | fetch | lookup (the last three go to haiku)
 #   diff_size      for reviews, e.g. "+1240/-380 in 23 files"
+#   requested, poll_verb  set by the Agent hook (policy.jq hook_context) for the
+#                  haiku-keep rule; never sent to Jev
 #
 # Prints one JSON object {id, model, reviewer_model, confidence, probabilities,
 # policy: [reasons]} and logs it, with the context and without the brief, to
@@ -20,8 +22,9 @@
 # this answer instead of scoring the brief again. Exits non-zero on any failure
 # (no key, network, timeout, bad answer) so the caller can fall back to opus.
 #
-# The policy is opus-first (policy.jq): haiku only for poll/fetch/lookup or when
-# Jev is sure the task is mechanical and safe, sonnet only when P(opus) <= 0.15
+# The policy is opus-first (policy.jq): haiku only for poll/fetch/lookup, when
+# Jev is sure the task is mechanical and safe, or (Agent hook) to keep a requested
+# haiku Jev is sure about or that reads as a poll; sonnet only when P(opus) <= 0.15
 # with no security or review signal. One Jev request, about 2k tokens.
 set -euo pipefail
 
@@ -72,7 +75,7 @@ ctx=$(jq -c '
 
 req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
   model: $model,
-  state: {task: $task, context: ($ctx | del(.risky_paths))},
+  state: {task: $task, context: ($ctx | del(.risky_paths, .requested, .poll_verb))},
   questions: {
     tier: {
       type: "choice",

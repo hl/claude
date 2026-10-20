@@ -40,6 +40,24 @@ jq -e '.hookSpecificOutput.updatedInput.model == "opus"' <<<"$o" >/dev/null 2>&1
 o=$("$HOOK" <<<"$(payload sonnet general-purpose "$mech")")
 [ -z "$o" ] && [ "$(last_log | jq -r .action)" = kept ] && ok "sonnet on a one-line typo fix is kept ($(last_log | jq -c .policy))" || bad "sonnet + typo: $o $(last_log | jq -c '{action, jev_model, policy}')"
 
+# haiku-keep: the two bos pollers (fixture r37, r38) that v3 raised to opus keep haiku;
+# a requested haiku on real implementation work is still raised
+for id in r37 r38; do
+  line=$(jq -c --arg id "$id" 'select(.id == $id)' "$HERE/fixtures/route-eval-real.jsonl")
+  n0=$(calls)
+  o=$("$HOOK" <<<"$(jq -c '{session_id: "test-agent-route", hook_event_name: "PreToolUse", tool_name: "Agent", tool_use_id: "toolu_test",
+    tool_input: {description, prompt, subagent_type, model: "haiku"}}' <<<"$line")")
+  [ -z "$o" ] && last_log | jq -e '.action == "kept" and .final_model == "haiku" and (.policy[0] | startswith("haiku:"))' >/dev/null &&
+    [ "$(calls)" = $((n0 + 1)) ] &&
+    ok "bos poller $id ($(jq -r .description <<<"$line")) asked haiku -> kept haiku, 1 call ($(last_log | jq -r '.policy[0]'))" ||
+    bad "bos poller $id: out=$o $(last_log | jq -c '{action, jev_model, probabilities, policy}')"
+done
+impl="Add a paginated GET /api/invoices endpoint to the Phoenix app: controller, context function with a cursor, JSON view and tests. Wait for review before merging."
+o=$("$HOOK" <<<"$(payload haiku general-purpose "$impl")")
+[ "$(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" != null ] && [ "$(last_log | jq -r .action)" = escalated ] &&
+  ok "haiku on an endpoint implementation (contains \"wait for\") -> still raised to $(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" ||
+  bad "haiku + implementation: $o $(last_log | jq -c '{action, probabilities, policy}')"
+
 # routed by route.sh: the hook takes that answer and makes no call of its own
 r=$("$HERE/../route.sh" --context '{"kind":"review","diff_size":"+1240/-380 in 23 files"}' "$hard")
 rid=$(jq -r .id <<<"$r")
