@@ -10,45 +10,19 @@
 #   files_hint     number of files, or a list of them
 #   paths          list of paths the work touches; auth, payments, migrations,
 #                  infra, secrets, CI and hook paths count as high blast radius
-#   kind           implement | review | investigate | fix-ci | address-comments | poll
+#   kind           implement | review | investigate | fix-ci | address-comments |
+#                  poll | fetch | lookup (the last three go to haiku)
 #   diff_size      for reviews, e.g. "+1240/-380 in 23 files"
 #
-# Prints one JSON object:
-#   {id, model, reviewer_model, deepen, policy: [reasons], confidence,
-#    probabilities, signals, jev_choice, jev_model, prompt_tokens, above,
-#    anchors_stripped (lines naming a tier that were removed first, see anchors.jq)}
-# and logs it (with the context, without the task text) to route.jsonl so
-# outcome.sh can attach the result later by id.
-# Exits non-zero on any failure (no key, network, timeout, bad answer) so the
-# caller can fall back to its own judgement (and should then pick opus).
+# Prints one JSON object {id, model, reviewer_model, confidence, probabilities,
+# policy: [reasons]} and logs it, with the context and without the brief, to
+# $JEV_HOME/log/route.jsonl. Put the id in the brief: the Agent hook then takes
+# this answer instead of scoring the brief again. Exits non-zero on any failure
+# (no key, network, timeout, bad answer) so the caller can fall back to opus.
 #
-# Policy (policy.jq): opus unless Jev is confident a lower tier suffices.
-#   haiku   P(haiku) >= JEV_ROUTE_HAIKU_P (0.6), mechanical >= JEV_ROUTE_HAIKU_MECH (0),
-#           ambiguous <= JEV_ROUTE_HAIKU_AMB (0.9), security/blast radius and
-#           non-trivial review < JEV_ROUTE_SIGNAL_MIN (0.7)
-#   sonnet  P(opus) <= JEV_ROUTE_SONNET_POPUS (0.35), confidence >= JEV_ROUTE_SONNET_CONF (0),
-#           same two signals < JEV_ROUTE_SIGNAL_MIN
-#   else    opus
-# Then: retries go at least one tier above the previous attempt; investigate and
-# fix-ci are at least sonnet; 5+ files rule out haiku and 12+ mean opus; risky
-# paths count as security/blast radius 1.0. reviewer_model >= model, never
-# haiku, opus when non-trivial change/review or security >= JEV_ROUTE_REVIEWER_OPUS
-# (0.5). deepen = ambiguous or needs_research >= JEV_ROUTE_DEEPEN (0.6).
-#
-# JEV_ROUTE_SIGNAL_MIN (0.7) is a design choice, not tuned: security-sensitive or
-# high-blast-radius work, and reviews of non-trivial diffs, go to opus. The other
-# defaults are test/tune.sh's choice (2026-10-18) on the real labelled set (451
-# Agent tasks from local transcripts, labelled blind by one opus agent, model-
-# naming lines stripped as below), with a two-fold holdout split by task, in two
-# independent sessions of 3 Jev runs per task. The folds chose P(haiku) 0.55 /
-# 0.6 / 0.5 and P(opus) 0.35 / 0.6; the shipped point takes the most conservative
-# value of each. In sample, on both sessions: 0 opus tasks under-routed and 0
-# sonnet tasks sent to haiku, also with every Jev value moved 0.1 toward the
-# cheaper tier and on the briefs that name no tier; 48% over-routed (43% on those
-# briefs). Out of sample, the fold that chose 0.55 / 0.35 under-routed none of its
-# unseen half; the fold that chose 0.5 / 0.6 under-routed 3 of 162 opus rows.
-# Autotune (autotune.sh) may later move these, but only the conservative way.
-# See test/evidence/route-eval-real.txt.
+# The policy is opus-first (policy.jq): haiku only for poll/fetch/lookup or when
+# Jev is sure the task is mechanical and safe, sonnet only when P(opus) <= 0.15
+# with no security or review signal. One Jev request, about 2k tokens.
 set -euo pipefail
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -75,10 +49,8 @@ if [ $# -gt 0 ]; then task=$*; else task=$(cat); fi
 
 # Lines that already name a tier ("Model: sonnet — ...", "jev: opus/opus ...",
 # "— opus because ...") anchor Jev on the author's guess: drop them (anchors.jq).
-# This covers the Agent hook too, which pipes the prompt through here.
 st=$(jq -Rs -c -L "$JEV_DIR" 'include "anchors"; strip_anchors' <<<"$task")
 task=$(jq -r '.text' <<<"$st")
-anchors=$(jq '.stripped' <<<"$st")
 [ -n "${task//[[:space:]]/}" ] || {
   echo "route.sh: task is empty once model-naming lines are removed" >&2
   exit 2
@@ -111,10 +83,7 @@ req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
         opus: "Ambiguous or cross-cutting changes, design decisions, tricky debugging, security-sensitive or high-blast-radius code, first-round reviews of non-trivial diffs, and anything where sonnet cannot confidently be predicted to succeed."
       }
     },
-    ambiguous: {type: "noul", instructions: "`task` leaves important requirements unstated or open to interpretation."},
-    needs_research: {type: "noul", instructions: "`task` requires investigating unfamiliar code, systems or documentation before acting."},
     mechanical: {type: "noul", instructions: "`task` is mechanical: its exact result is fully determined by the description."},
-    cross_cutting: {type: "noul", instructions: "`task` changes several components, files or layers that must stay consistent with each other."},
     security_or_high_blast_radius: {type: "noul", instructions: "`task` changes or reviews security-sensitive code (auth, secrets, permissions, crypto, payments) or code where a mistake would break production, corrupt data or affect many users. Read-only lookups and reports do not count."},
     review_of_nontrivial_diff: {type: "noul", instructions: "`task` asks for a review of a non-trivial code change (a diff, branch or pull request)."},
     nontrivial_change: {type: "noul", instructions: "Carrying out `task` produces a code or configuration change that is non-trivial to review: more than a few lines of logic, or several files."}
@@ -123,48 +92,15 @@ req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
 
 resp=$(jev_call <<<"$req") || exit 1
 
-# Thresholds: the defaults below, then $JEV_HOME/tune/thresholds.json if autotune
-# applied one, then any JEV_ROUTE_* variable. The file is clamped to the shipped
-# defaults or stricter, so neither autotune nor a hand edit can loosen routing
-# (P(haiku), mechanical and confidence bars only up; ambiguity and P(opus) bars
-# only down); non-numbers are ignored. The security/review gate is never read
-# from it. An explicit JEV_ROUTE_* variable is a person's choice and is not clamped.
-tuned='{}'
-tf="$JEV_HOME/tune/thresholds.json"
-if [ -f "$tf" ]; then
-  tuned=$(jq -c 'if type == "object" then . else {} end
-    | {haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf} | with_entries(select(.value | type == "number"))
-    | (if .haiku_p then .haiku_p |= ([., 0.6] | max) else . end)
-    | (if .haiku_mech then .haiku_mech |= ([., 0] | max) else . end)
-    | (if .sonnet_conf then .sonnet_conf |= ([., 0] | max) else . end)
-    | (if .haiku_amb then .haiku_amb |= ([., 0.9] | min) else . end)
-    | (if .sonnet_popus then .sonnet_popus |= ([., 0.35] | min) else . end)' "$tf" 2>/dev/null) || tuned='{}'
-fi
-thresholds=$(jq -cn --argjson t "$tuned" \
-  --arg hp "${JEV_ROUTE_HAIKU_P:-}" --arg hm "${JEV_ROUTE_HAIKU_MECH:-}" --arg ha "${JEV_ROUTE_HAIKU_AMB:-}" \
-  --arg sp "${JEV_ROUTE_SONNET_POPUS:-}" --arg sc "${JEV_ROUTE_SONNET_CONF:-}" --arg sig "${JEV_ROUTE_SIGNAL_MIN:-}" \
-  --arg rv "${JEV_ROUTE_REVIEWER_OPUS:-}" --arg dp "${JEV_ROUTE_DEEPEN:-}" '
-  {haiku_p: 0.6, haiku_mech: 0, haiku_amb: 0.9, sonnet_popus: 0.35, sonnet_conf: 0,
-   sec: 0.7, review: 0.7, reviewer_opus: 0.5, deepen: 0.6}
-  + $t
-  + ({haiku_p: $hp, haiku_mech: $hm, haiku_amb: $ha, sonnet_popus: $sp, sonnet_conf: $sc,
-      sec: $sig, review: $sig, reviewer_opus: $rv, deepen: $dp} | with_entries(select(.value != "") | .value |= tonumber))')
 id="r$(date +%s)-$$-$RANDOM"
-
-out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --arg id "$id" --argjson anchors "$anchors" --argjson tuned "$tuned" '
+out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --arg id "$id" '
   include "policy";
-  . as $r
-  | .answers as $a
-  | {probabilities: $a.tier.probabilities, confidence: $a.tier.confidence,
-     signals: ({ambiguous, needs_research, mechanical, cross_cutting, security_or_high_blast_radius,
-                review_of_nontrivial_diff, nontrivial_change} | with_entries(.value = $a[.key].noul)),
-     ctx: $ctx} as $in
-  | ($in | route_policy($t)) as $d
-  | {id: $id, model: $d.model, reviewer_model: $d.reviewer_model, deepen: $d.deepen, policy: $d.policy,
-     confidence: $in.confidence, probabilities: $in.probabilities, signals: $in.signals,
-     jev_choice: $a.tier.choice, jev_model: $r.model, prompt_tokens: $r.usage.input_tokens,
-     above: $d.above, anchors_stripped: $anchors, tuned: ($tuned != {}),
-     thresholds: ($t | {haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf, sec})}' <<<"$resp") || exit 1
+  .answers as $a
+  | ({probabilities: $a.tier.probabilities, confidence: $a.tier.confidence, ctx: $ctx,
+      signals: ({mechanical, security_or_high_blast_radius, review_of_nontrivial_diff, nontrivial_change}
+                | with_entries(.value = $a[.key].noul))} | route_policy) as $d
+  | {id: $id, model: $d.model, reviewer_model: $d.reviewer_model,
+     confidence: $a.tier.confidence, probabilities: $a.tier.probabilities, policy: $d.policy}' <<<"$resp") || exit 1
 
 if [ "${JEV_ROUTE_NO_LOG:-0}" != 1 ]; then
   jev_log route.jsonl "$(jq -c --argjson ctx "$ctx" '{action: "route", context: $ctx} + .' <<<"$out")"

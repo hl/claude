@@ -2,9 +2,6 @@
 # Input (jq -s): slimmed records (slim.jq) after the last compact boundary.
 # Args: $max (fact cap), $tail_chars (size of the plain-text transcript tail).
 # Output: {facts: [{n, kind, text, src}], tail: "..."}  (src: uuid of the record the fact came from)
-# --argjson ledger true (ledger.sh): facts re-injected by an earlier compaction
-# are not candidates (the ledger already holds them), except with
-# --argjson carried true on a session's first ledger run.
 #
 # Candidates: user messages, assistant lines that read like decisions or
 # constraints, files touched, URLs, branches, the last failing command, and
@@ -44,9 +41,6 @@ def recent($k): sort_by(-.i) | .[0:$k];
     | .a.ctx | strings | select(contains(carried_header)) | split("\n")[] | select(startswith("- "))
     | {i: $i, kind: "carried", text: ltrimstr("- ")} ]
   | reduce .[] as $f ([]; if any(.[]; .text == $f.text) then . else . + [$f] end) | .[0:30]
-  # ledger mode: only a session's first ledger run takes them (carried: true); later
-  # runs would only see the ledger's own injection again
-  | (if ($ARGS.named.ledger // false) and (($ARGS.named.carried // false) | not) then [] else . end)
   as $carried
 
 # assistant prose, line by line
