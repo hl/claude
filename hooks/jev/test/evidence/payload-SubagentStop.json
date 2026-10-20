@@ -1,25 +1,17 @@
 {
-  "session_id": "701237a2-d439-4c3d-9cb7-eea5f4279a27",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/701237a2-d439-4c3d-9cb7-eea5f4279a27.jsonl",
+  "session_id": "8e92442a-63bd-4d88-ab21-4aedafe79b03",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/8e92442a-63bd-4d88-ab21-4aedafe79b03.jsonl",
   "cwd": "<scratch>",
-  "prompt_id": "873cf8b8-2e09-4c63-b0e1-92d2d6079f40",
+  "prompt_id": "06cb01cf-c794-4fe8-b50b-f59963aad35e",
   "permission_mode": "auto",
-  "agent_id": "a82124ba64e931a8b",
+  "agent_id": "aad1e20be5d4714ba",
   "agent_type": "general-purpose",
   "effort": {
     "level": "medium"
   },
   "hook_event_name": "SubagentStop",
   "stop_hook_active": false,
-  "agent_transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/701237a2-d439-4c3d-9cb7-eea5f4279a27/subagents/agent-a82124ba64e931a8b.jsonl",
-  "background_tasks": [
-    {
-      "id": "a82124ba64e931a8b",
-      "type": "subagent",
-      "status": "running",
-      "description": "List vegetable tastes",
-      "agent_type": "general-purpose"
-    }
-  ],
+  "agent_transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/8e92442a-63bd-4d88-ab21-4aedafe79b03/subagents/agent-aad1e20be5d4714ba.jsonl",
+  "background_tasks": [],
   "session_crons": []
 }

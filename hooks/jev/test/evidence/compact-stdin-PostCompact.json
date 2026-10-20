@@ -1,9 +1,9 @@
 {
-  "session_id": "a6c6447e-5af3-447a-97cf-7d9f65dec9ea",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/a6c6447e-5af3-447a-97cf-7d9f65dec9ea.jsonl",
+  "session_id": "4585f167-727d-40d4-9da7-f00c93382e9c",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/4585f167-727d-40d4-9da7-f00c93382e9c.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "ffc5c8cb-3652-4f3a-9295-55d699e74441",
+  "prompt_id": "63c38b4c-96ba-4300-875d-f235aaeaccf8",
   "hook_event_name": "PostCompact",
   "trigger": "manual",
-  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop background facts, names, numbers and paths. The summary below follows that, so it stays minimal. The current task is the last user request: run a shell command that lists a nonexistent directory and report the error in one line. The command ran and returned an error, but I haven't yet given the user that one-line error.\n</analysis>\n\n<summary>\n1. Primary Request and Intent:\n   Run a shell command that lists a nonexistent directory and report the resulting error to the user in one line.\n\n2 …[truncated]"
+  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop all background facts, names, numbers and paths. The summary therefore holds only that one line.\n</analysis>\n\n<summary>\nCurrent task: run `ls` on a nonexistent directory and report the resulting error to the user in one line. The command failed with \"No such file or directory (os error 2)\", and that one-line report is still owed.\n</summary> …[truncated]"
 }

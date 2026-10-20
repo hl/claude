@@ -35,11 +35,21 @@ ok   - redacted: digitalocean <secret>
 ok   - redacted: shopify <secret>
 ok   - redacted: github app token <secret>
 ok   - redacted: gitlab <secret>
+ok   - redacted: cache at redis://<redacted>@localhost:6379/0
+ok   - redacted: queue amqp://<redacted>@mq:5672
+ok   - redacted: sshpass -p <redacted> ssh deploy@build-host
+ok   - redacted: docker login -u bot -p <redacted> registry.example.com
+ok   - redacted: podman login -u bot -p <redacted> quay.example.com
+ok   - redacted: token <secret> in the CI vars
+ok   - redacted: machine api.example.com login bot password <redacted>
+ok   - redacted: slack app token <secret>
+ok   - redacted: {"cookie":"<redacted>"}
+ok   - redacted: mysql -u root -p<redacted> app_db
 ok   - kept: paths, hostnames, git remotes, PR links
 ## 2. on the wire (fake Jev on 127.0.0.1)
 ok   - 5 request bodies captured (hooks that called out: agent-route,compact-post,compact-pre,ledger,route)
 ok   - the API key is not in any captured body or header (Authorization recorded as <present>)
-ok   - none of the 36 planted secrets is in any captured body
+ok   - none of the 46 planted secrets is in any captured body
 ok   - paths and hostnames still reach Jev
 --- sample of a captured body (route.sh state.task):
     Fix the deploy script. Context: export ANTHROPIC_API_KEY=<redacted>

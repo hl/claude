@@ -1,8 +1,8 @@
-# live-artifact.sh — 2026-10-20T08:14Z, 2.1.304 (Claude Code)
+# live-artifact.sh — 2026-10-20T08:37Z, 2.1.304 (Claude Code)
 ## route.jsonl: PreToolUse decision joined to the model that ran (tool_use_id)
 [
   {
-    "tool_use_id": "toolu_01Uhuebhb4xSfRKB76iTKjbH",
+    "tool_use_id": "toolu_01EFHg67wQaGNDPiuYCRWMSi",
     "description": "List fruit tastes",
     "hook_action": "escalated",
     "given": "haiku",
@@ -11,7 +11,7 @@
     "status": "completed"
   },
   {
-    "tool_use_id": "toolu_013trwsJCLgPwHkNXhtFKi3n",
+    "tool_use_id": "toolu_01H8WUZjmPDzQnij8eUvEdrk",
     "description": "List vegetable tastes",
     "hook_action": "escalated",
     "given": "haiku",
@@ -20,7 +20,7 @@
     "status": "async_launched"
   },
   {
-    "tool_use_id": "toolu_014ZFGAdhEuHLnUW2j53GrAE",
+    "tool_use_id": "toolu_0148YgtTWapJKi4poysKdyKv",
     "description": "Tide table",
     "hook_action": "kept",
     "given": "haiku",
@@ -30,21 +30,24 @@
   }
 ]
 ## parent's final reply
-foreground: <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-2-list-fruit-tastes-a355634c9b8b63c93.md
+I've launched the background agent. I'm waiting for its completion notification.
+
+foreground: <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-1-list-fruit-tastes-aad1e20be5d4714ba.md
 background: NONE
-deliverable: <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/tide-table.md
+deliverable: <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/tide-table.md
 ## artifacts
-<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-1-list-vegetable-tastes-a82124ba64e931a8b.md 8036 bytes, first line: <!-- subagent a82124ba64e931a8b (general-purpose), 2026-10-20T08:14:36Z, List vegetable tastes -->
-<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/tide-table.md 164 bytes, first line: <!-- subagent ab7139c50746af423 (general-purpose, claude-haiku-5-5), 2026-10-20T08:14:41Z, Tide table -->
-<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-2-list-fruit-tastes-a355634c9b8b63c93.md 8478 bytes, first line: <!-- subagent a355634c9b8b63c93 (general-purpose, claude-sonnet-5-5), 2026-10-20T08:14:36Z, List fruit tastes -->
+<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-2-list-vegetable-tastes-aac472c50c244fa82.md 8957 bytes, first line: <!-- subagent aac472c50c244fa82 (general-purpose), 2026-10-20T08:37:28Z, List vegetable tastes -->
+<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-1-list-fruit-tastes-aad1e20be5d4714ba.md 9327 bytes, first line: <!-- subagent aad1e20be5d4714ba (general-purpose, claude-sonnet-5-5), 2026-10-20T08:36:56Z, List fruit tastes -->
+<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/tide-table.md 160 bytes, first line: <!-- subagent a4e770fe1907dba67 (general-purpose, claude-haiku-5-5), 2026-10-20T08:37:33Z, Tide table -->
 ## artifact.jsonl
-{"ts":"2026-10-20T08:14:36Z","hook":"artifact-hook","session_id":"701237a2-d439-4c3d-9cb7-eea5f4279a27","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-1-list-vegetable-tastes-a82124ba64e931a8b.md","chars":7936,"agent_id":"a82124ba64e931a8b"}
-{"ts":"2026-10-20T08:14:36Z","hook":"artifact-hook","session_id":"701237a2-d439-4c3d-9cb7-eea5f4279a27","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-2-list-fruit-tastes-a355634c9b8b63c93.md","chars":8363,"agent_id":"a355634c9b8b63c93"}
-{"ts":"2026-10-20T08:14:41Z","hook":"artifact-hook","session_id":"701237a2-d439-4c3d-9cb7-eea5f4279a27","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/tide-table.md","chars":57,"agent_id":"ab7139c50746af423","marker":"tide-table"}
+{"ts":"2026-10-20T08:36:56Z","hook":"artifact-hook","session_id":"8e92442a-63bd-4d88-ab21-4aedafe79b03","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-1-list-fruit-tastes-aad1e20be5d4714ba.md","chars":9212,"agent_id":"aad1e20be5d4714ba"}
+{"ts":"2026-10-20T08:37:28Z","hook":"artifact-hook","session_id":"8e92442a-63bd-4d88-ab21-4aedafe79b03","event":"SubagentStop","status":"saved","path":"<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-2-list-vegetable-tastes-aac472c50c244fa82.md","chars":8857,"agent_id":"aac472c50c244fa82"}
+{"ts":"2026-10-20T08:37:33Z","hook":"artifact-hook","session_id":"8e92442a-63bd-4d88-ab21-4aedafe79b03","event":"PostToolUse","status":"saved","path":"<scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/tide-table.md","chars":53,"agent_id":"a4e770fe1907dba67","marker":"tide-table"}
 ## ledger
-{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-vegetable-tastes-a82124ba64e931a8b: <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agen"}
-{"id":"f2","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-fruit-tastes-a355634c9b8b63c93: <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-2-"}
-{"id":"f3","kind":"artifact","score":2.5,"text":"Artifact tide-table: <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/tide-table.md — deliverable, subagent res"}
+{"id":"f1","kind":"artifact","score":2.5,"text":"Artifact agent-1-list-fruit-tastes-aad1e20be5d4714ba: <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-1-"}
+{"id":"f2","kind":"user","score":2.12,"text":"User said: Do exactly this, then stop: 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpos"}
+{"id":"f3","kind":"artifact","score":2.5,"text":"Artifact agent-2-list-vegetable-tastes-aac472c50c244fa82: <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agen"}
+{"id":"f4","kind":"artifact","score":2.5,"text":"Artifact tide-table: <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/tide-table.md — deliverable, subagent res"}
 ## parent transcript: hook additionalContext the parent received
-{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/agent-2-list-fruit-tastes-a355634c9b8b63c93.md\"]"}
-{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (Tide table) saved to <scratch>/jevhome/artifacts/701237a2-d439-4c3d-9cb7-eea5f4279a27/tide-table.md\"]"}
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (List fruit tastes) saved to <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/agent-1-list-fruit-tastes-aad1e20be5d4714ba.md\"]"}
+{"type":"hook_additional_context","hookEvent":"PostToolUse","content":"[\"Subagent result (Tide table) saved to <scratch>/jevhome/artifacts/8e92442a-63bd-4d88-ab21-4aedafe79b03/tide-table.md\"]"}
