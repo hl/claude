@@ -19,6 +19,7 @@
 # live-agent.sh      updatedInput on Agent really changes the subagent model (fill + escalate)
 # live-artifact.sh   real Stop / PostToolUse(Agent) / SubagentStop payloads; long results saved and cited
 # live-compact.sh    tmux /compact with the Stop ledger: order, injection after the boundary, answer
+# live-async-stop.sh an async Stop hook does not hold up the turn and its output is ignored
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # The tests use their own JEV_HOME; never move this machine's real state.
@@ -49,8 +50,9 @@ if [ "${JEV_LIVE:-0}" = 1 ]; then
   run live-agent live-agent.sh
   run live-artifact live-artifact.sh
   run live-compact live-compact.sh
+  run live-async-stop live-async-stop.sh
 else
-  for t in live-agent live-artifact live-compact; do skip "$t" "set JEV_LIVE=1"; done
+  for t in live-agent live-artifact live-compact live-async-stop; do skip "$t" "set JEV_LIVE=1"; done
 fi
 
 echo
