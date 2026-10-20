@@ -1,17 +1,17 @@
 {
-  "session_id": "8e92442a-63bd-4d88-ab21-4aedafe79b03",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/8e92442a-63bd-4d88-ab21-4aedafe79b03.jsonl",
+  "session_id": "2ce4ceee-7960-4891-b32d-bc7c2b1b668a",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/2ce4ceee-7960-4891-b32d-bc7c2b1b668a.jsonl",
   "cwd": "<scratch>",
-  "prompt_id": "06cb01cf-c794-4fe8-b50b-f59963aad35e",
+  "prompt_id": "e03228d9-5074-4b69-84bd-baf6d42f21ba",
   "permission_mode": "auto",
-  "agent_id": "aad1e20be5d4714ba",
+  "agent_id": "a61dec86202721985",
   "agent_type": "general-purpose",
   "effort": {
     "level": "medium"
   },
   "hook_event_name": "SubagentStop",
   "stop_hook_active": false,
-  "agent_transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/8e92442a-63bd-4d88-ab21-4aedafe79b03/subagents/agent-aad1e20be5d4714ba.jsonl",
+  "agent_transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/subagents/agent-a61dec86202721985.jsonl",
   "background_tasks": [],
   "session_crons": []
 }

@@ -1,9 +1,9 @@
 {
-  "session_id": "4585f167-727d-40d4-9da7-f00c93382e9c",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/4585f167-727d-40d4-9da7-f00c93382e9c.jsonl",
+  "session_id": "f2ae640e-8a1b-4b97-ba28-7c4c78b3b220",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-compact/f2ae640e-8a1b-4b97-ba28-7c4c78b3b220.jsonl",
   "cwd": "/private/tmp/jev-live-compact",
-  "prompt_id": "63c38b4c-96ba-4300-875d-f235aaeaccf8",
+  "prompt_id": "a1e64f07-f5a6-4b33-8f58-2dee6192a628",
   "hook_event_name": "PostCompact",
   "trigger": "manual",
-  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop all background facts, names, numbers and paths. The summary therefore holds only that one line.\n</analysis>\n\n<summary>\nCurrent task: run `ls` on a nonexistent directory and report the resulting error to the user in one line. The command failed with \"No such file or directory (os error 2)\", and that one-line report is still owed.\n</summary> …[truncated]"
+  "compact_summary": "<analysis>\nThe additional instructions say to keep only a one-line description of the current task and drop every background fact, name, number and path. The summary below follows that. It keeps only the current task, which is to report the error from the failed shell command in one line.\n</analysis>\n\n<summary>\nCurrent task: report to the user, in one line, the error from the shell command that was just run and failed, which was a \"No such file or directory\" error.\n</summary> …[truncated]"
 }
