@@ -15,26 +15,6 @@
   },
   "model": "claude-fable-5-1[1m]",
   "hooks": {
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      }
-    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
@@ -42,14 +22,6 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/mix_format_edited.sh"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
       },
@@ -75,14 +47,6 @@
         ]
       },
       {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      },
-      {
         "matcher": "Agent",
         "hooks": [
           {
@@ -93,32 +57,14 @@
         ]
       }
     ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      }
-    ],
     "SessionStart": [
       {
-        "matcher": "*",
+        "matcher": "^(startup|resume|clear|compact|fork)$",
         "hooks": [
           {
             "type": "command",
             "command": "bash '/Users/hl/.claude/hooks/herdr-agent-state.sh' session",
             "timeout": 10
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
       },
@@ -138,14 +84,6 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      },
-      {
-        "hooks": [
-          {
-            "type": "command",
             "command": "$HOME/.claude/hooks/jev/ledger.sh",
             "async": true,
             "timeout": 10
@@ -153,25 +91,7 @@
         ]
       }
     ],
-    "StopFailure": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      }
-    ],
     "SubagentStop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
-          }
-        ]
-      },
       {
         "hooks": [
           {
@@ -187,16 +107,6 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/artifact-hook.sh",
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "/Users/hl/.config/iterm2/cc-status"
           }
         ]
       }
@@ -230,7 +140,11 @@
     "type": "command",
     "command": "bash ~/.claude/statusline-command.sh"
   },
-  "enabledPlugins": {},
+  "enabledPlugins": {
+    "bos-board@sona-marketplace": true,
+    "cc-plugin-you-should-know@builtin": true,
+    "slack@anthropic-plugin-directory": true
+  },
   "alwaysThinkingEnabled": true,
   "effortLevel": "medium",
   "modelSettings": {
@@ -240,7 +154,13 @@
     "claude-opus-5": {
       "effortLevel": "medium"
     },
+    "claude-opus-5-5": {
+      "effortLevel": "high"
+    },
     "claude-sonnet-5": {
+      "effortLevel": "high"
+    },
+    "moonshotai/kimi-k3": {
       "effortLevel": "high"
     }
   },
