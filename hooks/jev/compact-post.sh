@@ -69,6 +69,12 @@ if jq -e --arg id "$sum_id" '.coverage.summary_id == $id' "$state" >/dev/null; t
   jev_log compact.jsonl "$(jq -cn --arg e "$event" '{event: "post", source: $e, status: "already_covered"}')"
   exit 0
 fi
+# PostCompact fires after SessionStart(compact): once the state is consumed or
+# covered, a coverage answer would never be read, so nothing is sent.
+if ! jq -e '.phase == "pre" and (.consumed_at // null) == null' "$state" >/dev/null; then
+  jev_log compact.jsonl "$(jq -cn --arg e "$event" '{event: "post", source: $e, status: "state_consumed"}')"
+  exit 0
+fi
 
 # What stays in context is the <summary> part; the <analysis> scratchpad is dropped.
 case $summary in

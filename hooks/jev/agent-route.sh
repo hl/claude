@@ -8,12 +8,12 @@
 #   - no model (frontmatter / inherit semantics stay), a full model ID, fable,
 #     inherit, opus, subagent_type fork, a plugin agent ("x:y"), or
 #     CLAUDE_CODE_SUBAGENT_MODEL set: left alone, logged;
-#   - the prompt or description carries a route.sh id (r<epoch>-<pid>-<n>, e.g.
-#     "Route: r1792491674-30786-23727"): Claudette already routed it. The model
-#     is raised to that answer from route.jsonl if it is lower, never re-scored.
-# Only an explicit haiku/sonnet with no route id is scored (one Jev request,
-# description + subagent_type + prompt) and raised when route.sh's tier is
-# higher. Never lowers.
+#   - the prompt or description has a line "Route: <id>" (r<epoch>-<pid>-<n>, the
+#     last such line wins) and route.jsonl holds that id: Claudette already
+#     routed it. The model is raised to that answer if lower, never re-scored.
+# Any other explicit haiku/sonnet, including one whose id is not in route.jsonl,
+# is scored (one Jev request, description + subagent_type + prompt) and raised
+# when route.sh's tier is higher. Never lowers.
 #
 # JEV_ROUTE_MODE=off turns it off. No permissionDecision is returned, so
 # permission rules apply as usual. Fails open: any problem -> exit 0, no output.
@@ -71,16 +71,20 @@ if [ -n "$skip" ]; then
   exit 0
 fi
 
-# Routed already: take route.sh's logged answer, never a second opinion.
-rid=$(jq -r '[.description // "", .prompt // ""] | join("\n")' <<<"$input" | grep -oE 'r[0-9]{9,}-[0-9]+-[0-9]+' | head -n 1 || true)
+# Routed already: a "Route: <id>" line whose id route.sh logged. Take that
+# answer, never a second opinion. An id not in route.jsonl is not trusted.
+rid=$(jq -r '[.description // "", .prompt // ""] | join("\n")' <<<"$input" |
+  sed -n -E 's/^[[:space:]]*Route:[[:space:]]*(r[0-9]{9,}-[0-9]+-[0-9]+)[[:space:]]*$/\1/p' | tail -n 1 || true)
+tier=""
 if [ -n "$rid" ]; then
   routed=$(grep -F "\"id\":\"$rid\"" "$JEV_LOG_DIR/route.jsonl" 2>/dev/null | jq -c 'select(.action == "route")' 2>/dev/null | tail -n 1 || true)
-  tier=""
   [ -z "$routed" ] || tier=$(jq -r '.model // empty' <<<"$routed" 2>/dev/null || true)
-  if [ -n "$tier" ] && [ "$(rank "$tier")" -lt 9 ] && [ "$(rank "$given")" -lt "$(rank "$tier")" ]; then
+fi
+if [ -n "$tier" ] && [ "$(rank "$tier")" -lt 9 ]; then
+  if [ "$(rank "$given")" -lt "$(rank "$tier")" ]; then
     raise raised_to_route "$routed" "$tier" "route $rid said $tier; $given is lower"
   else
-    log_decision kept_routed "${routed:-null}" "$given" "route $rid$([ -n "$tier" ] || echo ' (not in route.jsonl)')"
+    log_decision kept_routed "$routed" "$given" "route $rid"
   fi
   exit 0
 fi

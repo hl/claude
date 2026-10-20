@@ -11,7 +11,7 @@ Jev is called only in **Claudette sessions**, meaning sessions whose `$CLAUDE_PR
 | What | When it calls Jev | Requests |
 |---|---|---|
 | `route.sh` (CLI, Claudette runs it) | each time it is run | 1 |
-| `agent-route.sh` (PreToolUse `Agent`) | an explicit `haiku` or `sonnet` whose prompt carries no route id | 1 per such spawn, else 0 |
+| `agent-route.sh` (PreToolUse `Agent`) | an explicit `haiku` or `sonnet` with no logged `Route:` id | 1 per such spawn, else 0 |
 | `compact-pre.sh` (PreCompact) | every compaction | 1 |
 | `compact-post.sh` (SubagentStop / PostCompact) | once per compaction, on whichever event sees the summary first | 1 |
 | `artifact-hook.sh`, `compact-session.sh`, `artifact.sh`, the daily sweep | never | 0 |
@@ -51,7 +51,7 @@ Every request goes to `api.typesafe.ai`. Each request body passes through `redac
 What is sent:
 
 - **`route.sh`:** the brief, minus lines that name a tier, and its `--context`.
-- **Agent hook:** the `description`, `subagent_type` and `prompt` of an explicit haiku or sonnet spawn that has no route id.
+- **Agent hook:** the `description`, `subagent_type` and `prompt` of an explicit haiku or sonnet spawn that has no logged route id.
 - **Compaction:** up to 60 facts extracted from the transcript since the last compaction (user messages, decision lines, paths, URLs, branches, the failing command, open items), and up to about 40,000 characters of the transcript tail. Then the `<summary>` part of the compaction summary, together with the same facts.
 
 Artifacts and `.orchestrator.md` are never sent.
@@ -108,9 +108,9 @@ The real set was deleted after that run, because raw briefs from work repos are 
 - `subagent_type` `fork`, or a plugin agent (`x:y`);
 - any call while `CLAUDE_CODE_SUBAGENT_MODEL` is set.
 
-When the prompt or description carries a route.sh id (`r<epoch>-<pid>-<n>`, written as `Route: <id>` or `jev: <id>`), Claudette has already decided. The hook looks up that id in `route.jsonl` and raises the model to route.sh's answer if the given model is lower. It never scores the brief a second time.
+When the prompt or description has a line `Route: <id>` (a route.sh id, `r<epoch>-<pid>-<n>`; the last such line wins) and that id is in `route.jsonl`, Claudette has already decided. The hook raises the model to route.sh's answer if the given model is lower, and never scores the brief a second time. An id that is not in `route.jsonl` is not trusted: the brief is scored as if it had none.
 
-Only an explicit haiku or sonnet with no route id is sent to route.sh, and it is raised when route.sh picks a higher tier. The hook returns only `updatedInput`, with no `permissionDecision`.
+Only an explicit haiku or sonnet with no logged route id is sent to route.sh, and it is raised when route.sh picks a higher tier. The hook returns only `updatedInput`, with no `permissionDecision`.
 
 `artifact-hook.sh` then gives the parent a one-line note:
 
@@ -191,7 +191,7 @@ Everything is under `$JEV_HOME`:
 - `compact/<session_id>.json` holds the scored facts, coverage and the consumed flag.
 - `artifacts/<session_id>/` holds the saved artifacts.
 
-The first local hook run of each day sweeps the state. It deletes files untouched for 30 days and trims logs over 5 MB. It also deletes what v2 kept: `sessions/`, `tune/` and `eval/`, which held raw briefs harvested from work repos.
+The first local hook run of each day sweeps the state. It deletes files untouched for 30 days and trims logs over 5 MB. As a v2 cleanup it also deletes `ledger/` (per-session facts from work transcripts), `sessions/`, `tune/`, `eval/` (raw briefs harvested from work repos) and `log/ledger.jsonl`.
 
 ## Failure mode and latency
 

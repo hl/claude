@@ -33,7 +33,7 @@ model names, no config-dir paths. Per-runner specifics live in that runner's own
 Jev is called only in Claudette sessions (an `.orchestrator.md` at the project root):
 
 - once per `route.sh` call;
-- once per Agent spawn that is an explicit haiku or sonnet with no route id;
+- once per Agent spawn that is an explicit haiku or sonnet with no logged route id;
 - at most twice per compaction.
 
 A routine turn sends nothing. `JEV_SCOPE=all` extends this to every session, and `JEV_DISABLED=1` switches everything off. To enable the hooks, set `TYPESAFE_API_KEY` in the environment or in `~/.zshenv`. State lives in `~/.local/state/jev`.

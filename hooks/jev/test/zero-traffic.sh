@@ -8,7 +8,7 @@
 # the matchers applied as Claude Code does: SessionStart(startup), then per turn
 # UserPromptSubmit, Bash and Edit tool calls (Pre/PostToolUse) and Stop; three
 # turns spawn a subagent (an explicit haiku with no route id, a model-less one,
-# and a sonnet whose brief carries a route.sh id), each with PreToolUse(Agent),
+# and a sonnet whose brief carries a route.sh id already in route.jsonl), each with PreToolUse(Agent),
 # SubagentStop and PostToolUse(Agent); then one compaction (PreCompact,
 # SubagentStop of the compaction agent, SessionStart(compact), PostCompact).
 #   1. In an ordinary project (no .orchestrator.md): zero requests in total,
@@ -67,6 +67,9 @@ replay() { # <scope-name> <project dir>
   local sid="zero-$SCOPE" tp="$W/t-$SCOPE.jsonl" i base agent model prompt
   : >"$tp"
   : >"$W/calls-$SCOPE"
+  # the route.sh answer Claudette got before briefing turn 7 (its call is not a hook event)
+  mkdir -p "$JEV_HOME/log"
+  jq -cn '{action: "route", id: "r1792491674-30786-23727", model: "sonnet", reviewer_model: "sonnet"}' >"$JEV_HOME/log/route.jsonl"
   base=$(jq -cn --arg s "$sid" --arg tp "$tp" --arg cwd "$PROJ" '{session_id: $s, transcript_path: $tp, cwd: $cwd}')
   fire startup SessionStart startup "$(jq -c '. + {hook_event_name: "SessionStart", source: "startup"}' <<<"$base")"
   for i in $(seq 1 10); do

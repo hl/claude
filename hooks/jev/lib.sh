@@ -206,7 +206,8 @@ jev_call() {
 
 # jev_sweep [keep-session]: once a day (a stamp file), delete compaction state
 # and artifact directories untouched for JEV_RETAIN_DAYS (30) days, stray temp
-# files, and the v2 leftovers sessions/, tune/ and eval/ (raw harvested briefs);
+# files, and the v2 leftovers ledger/ (per-session facts from transcripts), sessions/,
+# tune/ and eval/ (raw harvested briefs), plus log/ledger.jsonl (v2 cleanup);
 # logs over 5 MB keep their last 20,000 lines. Local only, never fails.
 jev_sweep() {
   local keep=${1:-} stamp lf days=${JEV_RETAIN_DAYS:-30}
@@ -214,7 +215,7 @@ jev_sweep() {
   [ -e "$stamp" ] && return 0
   mkdir -p "$JEV_HOME" 2>/dev/null && : >"$stamp" 2>/dev/null || return 0
   find "$JEV_HOME" -maxdepth 1 -name '.swept-*' ! -name "$(basename "$stamp")" -delete 2>/dev/null || true
-  rm -rf "$JEV_HOME/sessions" "$JEV_HOME/tune" "$JEV_HOME/eval" 2>/dev/null || true
+  rm -rf "$JEV_HOME/ledger" "$JEV_HOME/sessions" "$JEV_HOME/tune" "$JEV_HOME/eval" "$JEV_HOME/log/ledger.jsonl" 2>/dev/null || true
   find "$JEV_HOME/compact" -maxdepth 1 -type f -mtime +"$days" ! -name "${keep:-.}.json" -delete 2>/dev/null || true
   find "$JEV_HOME/artifacts" -mindepth 1 -maxdepth 1 -type d -mtime +"$days" ! -name "${keep:-.}" -exec rm -rf {} + 2>/dev/null || true
   find "$JEV_HOME/artifacts" "$JEV_HOME/compact" -maxdepth 2 -name '.tmp.*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true

@@ -150,17 +150,29 @@ o=$(agent sonnet general-purpose "Route: $rid
 Rotate the session tokens.")
 [ "$(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" = opus ] && [ "$(last_action)" = raised_to_route ] && [ "$(bodies)" = "$n0" ] &&
   ok "agent-route: a brief with route id $rid (route said opus) given sonnet -> raised to opus from route.jsonl, no Jev call" || bad "agent-route route id raise: $o $(last_action)"
-o=$(agent haiku general-purpose "jev: $rid")
-[ "$(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" = opus ] && [ "$(bodies)" = "$n0" ] || bad "agent-route jev: <id>: $o"
 rid2=$("$J/route.sh" --context '{"kind":"poll"}' "Poll CI." | jq -r .id)
 n0=$(bodies)
-o=$(agent haiku general-purpose "Poll CI on PR 12. Route: $rid2")
+o=$(agent haiku general-purpose "Poll CI on PR 12.
+  Route: $rid2")
 [ -z "$o" ] && [ "$(last_action)" = kept_routed ] && [ "$(bodies)" = "$n0" ] &&
-  ok "agent-route: route said haiku, brief asks haiku -> kept, no Jev call (also for a \"jev: <id>\" line)" || bad "agent-route kept_routed: $o"
-o=$(agent haiku general-purpose "Route: r1700000000-1-1 (not in the log)")
-[ -z "$o" ] && [ "$(last_action)" = kept_routed ] && [ "$(bodies)" = "$n0" ] &&
-  ok "agent-route: an unknown route id is trusted (kept), never re-scored" || bad "agent-route unknown id: $o"
+  ok "agent-route: route said haiku, brief asks haiku -> kept, no Jev call" || bad "agent-route kept_routed: $o"
+o=$(agent sonnet general-purpose "Route: $rid2
+Retry of the earlier brief.
+Route: $rid")
+[ "$(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" = opus ] && [ "$(bodies)" = "$n0" ] &&
+  ok "agent-route: of two Route: lines the last one wins (opus), no Jev call" || bad "agent-route last Route: line: $o"
+# not a Route: line, or an id route.sh never logged: scored like any brief (the fake answers sonnet)
+scored=0
+for p in "jev: $rid" "See pr$rid for context." "Route: $rid (inline)" "Route: r1700000000-1-1"; do
+  n0=$(bodies)
+  o=$(agent haiku general-purpose "$p")
+  if [ "$(jq -r '.hookSpecificOutput.updatedInput.model' <<<"$o")" = sonnet ] && [ "$(last_action)" = escalated ] && [ "$(bodies)" = $((n0 + 1)) ]; then
+    scored=$((scored + 1))
+  else bad "agent-route should have scored \"$p\": $o $(last_action)"; fi
+done
+[ "$scored" = 4 ] && ok "agent-route: an id outside a whole \"Route: <id>\" line, or one not in route.jsonl, is not trusted: the brief is scored (1 call each)"
 # no route id: one Jev call; the fake answers sonnet
+n0=$(bodies)
 o=$(agent haiku general-purpose "Add a paginated GET /api/invoices endpoint with tests.")
 jq -e '.hookSpecificOutput | .updatedInput.model == "sonnet" and .updatedInput.prompt != null and (has("permissionDecision") | not)' <<<"$o" >/dev/null &&
   [ "$(last_action)" = escalated ] && [ "$(bodies)" = $((n0 + 1)) ] &&
@@ -296,6 +308,14 @@ jq -e '.coverage.source == "SubagentStop" and all(.facts[]; has("covered"))' "$J
   ok "compact-post: coverage of 60 facts in ONE request; PostCompact on the same summary makes none (2 calls for the compaction)" || bad "compact-post: $((n2 - n1)) requests"
 o=$(jq -cn '{session_id: "sC", hook_event_name: "SessionStart", source: "compact"}' | CLAUDE_PROJECT_DIR="$P" "$J/compact-session.sh")
 case $(ctxof "$o") in *"Facts preserved across compaction"*"Constraint number 80"*"The full ranked fact list is in $JEV_HOME/compact/sC.json"*) ok "compact-session: uncovered facts injected with the path of the full list" ;; *) bad "compact-session facts: $(ctxof "$o" | head -c 300)" ;; esac
+# SubagentStop without a <summary> covers nothing; SessionStart consumes the state; PostCompact then sends nothing
+jq -cn --arg tp "$TP" '{session_id: "sD", transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | CLAUDE_PROJECT_DIR="$P" "$J/compact-pre.sh"
+jq -cn '{session_id: "sD", hook_event_name: "SubagentStop", agent_type: "", last_assistant_message: "no summary tag here"}' | CLAUDE_PROJECT_DIR="$P" "$J/compact-post.sh"
+jq -cn '{session_id: "sD", hook_event_name: "SessionStart", source: "compact"}' | CLAUDE_PROJECT_DIR="$P" "$J/compact-session.sh" >/dev/null
+n0=$(bodies)
+jq -cn --arg m "$summary" '{session_id: "sD", hook_event_name: "PostCompact", trigger: "auto", compact_summary: $m}' | CLAUDE_PROJECT_DIR="$P" "$J/compact-post.sh"
+[ "$(bodies)" = "$n0" ] && jq -e '.coverage == null' "$JEV_HOME/compact/sD.json" >/dev/null && tail -n 1 "$JEV_HOME/log/compact.jsonl" | jq -e '.status == "state_consumed"' >/dev/null &&
+  ok "compact-post: PostCompact after SessionStart consumed the state -> no Jev call (its answer would never be read)" || bad "compact-post after consumption made a call"
 # out of scope: no state, no call; the session hook still injects the free parts
 n0=$(bodies)
 jq -cn --arg tp "$TP" '{session_id: "sOut", transcript_path: $tp, hook_event_name: "PreCompact", trigger: "auto"}' | CLAUDE_PROJECT_DIR="$W" "$J/compact-pre.sh"
@@ -353,14 +373,14 @@ ctx=$(ctxof "$o")
 
 # --- 8. daily sweep: old state and what earlier versions kept are removed, once a day
 SW="$W/sweep"
-mkdir -p "$SW/sessions" "$SW/eval" "$SW/tune" "$SW/compact" "$SW/artifacts/old" "$SW/artifacts/cur" "$SW/artifacts/new" "$SW/log"
+mkdir -p "$SW/ledger" "$SW/sessions" "$SW/eval" "$SW/tune" "$SW/compact" "$SW/artifacts/old" "$SW/artifacts/cur" "$SW/artifacts/new" "$SW/log"
 touch "$SW/eval/labelled.jsonl" "$SW/compact/new.json" "$SW/.swept-20200101"
 touch -t 202001010000 "$SW/artifacts/old" "$SW/artifacts/cur"
 cp "$SW/compact/new.json" "$SW/compact/old.json" && touch -t 202001010000 "$SW/compact/old.json"
 JEV_HOME="$SW" bash -c '. "$1/lib.sh"; jev_sweep cur' _ "$J"
 left=$(cd "$SW" && find . -mindepth 1 -maxdepth 2 ! -name '.swept-*' | sort | paste -sd' ' -)
 [ "$left" = "./artifacts ./artifacts/cur ./artifacts/new ./compact ./compact/new.json ./log" ] && [ -e "$SW/.swept-$(date -u +%Y%m%d)" ] && [ ! -e "$SW/.swept-20200101" ] &&
-  ok "sweep: sessions/, eval/, tune/ and state untouched for 30 days removed; the current session and fresh files kept" || bad "sweep left: $left"
+  ok "sweep: v2 ledger/, sessions/, eval/, tune/ and state untouched for 30 days removed; the current session and fresh files kept" || bad "sweep left: $left"
 mkdir -p "$SW/eval"
 JEV_HOME="$SW" bash -c '. "$1/lib.sh"; jev_sweep' _ "$J"
 [ -d "$SW/eval" ] && ok "sweep: runs once a day (stamp file)" || bad "sweep ran twice in a day"
