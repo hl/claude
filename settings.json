@@ -1,7 +1,8 @@
 {
   "env": {
     "BASH_MAX_TIMEOUT_MS": "3600000",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "JEV_LEDGER": "0"
   },
   "permissions": {
     "allow": [
