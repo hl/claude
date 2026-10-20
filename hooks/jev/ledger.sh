@@ -199,6 +199,11 @@ jq -c --slurpfile f "$facts" '
   def norm: ascii_downcase | gsub("^(user said: |open item: |carried: )+"; "")
     | gsub("^(- \\[ \\] |\\[ \\] |remaining: |todo:? |next:? )+"; "") | gsub("[^a-z0-9]+"; " ") | gsub("^ | $"; "");
   [$f[] | select(.superseded_by == null)] as $live
+  | ($f | map({key: .id, value: .}) | from_entries) as $byid
+  # the live end of a supersession chain: A -> B -> C gives C
+  | def live_end($id; $n): ($byid[$id] // null) as $x
+      | if $x == null or $n > 50 then null elif $x.superseded_by == null then $id else live_end($x.superseded_by; $n + 1) end;
+  ([$f[] | select(.superseded_by != null) | {k: (.text | norm), id, score}] | group_by(.k) | map({key: .[0].k, value: last}) | from_entries) as $dead
   | ([$live[] | .text]) as $known
   | ([$live[] | .text | norm]) as $known_norm
   | [.facts[] | select(.text as $t | $known | index($t) | not)] as $c0
@@ -206,6 +211,11 @@ jq -c --slurpfile f "$facts" '
   | (reduce $c0[] as $x ([];
        if $x.kind == "todo" and (($x.text | norm) as $k | ($known_norm | index($k)) or ($stmt_norm | index($k)) or (map(select(.kind == "todo") | .text | norm) | index($k)))
        then . else . + [$x] end)) as $cands
+  # A statement that comes back after it was superseded restores it: kept whatever
+  # Jev scores it, at the score of the old fact, and it retires what had replaced it.
+  | ($cands | map(. as $c | ($dead[$c.text | norm] // null) as $d
+      | if $d == null then . else . + {restores: $d.id, restore_score: $d.score,
+          restore_targets: ([live_end($d.id; 0)] | map(select(. != null and . != $d.id)))} end)) as $cands
   | {cands: ($cands | to_entries | map(.value + {n: (.key + 1)})), live: $live, tail}' "$tmpd/ex.json" >"$tmpd/in.json"
 nc=$(jq '.cands | length' "$tmpd/in.json")
 if [ "$nc" -eq 0 ]; then
@@ -248,19 +258,25 @@ jq -c --argjson a "$answers" --argjson min "$MIN_SCORE" --argjson sup "$SUP_MIN"
      # A pull request link is how the session finds its own work again: never below important.
      | ($a["s\(.n)"].score // 0 | if $c.kind == "url" and ($c.text | startswith("Pull request:")) then ([., $min] | max) else . end) as $score
      | [$a | to_entries[] | select(.key | startswith("x\($c.n)_")) | {t: (.key | sub("^x[0-9]+_"; "")), p: (.value.probabilities // {})}] as $pairs
-     | ([$pairs[] | select((.p.fully // 0) >= $sup) | .t]) as $sup_t
-     | ([$pairs[] | select((.p.fully // 0) < $sup and ((.p.fully // 0) + (.p.partly // 0)) >= $sup) | .t]) as $cor_t
-     | ([($sup_t + $cor_t)[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $sup_score
-     | {n, kind, text, src, score: ($score * 100 | round / 100), sup_t: $sup_t, cor_t: $cor_t,
-        # carried: re-injected by an earlier compaction, so already judged important
-        keep: ($score >= $min or $c.kind == "carried" or ($sup_score >= $min and $score >= 0.75))}]
+     | (([$pairs[] | select((.p.fully // 0) >= $sup) | .t]) + ($c.restore_targets // []) | unique) as $sup_t
+     | ([$pairs[] | select((.p.fully // 0) < $sup and ((.p.fully // 0) + (.p.partly // 0)) >= $sup) | .t] - $sup_t) as $cor_t
+     | ([$sup_t[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $full_score
+     | ([$cor_t[] | select(startswith("f")) as $t | $live[] | select(.id == $t) | .score] | max // 0) as $part_score
+     | (if $c.restores then ([$score, $c.restore_score // 0] | max) else $score end) as $score
+     | {n, kind, text, src, score: ($score * 100 | round / 100), sup_t: $sup_t, cor_t: $cor_t, restores: ($c.restores // null),
+        # carried: re-injected by an earlier compaction, so already judged important;
+        # restores: a superseded statement made again; a full replacement of an important
+        # fact is itself important whatever its own score; a partial one needs some weight
+        keep: ($score >= $min or $c.kind == "carried" or $c.restores != null or $full_score >= $min
+               or ($part_score >= $min and $score >= 0.75))}]
   | [.[] | select(.keep)] as $kept
   | ($kept | to_entries | map({key: "c\(.value.n)", value: "f\($next + .key)"}) | from_entries) as $cid
   | [$kept[] | {id: $cid["c\(.n)"], ts: $ts, kind, text,
                 score: (if .score < $min then $min else .score end),
                 supersedes: [.sup_t[] | if startswith("c") then ($cid[.] // empty) else . end],
                 corrects: [.cor_t[] | if startswith("c") then ($cid[.] // empty) else . end],
-                superseded_by: null, corrected_by: [], source_uuid: .src}] as $new
+                superseded_by: null, corrected_by: [], source_uuid: .src}
+              + (if .restores then {restores: .restores} else {} end)] as $new
   | {new: $new, marks: ([$new[] | .id as $by | .supersedes[] | {key: ., value: $by}] | from_entries),
      cmarks: ([$new[] | .id as $by | .corrects[] | {k: ., v: $by}] | group_by(.k) | map({key: .[0].k, value: map(.v)}) | from_entries),
      scored: length, next: ($next + ($new | length))}' "$tmpd/in.json" >"$tmpd/decided.json"

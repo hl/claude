@@ -6,7 +6,8 @@ Writes every request body to <capture-dir>/body-<n>.json (and the headers, minus
 Authorization, to headers-<n>.txt), and answers every question with a fixed,
 valid answer: score -> level 2 ("important"), noul -> 0.1, choice -> the first
 option, except that a choice whose instructions match the regex in
-$FAKE_JEV_FULLY answers "fully" (lets tests drive a supersession).
+$FAKE_JEV_FULLY answers "fully" (lets tests drive a supersession) and a score
+whose instructions match $FAKE_JEV_LOW answers level 0 ("irrelevant").
 Prints "ready" once listening. Test-only; never used by the hooks.
 """
 import json
@@ -20,14 +21,18 @@ CAP = sys.argv[2]
 os.makedirs(CAP, exist_ok=True)
 count = [0]
 FULLY = os.environ.get("FAKE_JEV_FULLY", "")
+LOW = os.environ.get("FAKE_JEV_LOW", "")
 
 
 def answer(q):
     t = q.get("type")
     if t == "score":
         levels = q.get("criteria") or ["low", "high"]
-        probs = {str(i): (1.0 if i == min(2, len(levels) - 1) else 0.0) for i in range(len(levels))}
-        return {"type": "score", "score": float(min(2, len(levels) - 1)), "confidence": 1.0,
+        lv = min(2, len(levels) - 1)
+        if LOW and re.search(LOW, str(q.get("instructions", ""))):
+            lv = 0
+        probs = {str(i): (1.0 if i == lv else 0.0) for i in range(len(levels))}
+        return {"type": "score", "score": float(lv), "confidence": 1.0,
                 "legend": {str(i): l for i, l in enumerate(levels)}, "probabilities": probs}
     if t == "choice":
         opts = list((q.get("criteria") or {"a": None}).keys())

@@ -46,7 +46,7 @@ expect "above: how sure a cheaper tier falls short" "$mid" '.above.haiku >= 0.7 
 
 # --- fake Jev for everything below
 port=$((20000 + RANDOM % 20000))
-FAKE_JEV_FULLY='Change of plan' python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
+FAKE_JEV_FULLY='Change of plan' FAKE_JEV_LOW='Pin the base image to debian' python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
 fpid=$!
 trap 'kill $fpid 2>/dev/null' EXIT
 for _ in $(seq 1 50); do grep -q ready "$W/fake.out" 2>/dev/null && break; sleep 0.1; done
@@ -145,6 +145,25 @@ jq -e -s '[.[] | select(.text == "User said: Use advisory locks for the job queu
   | ($a | length) == 2 and ($a[0].superseded_by != null) and ($a[1].superseded_by == null)
   and any(.[]; (.text | test("Change of plan")) and .superseded_by == $a[1].id)' "$L2" >/dev/null &&
   ok "ledger: A, B, A again -> the restated A is live and supersedes B" || bad "ledger A-B-A: $(jq -c '{id, superseded_by, t: .text[0:40]}' "$L2" | paste -sd' ' -)"
+# Restoration does not depend on Jev: A (superseded by B) is said again, Jev scores
+# it irrelevant and does not call it a correction, yet it is kept at A's score and
+# B is retired.
+S4="off-restore"
+L4="$JEV_HOME/ledger/$S4.jsonl"
+TP4="$W/restore.jsonl"
+mkdir -p "$JEV_HOME/ledger"
+jq -cn '{id: "f1", ts: "2026-10-18T10:00:00Z", kind: "user", text: "User said: Pin the base image to debian bookworm.", score: 2.6, supersedes: [], corrects: [], superseded_by: "f2", corrected_by: [], source_uuid: "r1"},
+  {id: "f2", ts: "2026-10-18T10:01:00Z", kind: "user", text: "User said: Use alpine for the base image.", score: 2.4, supersedes: ["f1"], corrects: [], superseded_by: null, corrected_by: [], source_uuid: "r2"}' >"$L4"
+jq -cn '{type: "user", uuid: "r1", promptSource: "typed", message: {role: "user", content: "Pin the base image to debian bookworm."}},
+  {type: "user", uuid: "r2", promptSource: "typed", message: {role: "user", content: "Use alpine for the base image."}}' >"$TP4"
+jq -cn --argjson o "$(wc -c <"$TP4" | tr -d ' ')" '{offset: $o, last_uuid: "r2", next_id: 3}' >"$JEV_HOME/ledger/$S4.meta.json"
+jq -cn '{type: "user", uuid: "r3", promptSource: "typed", message: {role: "user", content: "Pin the base image to debian bookworm."}}' >>"$TP4"
+jq -cn --arg tp "$TP4" --arg s "$S4" '{session_id: $s, transcript_path: $tp, hook_event_name: "Stop"}' | "$J/ledger.sh"
+jq -e -s 'any(.[]; .id == "f3" and .restores == "f1" and .superseded_by == null and .score == 2.6)
+  and any(.[]; .id == "f2" and .superseded_by == "f3")' "$L4" >/dev/null &&
+  ok "ledger: a superseded statement said again is kept at its old score (Jev scored it 0) and retires what replaced it" ||
+  bad "ledger restore: $(jq -c '{id, score, superseded_by, restores}' "$L4" | paste -sd' ' -)"
+
 # open items: the same item as a user line, an "Open item:" line and a checkbox -> one fact
 S3="off-todo"
 TP3="$W/todo.jsonl"

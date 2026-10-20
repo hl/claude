@@ -13,7 +13,8 @@
 #                    else the committed sanitised fixture; zero opus under-routing, <= 2% sonnet
 # agent-route-api.sh escalate / fill / log semantics of the Agent hook
 # compact-fixture.sh planted facts + fake summary: omitted facts re-injected, both hook orders, v1 mode
-# ledger-fixture.sh  13-turn session, 2 corrections, an artifact, 2 compactions (evidence b)
+# ledger-fixture.sh  14-turn session, 2 corrections, A-B-A, an artifact, 2 compactions (evidence b)
+# ledger-restore.sh  A, B, A again (short and long restatement), 3 runs each, must all pass
 # latency.sh         wall time per hook, ledger replayed per turn on the fixture and a real transcript
 # live-agent.sh      updatedInput on Agent really changes the subagent model (fill + escalate)
 # live-artifact.sh   real Stop / PostToolUse(Agent) / SubagentStop payloads; long results saved and cited
@@ -34,7 +35,7 @@ skip() { results+=("SKIP  $1 ($2)"); }
 run offline offline.sh
 run offline-v2 offline-v2.sh
 run redact redact.sh
-api=(route-eval agent-route-api compact-fixture ledger-fixture latency)
+api=(route-eval agent-route-api compact-fixture ledger-fixture ledger-restore latency)
 if [ "${JEV_DISABLED:-0}" = 1 ]; then
   for t in "${api[@]}"; do skip "$t" "JEV_DISABLED=1"; done
 elif jev_load_key; then

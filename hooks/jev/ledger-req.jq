@@ -46,7 +46,7 @@ def restates($x; $t): $x.kind == "decision" and ($x.cw | length) > 0
 | sort_by(-.o, -.r) | .[0:$max_pairs] | sort_by(.n, .t) as $pairs
 | ([$c[] | {key: "s\(.n)", value: {
       type: "score",
-      instructions: "Candidate \(.n) in `candidates`: \"\(.text)\". This is a long-running session; its context will be compacted into a short summary several times, and work continues from that summary. How much must candidate \(.n) survive for the rest of the session to go correctly? Constraints and context the user stated (names, hosts, ports, tickets, branches, rules), decisions, open items, pull requests opened or reviewed in this session and files it changed keep mattering for the whole session even when the latest step does not use them. Finished one-off steps, routine file reads and tool noise do not.",
+      instructions: "Candidate \(.n) in `candidates`: \"\(.text)\". This is a long-running session; its context will be compacted into a short summary several times, and work continues from that summary. Candidates are newer than every fact in `ledger`: a candidate that changes or reverses something in `ledger` is a change of course and matters, not an obsolete line. How much must candidate \(.n) survive for the rest of the session to go correctly? Constraints and context the user stated (names, hosts, ports, tickets, branches, rules), decisions, open items, pull requests opened or reviewed in this session and files it changed keep mattering for the whole session even when the latest step does not use them. Finished one-off steps, routine file reads and tool noise do not.",
       criteria: [
         "Irrelevant: not needed to continue the work, or already obsolete",
         "Nice to have: useful background; the work continues correctly without it",
