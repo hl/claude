@@ -1,14 +1,14 @@
 # Hook start times (epoch seconds, µs) during one manual /compact, Claude Code 2.1.304 (Claude Code)
-1792488234.511574 SessionStart(source=startup)
-1792488261.412154 SubagentStop(agent_type="")
-1792488277.904356 SubagentStop(agent_type="")
-1792488278.053619 SubagentStop(agent_type="general-purpose")
-1792488280.945890 SubagentStop(agent_type="")
-1792488318.609614 SubagentStop(agent_type="")
-1792488349.880449 SubagentStop(agent_type="")
-1792488366.286548 PreCompact
-1792488368.832913 SubagentStop(agent_type="")
-1792488369.522290 SessionStart(source=compact)
-1792488369.786432 PostCompact
-1792488378.917417 SubagentStop(agent_type="")
-# compaction agent's SubagentStop last_assistant_message == PostCompact compact_summary: byte-identical, 480 chars
+1792493638.725800 SessionStart(source=startup)
+1792493665.661723 SubagentStop(agent_type="")
+1792493684.219199 SubagentStop(agent_type="general-purpose")
+1792493686.776991 SubagentStop(agent_type="")
+1792493686.814619 SubagentStop(agent_type="")
+1792493724.739300 SubagentStop(agent_type="")
+1792493749.913947 SubagentStop(agent_type="")
+1792493770.568258 PreCompact
+1792493774.086733 SubagentStop(agent_type="")
+1792493774.616968 SessionStart(source=compact)
+1792493774.781934 PostCompact
+1792493783.632358 SubagentStop(agent_type="")
+# compaction agent's SubagentStop last_assistant_message == PostCompact compact_summary: byte-identical, 718 chars

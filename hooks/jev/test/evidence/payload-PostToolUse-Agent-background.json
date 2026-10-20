@@ -1,8 +1,8 @@
 {
-  "session_id": "2ce4ceee-7960-4891-b32d-bc7c2b1b668a",
-  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/2ce4ceee-7960-4891-b32d-bc7c2b1b668a.jsonl",
+  "session_id": "87dca481-a8b8-422f-bdbe-168f4a3ecb46",
+  "transcript_path": "~/.claude/projects/-private-tmp-jev-live-artifact/87dca481-a8b8-422f-bdbe-168f4a3ecb46.jsonl",
   "cwd": "<scratch>",
-  "prompt_id": "e03228d9-5074-4b69-84bd-baf6d42f21ba",
+  "prompt_id": "a2a6495c-e4c0-48f1-b552-af95a37575bf",
   "permission_mode": "auto",
   "effort": {
     "level": "medium"
@@ -13,20 +13,20 @@
     "description": "List vegetable tastes",
     "prompt": "Reply with a numbered list of 40 different vegetables, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
     "subagent_type": "general-purpose",
-    "model": "sonnet",
+    "model": "haiku",
     "run_in_background": true
   },
   "tool_response": {
     "isAsync": true,
     "status": "async_launched",
-    "agentId": "af86758573be213ab",
+    "agentId": "aa93a738d345c8f4b",
     "description": "List vegetable tastes",
-    "resolvedModel": "claude-sonnet-5-5",
+    "resolvedModel": "claude-haiku-5-5",
     "prompt": "Reply with a numbered list of 40 different vegetables, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.",
-    "outputFile": "/private/tmp/claude-501/-private-tmp-jev-live-artifact/2ce4ceee-7960-4891-b32d-bc7c2b1b668a/tasks/af86758573be213ab.output",
+    "outputFile": "/private/tmp/claude-501/-private-tmp-jev-live-artifact/87dca481-a8b8-422f-bdbe-168f4a3ecb46/tasks/aa93a738d345c8f4b.output",
     "canReadOutputFile": true,
     "canContinueAgent": true
   },
-  "tool_use_id": "toolu_0131LqFMYzjzAAJtfQuDDpBZ",
-  "duration_ms": 8
+  "tool_use_id": "toolu_01B3cYeVkAwHg3FJWy66i7ZR",
+  "duration_ms": 5
 }

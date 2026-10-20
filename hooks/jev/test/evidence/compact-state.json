@@ -1,51 +1,89 @@
 {
-  "session_id": "f2ae640e-8a1b-4b97-ba28-7c4c78b3b220",
-  "mode": "ledger",
-  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/f2ae640e-8a1b-4b97-ba28-7c4c78b3b220.jsonl",
+  "session_id": "bf5df30e-b7fb-42d7-be19-8a2a80cfbddc",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-20T09:26:06Z",
-  "extracted_epoch": 1792488366,
+  "extracted_at": "2026-10-20T10:56:10Z",
+  "extracted_epoch": 1792493770,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
-  "work_type": null,
-  "mid_operation": null,
-  "superseded": 0,
+  "mid_operation": 0.05,
   "facts": [
     {
-      "n": 1,
-      "id": "f1",
+      "n": 2,
       "kind": "user",
-      "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821. [later corrected: User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.]",
-      "score": 2.93,
+      "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
+      "src": "53e59909-1953-4ab3-af14-e544e730e71e",
+      "score": 2.34,
+      "legend": "Important",
       "covered_p": 0.01,
       "covered": false
     },
     {
-      "n": 2,
-      "id": "f2",
+      "n": 1,
       "kind": "user",
-      "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
-      "score": 2.93,
+      "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
+      "src": "80593851-e9e7-4b08-a70a-592c15dac374",
+      "score": 1.3,
+      "legend": "Nice to have",
       "covered_p": 0.01,
       "covered": false
     },
     {
       "n": 3,
-      "id": "f3",
       "kind": "user",
       "text": "User said: Use the Agent tool once in the foreground with subagent_type general-purpose, model haiku, description Rollout checklist, and this prompt: Reply with exactly these three lines and nothing else, the slashes being line breaks: Artifact: rollout-checklist / 1. drain the queue / 2. flip fanout_streams_enabled. Then reply DONE.",
-      "score": 1.51,
+      "src": "8fc64ae0-269a-4fbe-bd5c-35ec9bfc1cb6",
+      "score": 0.96,
+      "legend": "Nice to have",
       "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 5,
+      "kind": "file",
+      "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
+      "src": "fbb88084-db02-4d30-af46-36cdbb41373a",
+      "score": 0.64,
+      "legend": "Nice to have",
+      "covered_p": 0.02,
+      "covered": false
+    },
+    {
+      "n": 6,
+      "kind": "user",
+      "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
+      "src": "0a4d0546-5d82-49b7-9559-44f8718131b9",
+      "score": 0.56,
+      "legend": "Nice to have",
+      "covered_p": 0.64,
+      "covered": true
+    },
+    {
+      "n": 4,
+      "kind": "user",
+      "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
+      "src": "ee592af6-44ad-48f8-8e24-750bb9b6bdc0",
+      "score": 0.5,
+      "legend": "Nice to have",
+      "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 7,
+      "kind": "error",
+      "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
+      "src": "591a72a7-b88a-4615-8276-7184030ba6e1",
+      "score": 0.37,
+      "legend": "Irrelevant",
+      "covered_p": 0.2,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "1446202678-480",
+    "summary_id": "620527851-718",
     "source": "SubagentStop",
-    "at": "2026-10-20T09:26:09Z",
-    "summary_quality": 1.2
+    "at": "2026-10-20T10:56:14Z"
   },
-  "consumed_at": "2026-10-20T09:26:09Z"
+  "consumed_at": "2026-10-20T10:56:14Z"
 }
