@@ -6,14 +6,16 @@
 # Only project settings are loaded (--setting-sources project), so the user's
 # own hooks do not run in the scratch session.
 #
-# The session states background facts, corrects one of them, saves an artifact
-# with artifact.sh, and has a live and a DONE section in .orchestrator.md.
+# The session states background facts, corrects one of them, has a subagent return
+# a deliverable marked "Artifact: rollout-checklist" (saved by the hook), and has a
+# live and a DONE section in .orchestrator.md.
 # Proves: the Stop hook builds the ledger (correction supersedes), the hook
 # order, that the snapshot is covered, that the injection (live orchestrator
 # section, artifact index, uncovered live facts, no superseded fact) sits after
 # the compact_boundary, and that the model answers from it.
 # Writes sanitised evidence to test/evidence/compact-*.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 EVID="$HERE/evidence"
@@ -51,10 +53,7 @@ jq -n --arg d "$SCRATCH/dump.sh" --arg j "$J" '
     SubagentStop: [{hooks: [dump("SubagentStop"), jev("compact-post.sh"), jev("artifact-hook.sh")]}],
     PostToolUse: [{matcher: "Agent", hooks: [jev("artifact-hook.sh")]}],
     SessionStart: [{hooks: [dump("SessionStart")]}, {matcher: "compact", hooks: [jev("compact-session.sh")]}],
-    PostCompact: [{matcher: "manual|auto", hooks: [dump("PostCompact"), jev("compact-post.sh")]}]},
-   # The auto-mode classifier may refuse artifact.sh as "self-modification" (it lives
-   # under ~/.claude); an explicit allow rule is what a user would add.
-   permissions: {allow: ["Bash(\($j)/artifact.sh:*)", "Bash(printf:*)"]}}' >"$SCRATCH/.claude/settings.json"
+    PostCompact: [{matcher: "manual|auto", hooks: [dump("PostCompact"), jev("compact-post.sh")]}]}}' >"$SCRATCH/.claude/settings.json"
 
 pane() { tmux capture-pane -p -t "$SESS" 2>/dev/null; }
 say() { # type a line, then submit
@@ -80,8 +79,8 @@ say "Context for this session, reply OK only: the staging database is pg-staging
 sleep 15
 say "Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone."
 sleep 15
-say "Run this exact shell command and then reply DONE: printf '# Rollout checklist\\n1. drain the queue\\n2. flip fanout_streams_enabled\\n' | $J/artifact.sh rollout-checklist"
-sleep 30
+say "Use the Agent tool once in the foreground with subagent_type general-purpose, model haiku, description Rollout checklist, and this prompt: Reply with exactly these three lines and nothing else, the slashes being line breaks: Artifact: rollout-checklist / 1. drain the queue / 2. flip fanout_streams_enabled. Then reply DONE."
+sleep 40
 say "Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE."
 sleep 25
 say "Run the shell command: ls /nonexistent-jev-dir   and tell me the error in one line."

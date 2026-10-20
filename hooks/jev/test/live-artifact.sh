@@ -9,11 +9,15 @@
 #  3. the Stop hook builds the ledger, which indexes both artifacts
 #  4. route.jsonl holds, for each Agent call, the PreToolUse decision and an
 #     action "ran" record with resolved_model, joined by tool_use_id
+#  5. a short deliverable returned with "Artifact: <name>" as its first line is
+#     saved as <name>.md and cited, in auto mode with no allow rules at all
+#     (nothing calls artifact.sh, so no permission or classifier is involved)
 # Records the real Stop, PostToolUse(Agent) and SubagentStop payloads (sanitised:
 # $HOME -> ~, long strings cut) as test/evidence/payload-*.json.
 # Only project settings are loaded (--setting-sources project), so the user's
 # own hooks do not run in the scratch session.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 EVID="$HERE/evidence"
@@ -50,8 +54,9 @@ cut() { jq 'def c: if type == "string" and length > 300 then .[0:300] + " …[\(
 prompt="Do exactly this, then stop:
 1. Use the Agent tool once in the foreground (run_in_background false), subagent_type \"general-purpose\", model \"haiku\", description \"List fruit tastes\", prompt: \"Reply with a numbered list of 40 different fruits, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.\"
 2. Use the Agent tool once in the background (run_in_background true), subagent_type \"general-purpose\", model \"haiku\", description \"List vegetable tastes\", prompt: \"Reply with a numbered list of 40 different vegetables, each followed by two full sentences (at least 30 words) describing its taste and texture. Your reply must be at least 4,000 characters. No tools.\" Wait for it to finish.
-3. Reply with two lines: 'foreground: <the path where the first result was saved, exactly as you were told, or NONE>' and 'background: <the path for the second, or NONE>'."
-(cd "$SCRATCH" && timeout 600 claude -p --setting-sources project --model sonnet "$prompt") >"$SCRATCH/reply.txt" 2>&1
+3. Use the Agent tool once in the foreground, subagent_type \"general-purpose\", model \"haiku\", description \"Tide table\", prompt: \"Reply with exactly these three lines and nothing else: Artifact: tide-table / high water 06:12 / low water 12:31\" (the slashes are line breaks).
+4. Reply with three lines: 'foreground: <the path where the first result was saved, exactly as you were told, or NONE>', 'background: <the path for the second, or NONE>' and 'deliverable: <the path for the third, or NONE>'."
+(cd "$SCRATCH" && timeout 600 claude -p --setting-sources project --permission-mode auto --model sonnet "$prompt") >"$SCRATCH/reply.txt" 2>&1
 reply=$(cat "$SCRATCH/reply.txt")
 sid=$(jq -r '.session_id' "$(find "$SCRATCH/dump" -name '*-Stop.json' | sort | tail -n 1)" 2>/dev/null)
 adir="$JEV_HOME/artifacts/$sid"
@@ -66,16 +71,22 @@ st=$(find "$SCRATCH/dump" -name '*-Stop.json' | sort | tail -n 1)
 [ -n "$ss" ] && cut "$ss" >"$EVID/payload-SubagentStop.json"
 [ -n "$st" ] && cut "$st" >"$EVID/payload-Stop.json"
 
-[ -n "$fg" ] && jq -e '.tool_response | (.content | type == "array") and (.agentId | type == "string") and (.resolvedModel | type == "string")' "$fg" >/dev/null &&
-  ok "PostToolUse(Agent), foreground: tool_response is an object with status completed, content[], agentId, resolvedModel" || bad "foreground PostToolUse payload not as relied on"
+[ -n "$fg" ] && jq -e '.tool_response | ((.content | type == "array") or (.handbackReport.text | type == "string")) and (.agentId | type == "string") and (.resolvedModel | type == "string")' "$fg" >/dev/null &&
+  ok "PostToolUse(Agent), foreground: status completed, agentId, resolvedModel, the report in $(jq -r '.tool_response | if (.handbackReport.text | type) == "string" then "handbackReport.text (SubagentHandback)" else "content[]" end' "$fg")" || bad "foreground PostToolUse payload not as relied on"
 [ -n "$bg" ] && ok "PostToolUse(Agent), background: tool_response status async_launched (no result yet)" || bad "no background PostToolUse payload"
-[ -n "$ss" ] && jq -e '(.agent_id | type == "string") and (.agent_type | type == "string") and (.last_assistant_message | type == "string") and has("agent_transcript_path")' "$ss" >/dev/null &&
-  ok "SubagentStop: agent_id, agent_type, last_assistant_message, agent_transcript_path present" || bad "SubagentStop payload not as relied on"
+# 2.1.302 put the reply in last_assistant_message; 2.1.304 leaves it out for agents that
+# hand back with SubagentHandback, and the hook reads agent_transcript_path instead.
+[ -n "$ss" ] && jq -e '(.agent_id | type == "string") and (.agent_type | type == "string") and ((.last_assistant_message | type == "string") or (.agent_transcript_path | type == "string"))' "$ss" >/dev/null &&
+  ok "SubagentStop: agent_id, agent_type and last_assistant_message or agent_transcript_path present ($(jq -r 'if has("last_assistant_message") then "last_assistant_message" else "agent_transcript_path only" end' "$ss"))" || bad "SubagentStop payload not as relied on"
 [ -n "$st" ] && jq -e '(.session_id | type == "string") and (.transcript_path | type == "string") and has("stop_hook_active") and (has("agent_id") | not)' "$st" >/dev/null &&
   ok "Stop: session_id, transcript_path, stop_hook_active present; no agent_id on the main session" || bad "Stop payload not as relied on"
 
 fgf=$(find "$adir" -name 'agent-*-list-fruit-tastes-*.md' 2>/dev/null | sed -n 1p)
 bgf=$(find "$adir" -name 'agent-*-list-vegetable-tastes-*.md' 2>/dev/null | sed -n 1p)
+dlf="$adir/tide-table.md"
+jq -e '.permissions == null' "$SCRATCH/.claude/settings.json" >/dev/null && [ -f "$dlf" ] && grep -q 'high water 06:12' "$dlf" && grep -qF "$dlf" <<<"$reply" &&
+  ok "auto mode, no allow rules: the short \"Artifact: tide-table\" deliverable was saved as tide-table.md and the parent cited it" ||
+  bad "marked deliverable: file $( [ -f "$dlf" ] && echo present || echo missing), reply: $(grep -i deliverable <<<"$reply" | sanitise)"
 [ -n "$fgf" ] && [ "$(wc -c <"$fgf")" -gt 2000 ] && ok "foreground result saved: $(basename "$fgf") ($(wc -c <"$fgf" | tr -d ' ') bytes)" || bad "foreground result not saved"
 [ -n "$bgf" ] && ok "background result saved on SubagentStop: $(basename "$bgf")" || bad "background result not saved"
 if [ -n "$fgf" ] && grep -qF "$fgf" <<<"$reply"; then

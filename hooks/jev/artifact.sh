@@ -4,7 +4,7 @@
 #
 #   artifact.sh <name> [--from-file <path>] [--session <id>]     (content on stdin otherwise)
 #
-# Writes ~/.claude/jev/artifacts/<session_id>/<name>.md, prints that path, and
+# Writes ~/.local/state/jev/artifacts/<session_id>/<name>.md, prints that path, and
 # appends an `artifact` fact to the ledger (so compaction re-injects the index).
 # Writing the same name again replaces the file and supersedes the old fact.
 # Content over JEV_ARTIFACT_MAX_BYTES (512 KB) is cut, with a note saying so.
@@ -86,7 +86,7 @@ fi
 size=$(wc -c <"$tmpf" | tr -d ' ')
 cap=${JEV_ARTIFACT_MAX_BYTES:-524288}
 if [ "$size" -gt "$cap" ]; then
-  head -c "$cap" "$tmpf" >"$tmpf.cut"
+  head -c "$cap" "$tmpf" | iconv -c -f UTF-8 -t UTF-8 >"$tmpf.cut" 2>/dev/null || head -c "$cap" "$tmpf" >"$tmpf.cut"
   printf '\n\n[truncated by artifact.sh: %s of %s bytes kept]\n' "$cap" "$size" >>"$tmpf.cut"
   mv "$tmpf.cut" "$tmpf"
   echo "artifact.sh: content cut to $cap of $size bytes" >&2

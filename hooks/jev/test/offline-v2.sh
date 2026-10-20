@@ -4,6 +4,7 @@
 # code, and the ledger, artifacts and injection plumbing against a local fake
 # Jev (fake-jev.py: every score "important", every supersession noul 0.1).
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures"
@@ -199,9 +200,15 @@ p=$(printf 'x\n' | "$J/artifact.sh" "../../etc/evil name" --session sA)
 
 # --- 6. artifact-hook.sh (PostToolUse Agent + SubagentStop)
 long=$(printf 'Finding line %s with enough words to make the result long.\n' $(seq 1 60))
-post() { jq -cn --arg t "$1" --arg a "$2" --arg st "${3:-completed}" '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent", tool_use_id: ("toolu_" + $a),
+post() { # <text> <agent-id> [status]; the text goes through a file, so it can be larger than ARG_MAX
+  local tf
+  tf=$(mktemp "$W/post.XXXXXX")
+  printf '%s' "$1" >"$tf"
+  jq -cn --rawfile t "$tf" --arg a "$2" --arg st "${3:-completed}" '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent", tool_use_id: ("toolu_" + $a),
   tool_input: {description: "Review the auth plug", subagent_type: "general-purpose", model: "opus"},
-  tool_response: {status: $st, agentId: $a, resolvedModel: "claude-opus-5-5", content: [{type: "text", text: $t}]}}' | "$J/artifact-hook.sh"; }
+  tool_response: {status: $st, agentId: $a, resolvedModel: "claude-opus-5-5", content: [{type: "text", text: $t}]}}' | "$J/artifact-hook.sh"
+  rm -f "$tf"
+}
 o=$(post "$long" ag1)
 f=$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o" | sed 's/^Subagent result (Review the auth plug) saved to //')
 jq -e '.hookSpecificOutput.hookEventName == "PostToolUse"' <<<"$o" >/dev/null && [ -f "$f" ] && grep -q 'Finding line 60' "$f" && case $f in */artifacts/sH/agent-1-review-the-auth-plug-ag1.md) true ;; *) false ;; esac &&
@@ -244,6 +251,45 @@ done; done
 jq -e -s '[.[] | select(.action == "ran")] | length >= 8 and all(.[]; .resolved_model == "claude-opus-5-5" or .status == "async_launched")
   and any(.[]; .tool_use_id == "toolu_ag1" and .agent_id == "ag1")' "$JEV_HOME/log/route.jsonl" >/dev/null &&
   ok "artifact-hook: every PostToolUse(Agent) logs action ran with resolved_model and tool_use_id to route.jsonl" || bad "ran records missing"
+# Claude Code 2.1.304 shapes: the report in handbackReport.text, and SubagentStop without
+# last_assistant_message (the reply is the SubagentHandback message in the agent transcript)
+o=$(jq -cn '{session_id: "sH", hook_event_name: "PostToolUse", tool_name: "Agent", tool_use_id: "toolu_hb1",
+  tool_input: {description: "Handback check", subagent_type: "general-purpose"},
+  tool_response: {status: "completed", agentId: "aghb1", resolvedModel: "claude-haiku-5-5", handback: "send",
+    handbackReport: {text: "Artifact: handback-note\nthe real report"},
+    content: [{type: "text", text: "This agent report was delivered to you as a message."}]}}' | "$J/artifact-hook.sh")
+grep -q 'the real report' "$JEV_HOME/artifacts/sH/handback-note.md" 2>/dev/null && ok "artifact-hook: a SubagentHandback report (handbackReport.text) is what gets saved" || bad "handback report: $o"
+ATP="$W/agent-hb2.jsonl"
+jq -cn '{type: "assistant", message: {content: [{type: "tool_use", name: "SubagentHandback", input: {message: "Artifact: bg-handback\nbackground report"}}]}}' >"$ATP"
+jq -cn --arg atp "$ATP" '{session_id: "sH", hook_event_name: "SubagentStop", agent_id: "aghb2", agent_type: "general-purpose", agent_transcript_path: $atp,
+  background_tasks: [{id: "aghb2", description: "Background handback", status: "running"}]}' | "$J/artifact-hook.sh"
+grep -q 'background report' "$JEV_HOME/artifacts/sH/bg-handback.md" 2>/dev/null && ok "artifact-hook: SubagentStop without last_assistant_message reads the handback from agent_transcript_path" || bad "background handback not saved"
+
+# a deliverable marked "Artifact: <name>" is saved whatever its length, under that name
+o=$(post "Artifact: review-auth-r1
+Two blocking findings: tokens are not rotated; the session cookie lacks SameSite." agm1)
+fm="$JEV_HOME/artifacts/sH/review-auth-r1.md"
+[ -f "$fm" ] && grep -q 'SameSite' "$fm" && [ "$(jq -r '.hookSpecificOutput.additionalContext' <<<"$o")" = "Subagent result (Review the auth plug) saved to $fm" ] &&
+  ok "artifact-hook: a short reply with \"Artifact: review-auth-r1\" is saved as review-auth-r1.md and cited" || bad "artifact marker: $o"
+o=$(post "Artifact: review-auth-r1
+A second opinion from another agent." agm2)
+[ -f "$JEV_HOME/artifacts/sH/review-auth-r1-agm2.md" ] && grep -q 'SameSite' "$fm" &&
+  ok "artifact-hook: the same name from another agent becomes review-auth-r1-agm2.md (the first is kept)" || bad "artifact marker collision: $o"
+[ -z "$(post "a short answer without a marker" agm3)" ] && ok "artifact-hook: a short reply without a marker is not saved" || bad "short unmarked reply saved"
+# the ran record survives JEV_ARTIFACTS=0 and results over 1 MB
+JEV_ARTIFACTS=0 post "$long" agoff >/dev/null
+jq -e -s 'any(.[]; .action == "ran" and .agent_id == "agoff" and .resolved_model == "claude-opus-5-5")' "$JEV_HOME/log/route.jsonl" >/dev/null &&
+  [ -z "$(find "$JEV_HOME/artifacts/sH" -name '*agoff*')" ] && ok "artifact-hook: JEV_ARTIFACTS=0 saves nothing but still logs the ran record" || bad "ran record with JEV_ARTIFACTS=0"
+huge=$(head -c 1500000 /dev/zero | tr '\0' 'y')
+post "$huge" aghuge >/dev/null
+jq -e -s 'any(.[]; .action == "ran" and .agent_id == "aghuge" and has("input_model"))' "$JEV_HOME/log/route.jsonl" >/dev/null &&
+  ok "artifact-hook: a 1.5 MB result still logs its ran record (with input_model)" || bad "ran record for a 1.5 MB result"
+# a multi-byte character at the cut is dropped, not split
+mb=$(printf 'é%.0s' $(seq 1 300000))
+post "$mb" agmb >/dev/null
+fmb=$(find "$JEV_HOME/artifacts/sH" -name 'agent-*-agmb.md')
+[ -n "$fmb" ] && iconv -f UTF-8 -t UTF-8 "$fmb" >/dev/null 2>&1 && ok "artifact-hook: the 512 KB cut leaves valid UTF-8" || bad "artifact cut split a character"
+
 # per-artifact cap
 big=$(head -c 700000 /dev/zero | tr '\0' 'x')
 post "$big" agbig >/dev/null
@@ -292,6 +338,26 @@ lockt && ok "lock: a lock whose holder process is gone is broken at once" || bad
 rm -rf "$lk"; mkdir "$lk"; printf '%s %s\n' "$(date +%s)" "$$" >"$lk/at" # holder alive
 lockt && bad "lock: a live holder's lock was broken" || ok "lock: a live holder's fresh lock is respected"
 rm -rf "$lk"
+
+# --- 7c. JEV_HOME default and the one-time move out of ~/.claude
+FH="$W/fakehome"
+mkdir -p "$FH/.claude/jev/ledger" "$FH/.claude/jev/log"
+echo '{"id":"f1"}' >"$FH/.claude/jev/ledger/s.jsonl"
+env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH" JEV_MIGRATE=1 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+[ -f "$FH/.local/state/jev/ledger/s.jsonl" ] && [ -f "$FH/.claude/jev" ] && grep -q 'moved to' "$FH/.claude/jev" &&
+  [ -s "$FH/.local/state/jev/log/route.jsonl" ] &&
+  ok "JEV_HOME: default is ~/.local/state/jev; an old ~/.claude/jev is moved there and left as a pointer file" ||
+  bad "JEV_HOME migration: $(find "$FH" | sed "s#$FH##" | paste -sd' ' -)"
+FH2="$W/fakehome2"
+mkdir -p "$FH2/.claude/jev/artifacts/s1" "$FH2/.local/state/jev/log"
+echo x >"$FH2/.claude/jev/artifacts/s1/a.md"
+env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH2" JEV_MIGRATE=1 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+[ -f "$FH2/.local/state/jev/artifacts/s1/a.md" ] && [ -f "$FH2/.claude/jev" ] &&
+  ok "JEV_HOME: an existing new home gets the old entries merged in" || bad "JEV_HOME merge: $(find "$FH2" | sed "s#$FH2##" | paste -sd' ' -)"
+FH3="$W/fakehome3"
+mkdir -p "$FH3/.claude/jev"
+env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH3" JEV_MIGRATE=0 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+[ -d "$FH3/.claude/jev" ] && ok "JEV_HOME: JEV_MIGRATE=0 leaves an old ~/.claude/jev alone" || bad "JEV_MIGRATE=0 moved the old home"
 
 # --- 8. log lines larger than an atomic append, written in parallel, stay whole
 big=$(jq -cn '{status: "ok", answers: [range(0; 400) | {q: ., p: 0.123456}]}')
