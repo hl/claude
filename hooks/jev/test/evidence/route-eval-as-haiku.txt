@@ -1,0 +1,54 @@
+eval set: committed fixture (38 tasks, route-eval-real.jsonl), runs=1
+
+id           label   routed   conf  policy
+r01          haiku   sonnet   0.92  sonnet: P(opus) 0.02 <= 0.15
+r02          haiku   haiku     1.0  haiku: requested haiku kept, P(haiku) 1 >= 0.95, security 0.08, review 0.05
+r03          haiku   sonnet   0.73  sonnet: P(opus) 0 <= 0.15
+r04          haiku   sonnet   0.49  sonnet: P(opus) 0.14 <= 0.15
+r05          haiku   sonnet   0.35  sonnet: P(opus) 0.02 <= 0.15
+r06          haiku   sonnet   0.33  sonnet: P(opus) 0.04 <= 0.15
+r07          haiku   sonnet   0.77  sonnet: P(opus) 0.06 <= 0.15
+r08          haiku   sonnet   0.25  sonnet: P(opus) 0.09 <= 0.15
+r09          haiku   haiku     1.0  haiku: requested haiku kept, poll/fetch brief, P(haiku) 1 >= 0.8
+r10          haiku   sonnet   0.43  sonnet: P(opus) 0.04 <= 0.15
+r11          haiku   opus     0.49  opus: default (P(opus) 0.18)
+r12          haiku   sonnet   0.66  sonnet: P(opus) 0.01 <= 0.15
+r13          opus    opus     0.97  opus: security/blast radius 0.82, non-trivial review 0.97
+r14          opus    opus     0.55  opus: non-trivial review 0.94
+r15          opus    opus      0.7  opus: default (P(opus) 0.8)
+r16          opus    opus     0.28  opus: security/blast radius 0.71
+r17          opus    opus     0.86  opus: default (P(opus) 0.91)
+r18          opus    opus     0.98  opus: non-trivial review 0.99
+r19          opus    opus     0.98  opus: non-trivial review 0.97
+r20          opus    opus     0.52  opus: default (P(opus) 0.68)
+r21          opus    opus     0.97  opus: default (P(opus) 0.98)
+r22          opus    opus     0.83  opus: security/blast radius 0.9, non-trivial review 0.98
+r23          opus    opus      1.0  opus: security/blast radius 0.94, non-trivial review 0.98
+r24          opus    opus     0.94  opus: default (P(opus) 0.96)
+r25          sonnet  opus     0.35  opus: security/blast radius 0.95
+r26          sonnet  opus     0.51  opus: default (P(opus) 0.33)
+r27          sonnet  sonnet   0.74  sonnet: P(opus) 0.15 <= 0.15
+r28          sonnet  sonnet   0.98  sonnet: P(opus) 0.01 <= 0.15
+r29          sonnet  opus     0.62  opus: non-trivial review 0.89
+r30          sonnet  opus     0.53  opus: default (P(opus) 0.27)
+r31          sonnet  opus     0.76  opus: default (P(opus) 0.16)
+r32          sonnet  sonnet   0.94  sonnet: P(opus) 0.02 <= 0.15
+r33          sonnet  opus     0.88  opus: default (P(opus) 0.92)
+r34          sonnet  sonnet   0.97  sonnet: P(opus) 0.02 <= 0.15
+r35          sonnet  opus     0.92  opus: default (P(opus) 0.95)
+r36          sonnet  opus     0.58  opus: default (P(opus) 0.28)
+r37          haiku   haiku    0.98  haiku: requested haiku kept, P(haiku) 0.99 >= 0.95, security 0.08, review 0.49
+r38          haiku   haiku     1.0  haiku: requested haiku kept, poll/fetch brief, P(haiku) 1 >= 0.8
+
+confusion (rows = label, cols = routed):
+label/routed      haiku  sonnet    opus    FAIL
+haiku                4       9       1       0
+sonnet               0       4       8       0
+opus                 0       0      12       0
+
+N=38 correct=20 accuracy=52.6%
+under-routed: 0 (0%)  by label: opus->lower=0 of 12, sonnet->haiku=0 of 12 (0%)
+over-routed:  18 (47.4%)  haiku->sonnet=9 haiku->opus=1 sonnet->opus=8
+unanchored subset (no line naming a tier): N=32, opus->lower=0 of 11, sonnet->haiku=0 of 12, over-routed 14 (43.8%), accuracy 56.3%
+jev latency ms: {"n":38,"p50":231,"p95":282,"max":434}
+PASS: route eval

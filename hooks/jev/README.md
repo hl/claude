@@ -14,7 +14,7 @@ Jev is called only in **Claudette sessions**, meaning sessions whose `$CLAUDE_PR
 | `agent-route.sh` (PreToolUse `Agent`) | an explicit `haiku` or `sonnet` with no logged `Route:` id | 1 per such spawn, else 0 |
 | `compact-pre.sh` (PreCompact) | every compaction | 1 |
 | `compact-post.sh` (SubagentStop / PostCompact) | once per compaction, on whichever event sees the summary first | 1 |
-| `artifact-hook.sh`, `compact-session.sh`, `artifact.sh`, the daily sweep | never | 0 |
+| `artifact-hook.sh` (PostToolUse `Agent`, SubagentStop, TeammateIdle), `compact-session.sh`, `artifact.sh`, the daily sweep | never | 0 |
 
 A turn with no Agent spawn and no compaction sends nothing. `test/zero-traffic.sh` checks this. It replays 10 turns, 3 Agent spawns and a compaction through every Jev hook wired in `settings.json`, and expects 0 requests in an ordinary project. In a Claudette project it expects 3 requests, all from spawns and compaction.
 
@@ -22,6 +22,8 @@ A turn with no Agent spawn and no compaction sends nothing. `test/zero-traffic.s
 Claudette ──▶ route.sh --context '{…}' "<brief>" → {id, model, reviewer_model, …} ──▶ brief carries "Route: <id>"
 Agent call ──PreToolUse──▶ agent-route.sh: route id? → take route.sh's answer (no call); explicit haiku/sonnet? → Jev
            ──PostToolUse─▶ artifact-hook.sh: "Subagent ran on <model>." [+ "Subagent result (…) saved to <path>"]
+                                            [+ "Teammate <name> reply saved to <path>" for teammate saves not yet announced]
+Teammate turn ends ──TeammateIdle (teammate's process)──▶ artifact-hook.sh: save to the lead's artifacts/ + INDEX.md
 /compact or auto ──PreCompact──▶ compact-pre.sh: extract facts, Jev scores them (1 request) → compact/<session>.json
                  ──SubagentStop (compaction agent)──▶ compact-post.sh: Jev "summary keeps fact N?" (1 request)
                  ──SessionStart(compact)──▶ compact-session.sh: live .orchestrator.md sections > artifact index > uncovered facts
@@ -35,7 +37,7 @@ Set `TYPESAFE_API_KEY` in the environment, or put an `export TYPESAFE_API_KEY=..
 - `JEV_SCOPE=all`: the Jev-calling hooks act in every session, not only Claudette sessions.
 - `JEV_DISABLED=1`: every hook does nothing and `route.sh` exits 3. `artifact.sh` still writes the file it was asked to write.
 - `JEV_ROUTE_MODE=off`: only the Agent hook is off.
-- `JEV_ARTIFACTS=0`: only the automatic saving of subagent results is off. The "ran on" line stays.
+- `JEV_ARTIFACTS=0`: only the automatic saving of subagent and teammate results is off. The "ran on" line stays.
 
 ## What leaves the machine
 
@@ -79,6 +81,11 @@ The policy (`policy.jq`) is a single decision, and it starts from opus:
 
 - **opus** is the default. It is always the answer when the security/blast-radius signal or the non-trivial-review signal is 0.7 or higher.
 - **haiku** is chosen for `kind` poll, fetch or lookup. It is also chosen when P(haiku) ≥ 0.85, mechanical ≥ 0.7 and security < 0.5.
+- **haiku-keep** applies only to the Agent hook, when a call asks for haiku and has no `Route:` id. The hook cannot see `kind`, so it passes `{requested, poll_verb}` as context (`hook_context` in `policy.jq`), and route.sh never sends those fields to Jev. The requested haiku stays haiku when either of these holds:
+  - P(haiku) ≥ 0.95, security < 0.5 and non-trivial review < 0.5, whatever `mechanical` says;
+  - the description or the prompt has a poll/fetch verb in its first 200 characters (poll, watch, wait for, check CI/PR/status, fetch, download, tail, as whole words) and P(haiku) ≥ 0.8.
+
+  The opus gate (a signal of 0.7 or higher) still wins. This is the rule that would have kept both bos pollers that v3 raised to opus. Their Jev answers were P(haiku) 0.99 and 1.0, with mechanical 0.52 and 0.67. Their review signal was 0.56 and 0.50, so the first branch alone would not have kept them; the poll verb ("Poll PR …", "Watch PR …") does.
 - **sonnet** is chosen only when P(opus) ≤ 0.15 and neither signal reaches 0.5.
 - Floors, which can only raise the tier:
   - A retry (`attempt` ≥ 2, or a prior outcome of thin, wrong or fail) goes one tier above the previous attempt.
@@ -95,7 +102,9 @@ Evidence (`test/evidence/route-eval-real.txt`, `route-eval.txt`):
 - **Replay of the stored Jev answers** (9,914 answers, 22 runs):
   - 0 under-routed, both at the nominal values and with every value moved 0.1 toward the cheaper tier.
   - Over-routing is 67.2%. The v2 policy over-routed 46.5% on the same answers.
-- **Committed 36-task fixture:** 0 under-routed, with 56–58% over-routed.
+- **Committed 38-task fixture** (36 tasks plus the two bos pollers, r37 and r38, which carry `given_model: haiku` and are scored the way the Agent hook scores them):
+  - 0 under-routed, with 52.6–55.3% over-routed over two runs; r37 and r38 stay haiku.
+  - With `EVAL_AS_HAIKU=1`, every task is scored as an Agent call asking for haiku, which is the worst case for haiku-keep. Still 0 of 12 opus tasks routed lower and 0 of 12 sonnet tasks routed to haiku. Haiku-keep kept 4 tasks, all labelled haiku (`test/evidence/route-eval-as-haiku.txt`).
 
 The real set was deleted after that run, because raw briefs from work repos are not kept. `route-eval.sh` now uses the fixture, or `JEV_EVAL_SET=<file>`.
 
@@ -110,13 +119,14 @@ The real set was deleted after that run, because raw briefs from work repos are 
 
 When the prompt or description has a line `Route: <id>` (a route.sh id, `r<epoch>-<pid>-<n>`; the last such line wins) and that id is in `route.jsonl`, Claudette has already decided. The hook raises the model to route.sh's answer if the given model is lower, and never scores the brief a second time. An id that is not in `route.jsonl` is not trusted: the brief is scored as if it had none.
 
-Only an explicit haiku or sonnet with no logged route id is sent to route.sh, and it is raised when route.sh picks a higher tier. The hook returns only `updatedInput`, with no `permissionDecision`.
+Only an explicit haiku or sonnet with no logged route id is sent to route.sh, with the hook context `{requested, poll_verb}`. It is raised when route.sh picks a higher tier, so a requested haiku that the haiku-keep rule keeps is left alone (`kept`). The hook returns only `updatedInput`, with no `permissionDecision`.
 
 `artifact-hook.sh` then gives the parent a one-line note:
 
-- `Subagent ran on <resolvedModel>.`;
+- `Subagent ran on <resolvedModel>.`, only when `tool_response.status` is `completed`;
 - `… (raised from haiku by the Jev Agent hook).` when the Agent hook raised the model;
-- `Background subagent running on <model>.` for a background agent.
+- `Background subagent running on <model>.` for a background agent (`async_launched`);
+- `Teammate <name> spawned (model <m>).` for an agent-team teammate (`teammate_spawned`), only when the model is known. The teammate is still running at that point. Before this change the note wrongly said it "ran on" the model.
 
 This was verified live in `test/evidence/agent-scope.txt`: in a plain project the haiku ran on haiku with 0 Jev calls, and in a Claudette project the same call ran on opus with 1 call. In both, the parent quoted the line back.
 
@@ -140,7 +150,33 @@ The compaction guard is opt-in. With `JEV_COMPACT_GUARD=1`, `compact-pre.sh` blo
 
 `artifact-hook.sh` saves every subagent reply whose first line is `Artifact: <name>`, as `<name>.md`, whatever its length. It also saves every other result longer than 2,000 characters, as `agent-<n>-<slug>-<agentId>.md`.
 
-Files go to `$JEV_HOME/artifacts/<session_id>/` and are cut at 512 KB. Foreground agents are saved on PostToolUse, and the parent is told the path. Background agents are saved on SubagentStop and appear in the artifact index after compaction.
+Files go to `$JEV_HOME/artifacts/<session_id>/` and are cut at 512 KB. Each new file adds a line to `INDEX.md` in the same directory: time, who (subagent, background subagent or teammate), path and first line. Foreground agents are saved on PostToolUse, and the parent is told the path. Background agents are saved on SubagentStop and appear in the artifact index after compaction.
+
+### Teammates (agent teams)
+
+An Agent call with a `name` creates an agent-team teammate. Its PostToolUse returns at once with `status: "teammate_spawned"` and no result. The result reaches the lead later, as a teammate message: the final text arrives as `idle_notification.result`, and a `SendMessage` arrives as its own message. No hook fires in the lead when that message arrives (`test/evidence/teammate-payloads.jsonl`):
+
+- a subagent hand-back fires UserPromptSubmit in the lead, but a teammate message fires nothing;
+- the lead's Stop at the end of its turn could only block the turn, not add context.
+
+So teammate results are saved from **TeammateIdle**, which fires when a teammate ends a turn:
+
+- **tmux or iTerm teammates** are separate processes. TeammateIdle fires in the teammate's own process, with its own `session_id` and `transcript_path`, plus `teammate_name`, `team_name` and `agent_type`.
+- **In-process teammates** fire TeammateIdle in the lead's process. The payload has the lead's `session_id` and `transcript_path`, plus `agent_id`, and the teammate's transcript is `<lead transcript>/subagents/agent-<agent_id>.jsonl`. Their SubagentStop is left alone, because its background task id is not the agent id.
+
+The hook finds the lead from `leadSessionId` in `~/.claude/teams/<team_name>/config.json`. Claude Code deletes that directory when the lead session ends. If the config is missing, the default team name `session-<first 8 of the lead id>` is used: either the payload session is the lead, or exactly one `<8>*.jsonl` exists next to the transcript. If the lead still cannot be found, the hook logs `no_lead` and saves nothing.
+
+From the teammate's last three turns, the hook takes each turn's final reply (when the turn's last block is text) and every `SendMessage` to `team-lead`. Each one that has the marker or is longer than 2,000 characters is saved in the **lead's** directory, under the same naming rules. A reply that repeats its own `SendMessage` is saved once. Message ids keep replays idempotent, and since a teammate idles after every turn, that matters.
+
+TeammateIdle can fire about 0.1 s before the turn's last message is on disk; this was seen live. The hook takes about 0.25 s on a 4.7 MB teammate transcript. It waits up to `JEV_TEAMMATE_WAIT` (3 s) for the last turn to end in text, and logs the wait as `waited_s`. A reply that is still missed is picked up at the next idle.
+
+No hook can tell the lead at that moment, because TeammateIdle output goes to the teammate. The path reaches the lead in three ways:
+
+1. the line in the lead's `INDEX.md`, which claudette.md tells her to read when a teammate reports;
+2. a `.pending` queue that the lead's next PostToolUse(Agent) turns into `Teammate <name> reply saved to <path>` (or `message (<summary>) saved to …`), announced once;
+3. the artifact index that compaction re-injects. `INDEX.md` itself is left out of that index.
+
+This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's `Artifact: live-demo` reply was saved as `artifacts/<lead>/live-demo.md`, after a 0.2 s wait for the flush. It got its INDEX.md line, and the lead quoted `Teammate live-writer reply saved to <path>` from its next Agent call.
 
 `artifact.sh <name> [--from-file <path>] [--session <id>]` does the same by hand. The session comes from `--session`, `$CLAUDE_CODE_SESSION_ID` or `$CLAUDE_SESSION_ID`.
 
@@ -155,6 +191,11 @@ Files go to `$JEV_HOME/artifacts/<session_id>/` and are cut at 512 KB. Foregroun
   - The payload has `agent_id`, `agent_type`, `agent_transcript_path` and `background_tasks`.
   - 2.1.304 leaves out `last_assistant_message` for agents that hand back, so the hooks read the transcript.
 - **Compaction:** PreCompact → SubagentStop (`agent_type` `""`, whose `last_assistant_message` is the summary) → SessionStart(`compact`) → PostCompact (`test/evidence/compact-order.txt`).
+- **Teammates (2.1.304, `test/evidence/teammate-payloads.jsonl`):**
+  - PostToolUse on Agent has `status: "teammate_spawned"`, with `name`, `teammate_id` (`<name>@<team>`), `team_name` (`session-<8>`), `model`, `resolvedModel`, `agent_type` and `tmux_pane_id` (or `in-process`). There is no result.
+  - In a tmux teammate's own process, Stop (with `last_assistant_message`) fires, then TeammateIdle `{session_id, transcript_path, cwd, agent_type, teammate_name, team_name}`.
+  - In-process: SubagentStart and SubagentStop (`agent_type` = the teammate name, `agent_id` `a<name>-<hex>`), then TeammateIdle with `agent_id`, all in the lead's process.
+  - The lead's `background_tasks` lists each teammate as `{type: "teammate", status, description}`.
 
 ## Knobs
 
@@ -172,6 +213,7 @@ Files go to `$JEV_HOME/artifacts/<session_id>/` and are cut at 512 KB. Foregroun
 | `JEV_ROUTE_MODE` | `escalate` | `off` turns the Agent hook off. |
 | `JEV_ROUTE_NO_LOG` | unset | `1`: route.sh does not log (the Agent hook and the eval set it). |
 | `JEV_ARTIFACTS`, `JEV_ARTIFACT_MIN_CHARS`, `JEV_ARTIFACT_MAX_BYTES` | `1`, `2000`, `524288` | Automatic saving; length threshold; per-file cap. |
+| `JEV_TEAMMATE_WAIT`, `JEV_TEAMMATE_TURNS`, `JEV_TEAMS_DIR` | `3` s, `3`, `${CLAUDE_CONFIG_DIR:-~/.claude}/teams` | TeammateIdle: how long to wait for the last message to reach disk; how many recent turns to look at; where team configs live. |
 | `JEV_COMPACT_MAX_FACTS`, `JEV_COMPACT_TAIL_CHARS` | `60`, `40000` | Facts scored per compaction (most recent kept); transcript tail sent. |
 | `JEV_COMPACT_MIN_SCORE`, `JEV_COMPACT_COVERED_MIN` | `1.5`, `0.5` | Score that counts as important; probability at which the summary keeps a fact. |
 | `JEV_COMPACT_MAX_CHARS`, `JEV_COMPACT_ORCH_MAX`, `JEV_COMPACT_ARTIFACT_MAX` | `9000`, `4500`, `2000` | Injection caps: total, `.orchestrator.md` part, artifact index. |
@@ -184,12 +226,12 @@ Everything is under `$JEV_HOME`:
 
 - `log/jev.jsonl` has one line per API call, with the hook, session, status, ms, tokens and answers. It holds no text and no key.
 - `log/route.jsonl` holds:
-  - route.sh calls (`action: route`, with id and context);
+  - route.sh calls (`action: route`, with id and context; `session_id` from `$CLAUDE_CODE_SESSION_ID` when it is run from a Claude Bash tool);
   - Agent-hook decisions (`escalated`, `raised_to_route`, `kept`, `kept_routed`, `kept_opus`, `skip_*`, `route_failed`);
   - `ran` records (`resolved_model` per Agent call).
 - `log/compact.jsonl` and `log/artifact.jsonl` have one line per step.
 - `compact/<session_id>.json` holds the scored facts, coverage and the consumed flag.
-- `artifacts/<session_id>/` holds the saved artifacts.
+- `artifacts/<session_id>/` holds the saved artifacts, `INDEX.md` (one line per file), `.pending` (teammate saves not yet announced) and `.agents/` (one mark per saved result, so replays are idempotent).
 
 The first local hook run of each day sweeps the state. It deletes files untouched for 30 days and trims logs over 5 MB. As a v2 cleanup it also deletes `ledger/` (per-session facts from work transcripts), `sessions/`, `tune/`, `eval/` (raw briefs harvested from work repos) and `log/ledger.jsonl`.
 
@@ -216,7 +258,8 @@ Latency (`test/latency.sh`, Jev p50 ≈ 0.23 s):
 - **Egress in Claudette repos.** See "What leaves the machine": redaction is not an NDA.
 - **Coverage noise.** Jev sometimes marks a kept fact as missing. The cost is bounded over-injection, never loss.
 - **Heuristic extraction.** Facts come from regexes over transcript records, and a fact is a whole message. A correction is injected next to what it corrects, in transcript order, not in its place. A message that is later partly corrected can be scored down as a whole. In the live test, Jev scored the original "pg-staging-7, never run migrations, branch …" message 1.3 once it had been corrected, so its other facts were not re-injected. Only the correction and the `.orchestrator.md` section came back.
-- **Background subagents** are saved, but the parent learns the path only from the next compaction's index.
+- **Background subagents** are saved, but the parent learns the path only from the next compaction's index (and INDEX.md).
+- **Teammates** are saved, but no hook can tell the lead when the teammate reports. The lead learns the path from INDEX.md, from its next Agent call, or after compaction. A Claudette started before this change does not know to read INDEX.md: hooks hot-reload, agent prompts do not.
 - **The hooks cannot change the summary**; they can only add context after it.
 - **One state location.** Hooks and the Bash tool each work out `$JEV_HOME` from their own environment. Set `XDG_STATE_HOME` and `JEV_HOME` in one place that both read, or leave them unset.
 
@@ -224,12 +267,13 @@ v3 removed the per-turn ledger (Stop hook), autotune, `outcome.sh`, the tuned-th
 
 ## Tests
 
-`test/run.sh` runs the offline tests first: `offline.sh`, `offline-hooks.sh`, `zero-traffic.sh` and `redact.sh`. If a key is present, it then runs the API tests: `route-eval.sh`, `agent-route-api.sh`, `compact-fixture.sh` and `latency.sh`.
+`test/run.sh` runs the offline tests first: `offline.sh`, `offline-hooks.sh`, `zero-traffic.sh`, `redact.sh` and `teammate-replay.sh` (captured teammate lifecycles, tmux and in-process, replayed through the hooks). If a key is present, it then runs the API tests: `route-eval.sh`, `agent-route-api.sh`, `compact-fixture.sh` and `latency.sh`.
 
 With `JEV_LIVE=1`, it also drives real sessions:
 
 - `live-agent.sh`, a `claude -p` run with and without `.orchestrator.md`;
 - `live-artifact.sh`, a `claude -p` run in auto mode;
-- `live-compact.sh`, a `/compact` driven in tmux.
+- `live-compact.sh`, a `/compact` driven in tmux;
+- `live-teammate.sh`, a haiku agent-team teammate driven in tmux. Its `Artifact:` reply must reach the lead's artifacts/ and INDEX.md, and the path must reach the lead.
 
 Every test uses its own `JEV_HOME`. Tests rewrite `test/evidence/` only under `JEV_LIVE=1` or `JEV_EVIDENCE=1`.
