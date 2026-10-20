@@ -192,8 +192,8 @@ inj=$(jq -r 'select(.type == "attachment" and .attachment.type == "hook_addition
 case $inj in *"fan-out rollout (OPS-4821)"*) ok "injection: live .orchestrator.md section" ;; *) bad "injection lacks the live orchestrator section" ;; esac
 case $inj in *"flag documentation"*) bad "injection has the DONE section" ;; *) ok "injection: DONE section left out" ;; esac
 case $inj in *rollout-checklist.md*) ok "injection: artifact index line" ;; *) bad "injection lacks the artifact line" ;; esac
-f7=$(grep -n '^- .*is pg-staging-7' <<<"$inj" | head -n 1 | cut -d: -f1)
-f9=$(grep -n '^- .*pg-staging-9' <<<"$inj" | head -n 1 | cut -d: -f1)
+f7=$(grep -n '^- .*is pg-staging-7' <<<"$inj" | head -n 1 | awk -F: '{ print $1 }')
+f9=$(grep -n '^- .*pg-staging-9' <<<"$inj" | head -n 1 | awk -F: '{ print $1 }')
 if [ -n "$f7" ] && { [ -z "$f9" ] || [ "$f9" -lt "$f7" ]; }; then
   bad "injection has the pg-staging-7 statement without the later correction after it"
 else ok "injection: the pg-staging-7 statement is absent or followed by its correction (transcript order)"; fi
