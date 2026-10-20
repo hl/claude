@@ -1,4 +1,4 @@
-# live-agent.sh — 2026-10-20T10:49Z, 2.1.304 (Claude Code)
+# live-agent.sh — 2026-10-20T11:27Z, 2.1.304 (Claude Code)
 ## case: plain (.orchestrator.md: no)
 --- route.jsonl
 {"hook":"agent-ran","action":"ran","given_model":null,"final_model":null,"resolved_model":"claude-haiku-5-5","reason":null}
