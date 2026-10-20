@@ -51,6 +51,7 @@ trap 'exit 0' TERM INT HUP
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=${JEV_HOOK:-ledger}
+[ "${1:-}" = --add ] || export JEV_ENTRY=hook # a hook run (not --add from artifact.sh): lib.sh may move an old ~/.claude/jev
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 

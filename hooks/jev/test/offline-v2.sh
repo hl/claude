@@ -397,25 +397,57 @@ rm -rf "$lk"; mkdir "$lk"; printf '%s %s\n' "$(date +%s)" "$$" >"$lk/at" # holde
 lockt && bad "lock: a live holder's lock was broken" || ok "lock: a live holder's fresh lock is respected"
 rm -rf "$lk"
 
-# --- 7c. JEV_HOME default and the one-time move out of ~/.claude
+# --- 7c. JEV_HOME default and the one-time move out of ~/.claude (hook runs only)
+hookrun() { # <fake HOME> [env...]: one hook run (compact-session, no Jev call) with the default JEV_HOME
+  local h=$1
+  shift
+  jq -cn '{session_id: "mig", hook_event_name: "SessionStart", source: "compact"}' |
+    env -u JEV_HOME -u XDG_STATE_HOME -u JEV_ENTRY HOME="$h" JEV_MIGRATE=1 "$@" "$J/compact-session.sh" >/dev/null 2>&1
+}
 FH="$W/fakehome"
 mkdir -p "$FH/.claude/jev/ledger" "$FH/.claude/jev/log"
 echo '{"id":"f1"}' >"$FH/.claude/jev/ledger/s.jsonl"
-env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH" JEV_MIGRATE=1 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+env -u JEV_HOME -u XDG_STATE_HOME -u JEV_ENTRY HOME="$FH" JEV_MIGRATE=1 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+[ -d "$FH/.claude/jev" ] && ok "JEV_HOME: a CLI (outcome.sh) never moves an old ~/.claude/jev" || bad "a CLI moved the old home"
+hookrun "$FH"
 [ -f "$FH/.local/state/jev/ledger/s.jsonl" ] && [ -f "$FH/.claude/jev" ] && grep -q 'moved to' "$FH/.claude/jev" &&
-  [ -s "$FH/.local/state/jev/log/route.jsonl" ] &&
-  ok "JEV_HOME: default is ~/.local/state/jev; an old ~/.claude/jev is moved there and left as a pointer file" ||
+  ok "JEV_HOME: default is ~/.local/state/jev; a hook run moves an old ~/.claude/jev there and leaves a pointer file" ||
   bad "JEV_HOME migration: $(find "$FH" | sed "s#$FH##" | paste -sd' ' -)"
+ptr=$(cksum <"$FH/.claude/jev")
+hookrun "$FH"
+[ "$(cksum <"$FH/.claude/jev")" = "$ptr" ] && [ -f "$FH/.local/state/jev/ledger/s.jsonl" ] && [ ! -e "$FH/.local/state/jev/jev" ] &&
+  ok "JEV_HOME: already moved (pointer file in place) -> a later hook run is a clean no-op" || bad "re-run after migration changed something"
 FH2="$W/fakehome2"
-mkdir -p "$FH2/.claude/jev/artifacts/s1" "$FH2/.local/state/jev/log"
+mkdir -p "$FH2/.claude/jev/artifacts/s1" "$FH2/.claude/jev/log" "$FH2/.local/state/jev/log" "$FH2/.local/state/jev/eval"
 echo x >"$FH2/.claude/jev/artifacts/s1/a.md"
-env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH2" JEV_MIGRATE=1 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+echo '{"old":1}' >"$FH2/.claude/jev/log/route.jsonl"
+echo '{"new":1}' >"$FH2/.local/state/jev/log/route.jsonl"
+echo old >"$FH2/.claude/jev/note.txt"
+sleep 1
+echo newer >"$FH2/.local/state/jev/note.txt"
+hookrun "$FH2"
 [ -f "$FH2/.local/state/jev/artifacts/s1/a.md" ] && [ -f "$FH2/.claude/jev" ] &&
-  ok "JEV_HOME: an existing new home gets the old entries merged in" || bad "JEV_HOME merge: $(find "$FH2" | sed "s#$FH2##" | paste -sd' ' -)"
+  [ "$(jq -s -c 'map(keys[0])' "$FH2/.local/state/jev/log/route.jsonl")" = '["old","new"]' ] &&
+  [ "$(cat "$FH2/.local/state/jev/note.txt")" = newer ] && [ -z "$(find "$FH2/.claude" -name '*leftover*')" ] &&
+  ok "JEV_HOME: into an existing new home, entries merge (logs concatenated old-first, newer files kept), nothing left behind" ||
+  bad "JEV_HOME merge: $(find "$FH2" | sed "s#$FH2##" | paste -sd' ' -)"
 FH3="$W/fakehome3"
 mkdir -p "$FH3/.claude/jev"
-env -u JEV_HOME -u XDG_STATE_HOME HOME="$FH3" JEV_MIGRATE=0 "$J/outcome.sh" r1 '{}' >/dev/null 2>&1
+hookrun "$FH3" JEV_MIGRATE=0
 [ -d "$FH3/.claude/jev" ] && ok "JEV_HOME: JEV_MIGRATE=0 leaves an old ~/.claude/jev alone" || bad "JEV_MIGRATE=0 moved the old home"
+FH4="$W/fakehome4"
+mkdir -p "$FH4/.claude/jev/log" "$FH4/.claude/jev/ledger"
+for i in $(seq 1 30); do echo "{\"i\":$i}" >"$FH4/.claude/jev/ledger/s$i.jsonl"; done
+mpids=()
+for i in $(seq 1 8); do
+  hookrun "$FH4" &
+  mpids+=($!)
+done
+wait "${mpids[@]}"
+[ -f "$FH4/.claude/jev" ] && [ ! -e "$FH4/.local/state/jev/jev" ] && [ "$(find "$FH4/.local/state/jev/ledger" -name 's*.jsonl' | wc -l | tr -d ' ')" = 30 ] &&
+  [ -z "$(find "$FH4/.local/state" -name '*.migrating.*' -o -name '.jev-migrate.lock')" ] &&
+  ok "JEV_HOME: 8 concurrent first hook runs -> one move, all 30 files, one pointer, no stray copy or lock" ||
+  bad "JEV_HOME concurrent move: $(find "$FH4" | sed "s#$FH4##" | paste -sd' ' -)"
 
 # --- 8. log lines larger than an atomic append, written in parallel, stay whole
 big=$(jq -cn '{status: "ok", answers: [range(0; 400) | {q: ., p: 0.123456}]}')

@@ -28,6 +28,7 @@ trap 'exit 0' EXIT
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 export JEV_HOOK=compact-pre
+export JEV_ENTRY=hook # a hook run: lib.sh may move an old ~/.claude/jev
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
