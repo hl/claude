@@ -7,7 +7,8 @@ The loss they optimise is wasted work, not spend: a retry after under-routing, r
 - **Routing.** `route.sh` picks haiku, sonnet or opus for a brief, plus a reviewer model and whether to investigate first. The tier is opus unless Jev is confident a lower one suffices; the thresholds were tuned on 451 real Agent calls from local transcripts, labelled blind. `agent-route.sh` (PreToolUse on `Agent`) raises an explicit `haiku`/`sonnet` when Jev is sure it falls short.
 - **Ledger.** `ledger.sh` (Stop) reads each new turn, scores candidate facts and notes which earlier facts they correct, into a per-session ledger.
 - **Compaction.** `compact-pre.sh` flushes the ledger, `compact-post.sh` checks which facts the summary kept, and `compact-session.sh` re-injects, per live `.orchestrator.md` section, its heading, first line and Status line, then the artifact index and the facts the summary dropped.
-- **Artifacts.** `artifact.sh` saves a deliverable to disk and indexes it; `artifact-hook.sh` saves every subagent result over 2,000 chars automatically.
+- **Artifacts.** `artifact-hook.sh` saves every subagent deliverable (a reply whose first line is `Artifact: <name>`) and every result over 2,000 chars, and tells the parent where; `artifact.sh` does the same by hand for the user or the main session.
+- **Autotune.** Once a day the ledger checks whether 50 new `outcome.sh` records exist; if so, `autotune.sh` re-tunes the routing thresholds and applies the result only when it is provably safer.
 
 ## How it fits together
 
@@ -15,10 +16,10 @@ The loss they optimise is wasted work, not spend: a retry after under-routing, r
 every turn ──Stop──▶ ledger.sh ── new transcript lines since the cursor
                         │           extract.jq → candidates → Jev: score + "corrects fact M?"
                         ▼
-              ~/.claude/jev/ledger/<session>.jsonl   (facts; superseded_by / corrected_by)
+              ~/.local/state/jev/ledger/<session>.jsonl   (facts; superseded_by / corrected_by)
                         ▲                                      ▲
 artifact.sh / ──────────┘ "artifact" facts                     │
-artifact-hook.sh ─▶ ~/.claude/jev/artifacts/<session>/*.md     │
+artifact-hook.sh ─▶ ~/.local/state/jev/artifacts/<session>/*.md     │
                                                                │
 /compact or auto ──PreCompact──▶ compact-pre.sh: ledger flush, snapshot of live facts ─┐
                  ──SubagentStop (compaction agent)──▶ compact-post.sh: Jev "summary keeps fact N?" (coverage)
@@ -34,8 +35,7 @@ Claudette ──▶ route.sh --context '{…}' → model, reviewer_model, deepen
 
 ## Enable
 
-1. Set `TYPESAFE_API_KEY` in the environment, or put an `export TYPESAFE_API_KEY=...` line in `~/.zshenv`.
-2. The hooks are wired up in `settings.json`: Stop (`ledger.sh`, async), PreToolUse/PostToolUse on `Agent`, SubagentStop, PreCompact, PostCompact and SessionStart `compact`.
+Set `TYPESAFE_API_KEY` in the environment, or put an `export TYPESAFE_API_KEY=...` line in `~/.zshenv`. That is the only step. The hooks are wired up in `settings.json` (Stop `ledger.sh` async, PreToolUse/PostToolUse on `Agent`, SubagentStop, PreCompact, PostCompact, SessionStart `compact`), and the first hook run sets up its own state: it creates `$JEV_HOME` (default `${XDG_STATE_HOME:-~/.local/state}/jev`) and, if an older version left `~/.claude/jev`, moves it there and leaves a one-line pointer file in its place. Nothing writes into `~/.claude` (a protected directory for Claude Code, and a public repo here).
 
 `JEV_DISABLED=1` turns every hook off and makes `route.sh` exit 3. Two CLIs keep their local part, because they were asked for explicitly: `artifact.sh` still writes the file (but adds nothing to the ledger, so nothing about it can reach Jev), and `outcome.sh` still appends to `route.jsonl`. `JEV_LEDGER=0` turns off only the ledger (compaction falls back to v1 extraction), `JEV_ROUTE_MODE=off` only the Agent hook, `JEV_ARTIFACTS=0` only the automatic artifact saving.
 
@@ -48,7 +48,7 @@ Everything goes to `api.typesafe.ai`, and every request body passes through `red
 - **Every Agent call** (all modes except `off`): its `description`, `subagent_type` and `prompt`.
 - **Every `route.sh` call:** the brief and its `--context`.
 
-Artifacts and `.orchestrator.md` are never sent. An artifact's ledger fact (its name, local path and title or subagent description) is, like every ledger fact: the 40 most recent live facts go along as context on each turn.
+Artifact contents and `.orchestrator.md` are never sent. An artifact's ledger fact (its name, local path and title or subagent description) is, like every ledger fact: the 40 most recent live facts go along as context on each turn.
 
 ## Routing
 
@@ -72,7 +72,9 @@ Policy (`policy.jq`, shared with `tune.sh`):
 - `deepen` is true when ambiguous or needs-research is ≥ 0.6: send an investigator first.
 - `above` is how sure Jev is that a cheaper tier falls short; the Agent hook uses it.
 
-The thresholds come from `tune.sh` on the real set: 451 Agent calls harvested from local transcripts, labelled by one opus agent that saw Claudette's tier text and not the model that ran (`test/label-prompt.txt`), 3 Jev runs each on briefs with their model-naming lines stripped, in two independent sessions, with a two-fold holdout split by task and every Jev value moved 0.1 toward the cheaper tier when counting under-routing. The folds disagreed (P(haiku) 0.5–0.6, P(opus) 0.35–0.6; a fold that chose P(opus) 0.6 under-routed 3 opus rows on its test half), so the shipped point takes the most conservative value of each: P(haiku) 0.6, P(opus) 0.35. With it, in both sessions: 0 of 342 opus rows routed lower and 0 of 558 sonnet rows routed to haiku, also at the margin and on the briefs that name no tier; 48% over-routed overall and 43% on those briefs. The security/review gate (0.7) is a design choice, not tuned. The mechanical and confidence gates came out at 0. For comparison, on the same answers Jev's raw choice under-routed 5 of 342 opus rows, v1's policy under-routed none but over-routed 54%, and the models that actually ran under-routed 8 of 429 tasks. Details: `test/evidence/route-eval-real.txt`.
+The thresholds come from `tune.sh` on the real set: 451 Agent calls harvested from local transcripts, labelled by one opus agent that saw Claudette's tier text and not the model that ran (`test/label-prompt.txt`), 3 Jev runs each on briefs with their model-naming lines stripped, in two independent sessions, with a two-fold holdout split by task and every Jev value moved 0.1 toward the cheaper tier when counting under-routing. The folds disagreed (P(haiku) 0.5–0.6, P(opus) 0.35–0.6), so the shipped point takes the most conservative value of each: P(haiku) 0.6, P(opus) 0.35.
+  - *Out of sample* (one fold's own choice, scored on the half it never saw): the fold that chose P(haiku) 0.55 / P(opus) 0.35, next to the shipped point, under-routed none of 180 opus and 261 sonnet rows, also at the margin; the fold that chose 0.5 / 0.6 under-routed 3 of 162 opus rows (18 at the margin). A single fold's tune is not safe; the conservative combination is the rule.
+  - *In sample* (the conservative combination of both folds, scored on the data it came from): 0 of 342 opus rows routed lower and 0 of 558 sonnet rows routed to haiku in both sessions, also at the margin and on the briefs that name no tier; 48% over-routed overall and 43% on those briefs. The suite's fresh 1-run evals since agree (0 under-routed, 47–49% over-routed). The security/review gate (0.7) is a design choice, not tuned. The mechanical and confidence gates came out at 0. For comparison, on the same answers Jev's raw choice under-routed 5 of 342 opus rows, v1's policy under-routed none but over-routed 54%, and the models that actually ran under-routed 8 of 429 tasks. Details: `test/evidence/route-eval-real.txt`.
 
 `outcome.sh <id> '{"rounds":2,"escalated":false,"verdict":"PASS","final_model":"sonnet"}'` records how a routed task went; `tune.sh` treats an escalated or failed one as "the routed tier was too low".
 
@@ -86,11 +88,11 @@ The thresholds come from `tune.sh` on the real set: 451 Agent calls harvested fr
 
 The 0.7 gate is a noise filter, not a selector: it stops one jittery Jev sample from overriding an explicit choice, but because `above.haiku` includes `1 - mechanical`, almost any brief the router would not send to haiku clears it (on the real set, 98% of non-haiku routes). In practice escalate raises any explicit haiku the router would not pick, and an explicit sonnet when P(opus) or a signal is high.
 
-The hook returns only `updatedInput` (no `permissionDecision`), so permission rules apply as usual. The parent session is not told. `~/.claude/jev/log/route.jsonl` has both halves, joined by `tool_use_id`: the hook's decision (with the reason) and, from `artifact-hook.sh` on PostToolUse, an `action: "ran"` record with `resolved_model`, the model that actually ran (verified live, `test/evidence/artifact-live.txt`).
+The hook returns only `updatedInput` (no `permissionDecision`), so permission rules apply as usual. The parent session is not told. `~/.local/state/jev/log/route.jsonl` has both halves, joined by `tool_use_id`: the hook's decision (with the reason) and, from `artifact-hook.sh` on PostToolUse, an `action: "ran"` record with `resolved_model`, the model that actually ran (verified live, `test/evidence/artifact-live.txt`).
 
 ## Ledger
 
-`~/.claude/jev/ledger/<session_id>.jsonl`, one fact per line, in transcript order:
+`~/.local/state/jev/ledger/<session_id>.jsonl`, one fact per line, in transcript order:
 
 ```json
 {"id": "f14", "ts": "…", "kind": "user", "text": "User said: Correction: staging moved to pg-staging-7 …",
@@ -107,21 +109,32 @@ The hook returns only `updatedInput` (no `permissionDecision`), so permission ru
 
 ## Artifacts
 
-`artifact.sh <name> [--from-file <path>] [--session <id>]` (content on stdin otherwise) writes `~/.claude/jev/artifacts/<session_id>/<name>.md`, prints the path and adds an `artifact` fact to the ledger. Saving the same name again replaces the file and supersedes the old fact. The session id comes from `--session`, `$CLAUDE_CODE_SESSION_ID` (exported to Bash tool commands and hooks by Claude Code 2.1.302, inside subagents too, so subagent artifacts land in the parent's session), `$CLAUDE_SESSION_ID`, or a pointer `ledger.sh` writes per `CLAUDE_PID` and per directory.
+Subagents do not write files: Claudette's briefs ask for the deliverable as the final reply, first line `Artifact: <name>`, and `artifact-hook.sh` (user-configured hook code, so no permission rule or auto-mode classifier is involved) saves it whatever its length as `<name>.md`, or `<name>-<agentId>.md` if another agent already used the name, and cites it to the parent. Verified live in auto mode with no allow rules (`test/evidence/artifact-live.txt`).
 
-`artifact-hook.sh` saves subagent results over `JEV_ARTIFACT_MIN_CHARS` (2,000) as `agent-<n>-<slug>-<agentId>.md` (the id keeps two agents with the same description apart; each is written to a temporary file in the same directory and renamed). Artifacts over 512 KB (`JEV_ARTIFACT_MAX_BYTES`) are cut, with a note at the end. `artifact.sh` applies the same cap.
+`artifact.sh <name> [--from-file <path>] [--session <id>]` (content on stdin otherwise) is the same by hand, for the user or the main session: it writes `$JEV_HOME/artifacts/<session_id>/<name>.md`, prints the path and adds an `artifact` fact to the ledger. Saving the same name again replaces the file and supersedes the old fact. The session id comes from `--session`, `$CLAUDE_CODE_SESSION_ID` (exported to Bash tool commands and hooks by Claude Code 2.1.302, inside subagents too, so subagent artifacts land in the parent's session), `$CLAUDE_SESSION_ID`, or a pointer `ledger.sh` writes per `CLAUDE_PID` and per directory.
+
+Unmarked subagent results over `JEV_ARTIFACT_MIN_CHARS` (2,000) are saved too, as `agent-<n>-<slug>-<agentId>.md` (the id keeps two agents with the same description apart; each is written to a temporary file in the same directory and renamed). Artifacts over 512 KB (`JEV_ARTIFACT_MAX_BYTES`) are cut, with a note at the end. `artifact.sh` applies the same cap.
 
 - **Foreground agents** (PostToolUse on `Agent`, `tool_response.status` `completed`): saved, and the parent gets one line of `additionalContext`, `Subagent result (<description>) saved to <path>`. Verified live: the parent quoted the path back (`test/evidence/artifact-live.txt`).
-- **Background agents** (`tool_response.status` `async_launched`, no result): saved on SubagentStop from `last_assistant_message`. The parent is not told (SubagentStop output goes to the subagent); the file is in the artifact index after compaction.
+- **Background agents** (`tool_response.status` `async_launched`, no result): saved on SubagentStop (from `last_assistant_message`, or the handback in the agent transcript). The parent is not told (SubagentStop output goes to the subagent); the file is in the artifact index after compaction.
 
-## Observed payloads (Claude Code 2.1.302)
+## Autotune
 
-Captured live by `test/live-artifact.sh` (`test/evidence/payload-*.json`, sanitised):
+`autotune.sh` runs in the background from the ledger's first run of the day and does nothing until 50 new `outcome.sh` records exist (`JEV_AUTOTUNE_MIN`). It then tunes on the newest real eval results in `$JEV_HOME/eval/` plus every outcome joined to its route call (an escalated or failed route says "this tier was too low"), with the same task-split folds and conservative combination as above. It applies the result to `$JEV_HOME/tune/thresholds.json`, which `route.sh` reads (below any `JEV_ROUTE_*` variable; output field `tuned`), only if both hold:
+
+- the new point under-routes nothing on the full real set and on its unanchored subset;
+- every threshold it changes moves the conservative way (P(haiku), mechanical and confidence bars up; ambiguity and P(opus) bars down).
+
+Otherwise it writes `$JEV_HOME/tune/proposal.json` with the reason. Every apply, proposal or skip is a line in `log/jev.jsonl`. The security/review gate is never tuned. Without a local real set (`test/harvest.sh` and a labelling pass build one), it logs a skip and changes nothing. `JEV_AUTOTUNE=0` turns it off.
+
+## Observed payloads (Claude Code 2.1.302 and 2.1.304)
+
+Captured live by `test/live-artifact.sh` (`test/evidence/payload-*.json`, sanitised). Claude Code updated to 2.1.304 during this work; the differences are noted:
 
 - **Stop:** `session_id`, `transcript_path`, `cwd`, `stop_hook_active`, `last_assistant_message`, `background_tasks`, `session_crons`; no `agent_id` on the main session. Subagents fire SubagentStop, not Stop.
-- **PostToolUse on Agent, foreground:** `tool_response` is an object: `status: "completed"`, `content: [{type: "text", text}]`, `agentId`, `agentType`, `resolvedModel` (the model that actually ran), usage and durations. `additionalContext` is accepted and reaches the parent.
+- **PostToolUse on Agent, foreground:** `tool_response` is an object: `status: "completed"`, `agentId`, `agentType`, `resolvedModel` (the model that actually ran), usage and durations, and the report: in 2.1.302 `content: [{type: "text", text}]`; in 2.1.304 the agent hands back through a `SubagentHandback` tool, `content` holds only a notice and the report is `handbackReport.text`. `additionalContext` is accepted and reaches the parent.
 - **PostToolUse on Agent, background:** `tool_response.status` is `async_launched`, with `agentId`, `description`, `resolvedModel` and `outputFile`; no result.
-- **SubagentStop:** `agent_id`, `agent_type`, `agent_transcript_path`, `last_assistant_message`, and `background_tasks` (which lists background agents, so a foreground agent's stop can be told apart). For a foreground agent SubagentStop fires before its PostToolUse.
+- **SubagentStop:** `agent_id`, `agent_type`, `agent_transcript_path`, and `background_tasks` (which lists background agents, so a foreground agent's stop can be told apart). 2.1.302 also sends `last_assistant_message`; 2.1.304 leaves it out for agents that hand back, and the hook reads the last `SubagentHandback` message (or assistant text) from `agent_transcript_path`. The compaction agent still sends it. For a foreground agent SubagentStop fires before its PostToolUse.
 - **Compaction** (`test/evidence/compact-order.txt`): `PreCompact` → `SubagentStop` (agent_type `""`, the compaction agent; `last_assistant_message` is the summary, byte-identical to PostCompact's `compact_summary`) → `SessionStart` (source `compact`) → `PostCompact`. Coverage therefore runs on that SubagentStop; PostCompact sees the same summary and skips the call. The SubagentStop pass acts only when `agent_type` is empty, the state is still pending and the message contains `<summary>`.
 
 ## Knobs
@@ -133,7 +146,10 @@ Captured live by `test/live-artifact.sh` (`test/evidence/payload-*.json`, saniti
 | `JEV_ZSHENV` | `~/.zshenv` | File to read `export TYPESAFE_API_KEY=...` from (last assignment wins, never evaluated). |
 | `TYPESAFE_BASE_URL` | `https://api.typesafe.ai` | API base URL. |
 | `JEV_MODEL` | `jev-latest` | Jev model. |
-| `JEV_HOME` | `~/.claude/jev` | Ledger, artifacts, state, logs, cooldown stamps. |
+| `JEV_HOME` | `${XDG_STATE_HOME:-~/.local/state}/jev` | Ledger, artifacts, state, logs, cooldown stamps, tuned thresholds. An old `~/.claude/jev` is moved here on the first run. |
+| `JEV_MIGRATE` | `1` | `0` leaves an old `~/.claude/jev` where it is (the tests set this). |
+| `JEV_AUTOTUNE` | `1` | `0` turns the daily autotune check off. |
+| `JEV_AUTOTUNE_MIN` | `50` | New outcome records needed before autotune runs. |
 | `JEV_TIMEOUT` | `8` s | curl `--max-time` for compaction calls. |
 | `JEV_ROUTE_TIMEOUT` | `4` s | curl `--max-time` for Agent-hook calls. |
 | `JEV_LEDGER_TIMEOUT` | `6` s | curl `--max-time` for ledger calls. |
@@ -179,16 +195,16 @@ Captured live by `test/live-artifact.sh` (`test/evidence/payload-*.json`, saniti
 
 ### Compaction guard (opt-in)
 
-With `JEV_COMPACT_GUARD=1`, `compact-pre.sh` asks Jev whether the last turn is mid-operation (an edit, command or review without a recorded result) and, at `JEV_COMPACT_GUARD_MIN` or above, blocks one auto-compaction per session (exit 2). Never a manual `/compact`, never twice. If the auto-compaction is recovering from a context-limit error, blocking it makes that request fail, which is why it is off by default.
+With `JEV_COMPACT_GUARD=1`, `compact-pre.sh` asks Jev whether the last turn is mid-operation (an edit, command or review without a recorded result) and, at `JEV_COMPACT_GUARD_MIN` or above, blocks one auto-compaction per session (exit 2). Never a manual `/compact`, never twice. Everything else here runs on its own; this is the one place autonomy yields to safety: a hook cannot tell a routine auto-compaction from one that is recovering from a context-limit error, and blocking the latter makes the request fail. So it stays off unless you turn it on.
 
 ## Logs and state
 
-All under `~/.claude/jev/`, which `.gitignore` keeps out of this public repo.
+All under `$JEV_HOME`, default `${XDG_STATE_HOME:-~/.local/state}/jev`, outside `~/.claude`.
 
 - `log/jev.jsonl`: one line per API call (status, ms, tokens, answers; no text, no key).
 - `log/route.jsonl`: route.sh calls (`action: route`, with id and context), Agent-hook decisions (action, mode, `tool_use_id`, given/final model, reviewer, confidence, `above`, reason, the first 120 characters of the description), `ran` records (`tool_use_id`, `agent_id`, `resolved_model`, status) and `outcome` records.
 - `log/ledger.jsonl`, `log/compact.jsonl`, `log/artifact.jsonl`: one line per step.
-- `ledger/`, `artifacts/`, `compact/<session_id>.json` (the snapshot, coverage and consumed flag), `sessions/` (pointers for artifact.sh), `eval/` (the local harvest, labels and results).
+- `ledger/`, `artifacts/`, `compact/<session_id>.json` (the snapshot, coverage and consumed flag), `sessions/` (pointers for artifact.sh), `eval/` (the local harvest, labels and results), `tune/` (applied thresholds, proposals).
 
 ## Failure mode
 
@@ -205,7 +221,7 @@ Latency (`test/latency.sh`, Jev p50 ≈ 0.3 s): ledger Stop per turn p50 ≈ 0.5
 - **Vague reverts.** "Go back to what we had before" (A, then B, then a revert that names neither) supersedes both A and B, and the only live fact is the vague revert. Restating A (the same words, give or take case and punctuation) restores it; a paraphrased revert that names the old choice ("Back to advisory locks …") worked in the live test because Jev called it a full correction of B; a vague one does not, and no extra Jev question is asked for it.
 - **The Agent hook only acts on aliases.** Model-less calls keep their frontmatter/inherit semantics unless `fill` is on; the hook does not know the parent's model.
 - **Background subagents** are saved but the parent is not told the path until the next compaction's index.
-- **Auto mode can refuse artifact.sh.** In one of three live runs, the auto-mode classifier denied `… | ~/.claude/…/artifact.sh name` as "self-modification" (the script lives under `~/.claude`), so nothing was saved. An allow rule fixes it, e.g. `"Bash(~/.claude/hooks/jev/artifact.sh:*)"` in `permissions.allow` (the live test adds the equivalent to its scratch project). This branch does not add the rule to `settings.json`; that is a permissions decision for the user.
+- **artifact.sh under auto mode.** The classifier can refuse running `~/.claude/hooks/jev/artifact.sh` as "self-modification" (seen once in three live runs). Subagents therefore never call it (they return a marked reply for the hook), and no permission rule ships; the user or the main session can still run it.
 - **Ledger egress is per turn.** Each turn's new text (redacted, at most 20,000 characters) goes to Jev, more often than v1's once per compaction.
 - **Coverage noise.** Coverage is best effort: Jev sometimes marks a kept fact as missing. The cost is bounded over-injection, never loss.
 - **Heuristic extraction.** Facts come from regexes over transcript records (`extract.jq`). Typed slash commands are skipped. A fact is a whole user message or assistant line, which is why partial corrections exist.
@@ -213,9 +229,10 @@ Latency (`test/latency.sh`, Jev p50 ≈ 0.3 s): ledger Stop per turn p50 ≈ 0.5
 - **Subagent compaction window.** SubagentStop cannot filter on `agent_id` (the parent's compaction agent has one), so a background subagent's own compaction agent that stops with a `<summary>` while the parent's PreCompact is pending (seconds) could claim the parent's snapshot. The worst case is coverage against the wrong summary, which over-injects. Not seen live.
 - **Agent lookup cost (fill mode only).** Finding a custom agent by frontmatter `name:` costs about 2 ms per agent file.
 - **Guard caveat.** See above.
+- **Autotune needs a local real set.** Without `$JEV_HOME/eval/results-*.jsonl` it only logs a skip; outcomes alone are not enough to tune on.
 
 ## Tests
 
-`test/run.sh` runs the offline tests (`offline.sh`, `offline-v2.sh`, `redact.sh`), then the API tests if a key is present (`route-eval.sh`, `agent-route-api.sh`, `compact-fixture.sh`, `ledger-fixture.sh`, `latency.sh`). With `JEV_LIVE=1` it also drives real sessions (`live-agent.sh`, `live-artifact.sh`, `live-compact.sh` in tmux). Tests rewrite `test/evidence/` only under `JEV_LIVE=1` or `JEV_EVIDENCE=1`, so a plain run leaves the tree clean.
+`test/run.sh` runs the offline tests (`offline.sh`, `offline-v2.sh`, `redact.sh`), then the API tests if a key is present (`route-eval.sh`, `agent-route-api.sh`, `compact-fixture.sh`, `ledger-fixture.sh`, `ledger-restore.sh`, `latency.sh`). With `JEV_LIVE=1` it also drives real sessions (`live-agent.sh`, `live-artifact.sh` in auto mode, `live-compact.sh` and `live-async-stop.sh` in tmux). Every test uses its own `JEV_HOME` and sets `JEV_MIGRATE=0`, so nothing touches this machine's real state. Tests rewrite `test/evidence/` only under `JEV_LIVE=1` or `JEV_EVIDENCE=1`, so a plain run leaves the tree clean.
 
-The routing eval uses the local real set when `~/.claude/jev/eval/labelled.jsonl` exists (or `JEV_EVAL_SET=<file>`), else `test/fixtures/route-eval-real.jsonl` (36 real tasks with every name, path, person and ticket rewritten). On the real set it writes the raw answers to a new `~/.claude/jev/eval/results-<UTC time>.jsonl`, which `tune.sh` takes as its argument (default: the newest). To rebuild the real set: `test/harvest.sh`, `test/label-batches.sh`, label the batches with one blind agent using `test/label-prompt.txt`, `test/label-batches.sh --merge`, then `EVAL_RUNS=3 test/route-eval.sh` and `JEV_TUNE_SPLIT=1 test/tune.sh <results file>`.
+The routing eval uses the local real set when `~/.local/state/jev/eval/labelled.jsonl` exists (or `JEV_EVAL_SET=<file>`), else `test/fixtures/route-eval-real.jsonl` (36 real tasks with every name, path, person and ticket rewritten). On the real set it writes the raw answers to a new `~/.local/state/jev/eval/results-<UTC time>.jsonl`, which `tune.sh` takes as its argument (default: the newest). Optional, to rebuild the real set (autotune uses it when present): `test/harvest.sh`, `test/label-batches.sh`, label the batches with one blind agent using `test/label-prompt.txt`, `test/label-batches.sh --merge`, then `EVAL_RUNS=3 test/route-eval.sh` and `JEV_TUNE_SPLIT=1 test/tune.sh <results file>`.

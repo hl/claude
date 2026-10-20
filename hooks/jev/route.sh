@@ -42,9 +42,12 @@
 # naming lines stripped as below), with a two-fold holdout split by task, in two
 # independent sessions of 3 Jev runs per task. The folds chose P(haiku) 0.55 /
 # 0.6 / 0.5 and P(opus) 0.35 / 0.6; the shipped point takes the most conservative
-# value of each. On both sessions: 0 opus tasks under-routed and 0 sonnet tasks
-# sent to haiku, also with every Jev value moved 0.1 toward the cheaper tier and
-# on the briefs that name no tier; 48% over-routed (43% on those briefs).
+# value of each. In sample, on both sessions: 0 opus tasks under-routed and 0
+# sonnet tasks sent to haiku, also with every Jev value moved 0.1 toward the
+# cheaper tier and on the briefs that name no tier; 48% over-routed (43% on those
+# briefs). Out of sample, the fold that chose 0.55 / 0.35 under-routed none of its
+# unseen half; the fold that chose 0.5 / 0.6 under-routed 3 of 162 opus rows.
+# Autotune (autotune.sh) may later move these, but only the conservative way.
 # See test/evidence/route-eval-real.txt.
 set -euo pipefail
 

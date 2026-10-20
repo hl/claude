@@ -187,7 +187,10 @@ over-routed:  90 (21%)  haiku->sonnet=27 haiku->opus=5 sonnet->opus=58
 - Zero under-routing on the shipped point: 0 of 342 opus rows lower, 0 of 558 sonnet rows to haiku,
   in both sessions, nominally and with every Jev value moved 0.1 toward the cheaper tier, and on the
   unanchored subset (0 of 306 opus, 0 of 399 sonnet). Each fold's test half under the shipped point:
-  0 and 0 (also at the margin).
+  0 and 0 (also at the margin) — in-sample (conservative combination of both folds), since each test
+  half is the other fold's training data. Out of sample: fold 0's own choice (0.55 / 0.35, next to the
+  shipped point) under-routed 0 on its unseen half; fold 1's own choice (0.5 / 0.6) under-routed 3 of
+  162 opus rows (18 at the margin).
 - The folds disagree. Session 1: fold 0 picked P(haiku) 0.55 / P(opus) 0.35 and its test half had 0
   under-routed; fold 1 picked 0.5 / 0.6 and under-routed 3 opus rows on its test half (18 at the
   margin). Session 2 the same shape (0.6 / 0.35 and 0.5 / 0.6). The opus guarantee rests on the
