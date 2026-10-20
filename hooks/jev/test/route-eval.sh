@@ -1,13 +1,8 @@
 #!/usr/bin/env bash
 # route-eval.sh — labelled eval for route.sh (needs a Jev key; hits the live API).
 #
-#   route-eval.sh                                   committed fixture (sanitised real tasks)
-#   JEV_EVAL_SET=~/.local/state/jev/eval/labelled.jsonl route-eval.sh   the local real set
-#
-# The real set is harvested from local transcripts (harvest.sh) and labelled
-# blind by an opus agent (label-batches.sh); it never leaves ~/.local/state/jev/eval.
-# With the default JEV_EVAL_SET unset, the local set is used when it exists
-# and EVAL_FIXTURE is not given; set JEV_EVAL_SET=none to force the fixture.
+#   route-eval.sh                                committed fixture (36 sanitised real tasks)
+#   JEV_EVAL_SET=<labelled.jsonl> route-eval.sh  a local labelled set (never committed)
 #
 # Reports: accuracy, confusion table, under-routing per label, over-routing,
 # and recall on the weak under_routed labels (tasks whose real run was redone
@@ -15,27 +10,15 @@
 # Asserts: zero under-routing of opus-labelled tasks, sonnet-labelled tasks
 # under-routed <= EVAL_MAX_SONNET_UNDER (0.02), no route.sh failures.
 # EVAL_RUNS=N repeats the set (Jev is slightly nondeterministic); assertions
-# apply to all runs pooled. Raw results (probabilities + signals per task and
-# run, keyed by task id) are kept for tune.sh in a new timestamped file,
-# $JEV_EVAL_DIR/results-<UTC time>.jsonl, for the real set.
+# apply to all runs pooled. Raw results stay in a temp directory.
 set -euo pipefail
-export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROUTE="$HERE/../route.sh"
-EVAL_DIR=${JEV_EVAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/jev/eval}
-# not migrated yet (the hooks move ~/.local/state/jev on their first run): read the old place
-[ -n "${JEV_EVAL_DIR:-}" ] || [ -d "$EVAL_DIR" ] || [ ! -d "$HOME/.claude/jev/eval" ] || EVAL_DIR=$HOME/.claude/jev/eval
-if [ -n "${EVAL_FIXTURE:-}" ] || [ "${JEV_EVAL_SET:-}" = none ]; then
-  SET=${EVAL_FIXTURE:-$HERE/fixtures/route-eval-real.jsonl}
-  real=false
-elif [ -n "${JEV_EVAL_SET:-}" ]; then
+if [ -n "${JEV_EVAL_SET:-}" ] && [ "$JEV_EVAL_SET" != none ]; then
   SET=$JEV_EVAL_SET
   real=true
-elif [ -f "$EVAL_DIR/labelled.jsonl" ]; then
-  SET=$EVAL_DIR/labelled.jsonl
-  real=true
 else
-  SET=$HERE/fixtures/route-eval-real.jsonl
+  SET=${EVAL_FIXTURE:-$HERE/fixtures/route-eval-real.jsonl}
   real=false
 fi
 RUNS=${EVAL_RUNS:-1}
@@ -83,11 +66,6 @@ done
 wait
 
 cat "$out"/[0-9]*-*.json | jq -s '.' >"$out/all.json"
-saved=""
-if [ "$real" = true ]; then
-  saved="$EVAL_DIR/results-$(date -u +%Y%m%dT%H%M%SZ).jsonl"
-  jq -c '.[]' "$out/all.json" >"$saved"
-fi
 
 if [ "${EVAL_VERBOSE:-0}" = 1 ] || [ "$real" = false ]; then
   printf '\n%-12s %-7s %-7s %5s  %s\n' id label routed conf policy
@@ -103,7 +81,7 @@ read -r under_opus under_sonnet n_sonnet fails < <(jq -r '
    (map(select(.model == "FAIL")) | length)] | @tsv' "$out/all.json")
 lat=$(jq -s -c 'map(select(.status == "ok") | .ms) | sort | {n: length, p50: .[(length / 2 | floor)], p95: .[(length * 0.95 | floor)], max: max}' "$JEV_HOME/log/jev.jsonl" 2>/dev/null || echo '{}')
 echo "jev latency ms: $lat"
-echo "results: $out/all.json${saved:+ (saved as $saved)}"
+echo "results: $out/all.json"
 
 rc=0
 [ "$under_opus" -eq 0 ] || {

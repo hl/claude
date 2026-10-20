@@ -5,14 +5,10 @@
 Writes every request body to <capture-dir>/body-<n>.json (and the headers, minus
 Authorization, to headers-<n>.txt), and answers every question with a fixed,
 valid answer: score -> level 2 ("important"), noul -> 0.1, choice -> the first
-option, except that a choice whose instructions match the regex in
-$FAKE_JEV_FULLY answers "fully" (lets tests drive a supersession) and a score
-whose instructions match $FAKE_JEV_LOW answers level 0 ("irrelevant").
-Prints "ready" once listening. Test-only; never used by the hooks.
+option. Prints "ready" once listening. Test-only; never used by the hooks.
 """
 import json
 import os
-import re
 import sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -20,8 +16,6 @@ PORT = int(sys.argv[1])
 CAP = sys.argv[2]
 os.makedirs(CAP, exist_ok=True)
 count = [0]
-FULLY = os.environ.get("FAKE_JEV_FULLY", "")
-LOW = os.environ.get("FAKE_JEV_LOW", "")
 
 
 def answer(q):
@@ -29,16 +23,12 @@ def answer(q):
     if t == "score":
         levels = q.get("criteria") or ["low", "high"]
         lv = min(2, len(levels) - 1)
-        if LOW and re.search(LOW, str(q.get("instructions", ""))):
-            lv = 0
         probs = {str(i): (1.0 if i == lv else 0.0) for i in range(len(levels))}
         return {"type": "score", "score": float(lv), "confidence": 1.0,
                 "legend": {str(i): l for i, l in enumerate(levels)}, "probabilities": probs}
     if t == "choice":
         opts = list((q.get("criteria") or {"a": None}).keys())
         pick = opts[0]
-        if FULLY and "fully" in opts and re.search(FULLY, str(q.get("instructions", ""))):
-            pick = "fully"
         return {"type": "choice", "choice": pick, "confidence": 1.0,
                 "probabilities": {o: (1.0 if o == pick else 0.0) for o in opts}}
     return {"type": "noul", "noul": 0.1}

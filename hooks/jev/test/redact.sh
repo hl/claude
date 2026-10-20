@@ -5,13 +5,12 @@
 #  1. unit: every planted secret is scrubbed by redact(), and paths, hostnames
 #     and git remotes survive
 #  2. on the wire: a local fake Jev (fake-jev.py) captures the request bodies of
-#     route.sh, agent-route.sh, ledger.sh, compact-pre.sh (v1 mode) and
-#     compact-post.sh fed with the planted secrets; none of the secret values
+#     route.sh, agent-route.sh, compact-pre.sh and compact-post.sh (in a
+#     Claudette-scoped project) fed with the planted secrets; none of the secret values
 #     may appear in any body. With JEV_LIVE=1 or JEV_EVIDENCE=1 it also
 #     rewrites test/evidence/redaction.txt.
 # All secrets below are fake.
 set -uo pipefail
-export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 # shellcheck source=SCRIPTDIR/../lib.sh
@@ -105,7 +104,8 @@ python3 -I "$HERE/fake-jev.py" "$port" "$W/cap" >"$W/fake.out" 2>&1 &
 fpid=$!
 trap 'kill $fpid 2>/dev/null' EXIT
 for _ in $(seq 1 50); do grep -q ready "$W/fake.out" 2>/dev/null && break; sleep 0.1; done
-export TYPESAFE_BASE_URL="http://127.0.0.1:$port" TYPESAFE_API_KEY=apikFAKEKEYFORTHELISTENER JEV_HOME="$W/home"
+export TYPESAFE_BASE_URL="http://127.0.0.1:$port" TYPESAFE_API_KEY=apikFAKEKEYFORTHELISTENER JEV_HOME="$W/home" CLAUDE_PROJECT_DIR="$W/proj"
+mkdir -p "$W/proj" && : >"$W/proj/.orchestrator.md"
 all=$(cut -f1 "$W/planted.tsv" | paste -sd'\n' -)
 all=${all//\\n/$'\n'}
 all="$all
@@ -122,17 +122,15 @@ jq -cn --arg t "$all" '
   {type: "assistant", uuid: "a1", message: {role: "assistant", content: [{type: "text", text: ("Decision: we must use these settings because " + $t)},
     {type: "tool_use", id: "t1", name: "Bash", input: {command: "cat .env"}}]}},
   {type: "user", uuid: "u2", message: {role: "user", content: [{type: "tool_result", tool_use_id: "t1", is_error: true, content: $t}]}}' >"$W/t.jsonl"
-jq -cn --arg tp "$W/t.jsonl" '{session_id: "red", transcript_path: $tp, hook_event_name: "Stop", stop_hook_active: false}' >"$W/stop.json"
-"$J/ledger.sh" <"$W/stop.json"
 jq -cn --arg tp "$W/t.jsonl" '{session_id: "red-v1", transcript_path: $tp, hook_event_name: "PreCompact", trigger: "manual"}' >"$W/pre.json"
-JEV_LEDGER=0 "$J/compact-pre.sh" <"$W/pre.json"
+"$J/compact-pre.sh" <"$W/pre.json"
 jq -cn --arg m "<summary>$all</summary>" '{session_id: "red-v1", hook_event_name: "PostCompact", trigger: "manual", compact_summary: $m}' >"$W/post.json"
 "$J/compact-post.sh" <"$W/post.json"
 kill "$fpid" 2>/dev/null
 
 n=$(find "$W/cap" -name 'body-*.json' 2>/dev/null | wc -l | tr -d ' ')
 hooks=$(jq -r -s '[.[] | .hook] | unique | join(",")' "$W/home/log/jev.jsonl" 2>/dev/null)
-[ "$n" -ge 5 ] && ok "$n request bodies captured (hooks that called out: $hooks)" || bad "only $n bodies captured ($hooks)"
+[ "$n" -ge 4 ] && ok "$n request bodies captured (hooks that called out: $hooks)" || bad "only $n bodies captured ($hooks)"
 leaks=0
 while IFS=$'\t' read -r _ secret; do
   if grep -rlF -- "$secret" "$W/cap" >/dev/null 2>&1; then
