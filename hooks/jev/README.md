@@ -232,6 +232,7 @@ Latency (`test/latency.sh`, Jev p50 ≈ 0.3 s): ledger Stop per turn p50 ≈ 0.5
 - **Agent lookup cost (fill mode only).** Finding a custom agent by frontmatter `name:` costs about 2 ms per agent file.
 - **Guard caveat.** See above.
 - **Autotune needs a local real set.** Without `$JEV_HOME/eval/results-*.jsonl` it only logs a skip; outcomes alone are not enough to tune on.
+- **One state location.** Hooks and the Bash tool (where `artifact.sh` and `outcome.sh` run) each work out `$JEV_HOME` from their own environment. If they see different `XDG_STATE_HOME` or `JEV_HOME` values, state splits in two. Set these in one place that both read (`~/.zshenv`), or leave them unset.
 
 ## Tests
 
