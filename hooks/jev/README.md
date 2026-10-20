@@ -166,7 +166,7 @@ Files go to `$JEV_HOME/artifacts/<session_id>/` and are cut at 512 KB. Foregroun
 | `TYPESAFE_BASE_URL`, `JEV_MODEL` | `https://api.typesafe.ai`, `jev-latest` | API base URL and model. |
 | `JEV_HOME` | `${XDG_STATE_HOME:-~/.local/state}/jev` | State and logs. |
 | `JEV_RETAIN_DAYS` | `30` | The daily sweep deletes compaction state and artifact directories untouched this long. |
-| `JEV_TIMEOUT` / `JEV_ROUTE_TIMEOUT` | `8` s / `4` s | curl `--max-time` for compaction calls and route.sh / Agent hook calls. |
+| `JEV_TIMEOUT` / `JEV_ROUTE_TIMEOUT` | `8` s / `4` s | curl `--max-time` (`JEV_TIMEOUT` for compaction and the route.sh CLI, `JEV_ROUTE_TIMEOUT` for the Agent hook). |
 | `JEV_COOLDOWN` | `300` s | After a timeout, connection failure, 429 or 5xx, calls from the same family (`cooldown.route`, `cooldown.compact`) fail fast for this long. |
 | `JEV_LONG_CONTEXT`, `JEV_CHARS_PER_TOKEN` | unset, `4` | Long-context header up front (retried once on `max_tokens_exceeded` anyway); chars per token for sizing. |
 | `JEV_ROUTE_MODE` | `escalate` | `off` turns the Agent hook off. |
