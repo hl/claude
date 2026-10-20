@@ -149,7 +149,7 @@ jev_lock() {
     return 0
   fi
   now=$(date +%s)
-  read -r t pid <"$d/at" 2>/dev/null || true
+  { read -r t pid <"$d/at"; } 2>/dev/null || true
   case $t in '' | *[!0-9]*)
     t=$(stat -c %Y "$d" 2>/dev/null || stat -f %m "$d" 2>/dev/null || echo "$now")
     pid=""

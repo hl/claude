@@ -31,6 +31,9 @@
 # combination of the two folds (higher P(haiku), mechanical and confidence bars,
 # lower ambiguity and P(opus) bars), scored on the full set and on the
 # unanchored subset (briefs that name no tier).
+#
+# JEV_TUNE_JSON=<file> also writes the chosen thresholds (the conservative
+# combination with JEV_TUNE_SPLIT=1) as JSON; autotune.sh uses this.
 set -euo pipefail
 export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -156,6 +159,7 @@ echo "chosen on the full set: $(knobs "$t_full")"
 echo "        under (at margin $MARGIN): opus $(cut -f1 <<<"$chosen"), sonnet $(cut -f2 <<<"$chosen"), total $(cut -f3 <<<"$chosen"); over $(cut -f4 <<<"$chosen") of $nrows"
 
 if [ "${JEV_TUNE_SPLIT:-0}" != 1 ]; then
+  [ -z "${JEV_TUNE_JSON:-}" ] || printf '%s\n' "$t_full" >"$JEV_TUNE_JSON"
   echo
   echo "policy.jq at that point, nominal values:"
   score "$RES" "$t_full" 0
@@ -189,6 +193,7 @@ done
 # --- ship the per-threshold conservative combination of the two folds
 t_ship=$(jq -s -c '{haiku_p: (map(.haiku_p) | max), haiku_mech: (map(.haiku_mech) | max), haiku_amb: (map(.haiku_amb) | min),
   sonnet_popus: (map(.sonnet_popus) | min), sonnet_conf: (map(.sonnet_conf) | max), sec: .[0].sec, review: .[0].review}' <<<"${folds[0]} ${folds[1]}")
+[ -z "${JEV_TUNE_JSON:-}" ] || printf '%s\n' "$t_ship" >"$JEV_TUNE_JSON"
 echo
 echo "=== shipped: the conservative combination of the two folds"
 knobs "$t_ship"

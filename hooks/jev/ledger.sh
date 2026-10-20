@@ -40,7 +40,8 @@
 # is a new live fact; open items are also deduplicated on normalised text.
 # Housekeeping: superseded facts older than 7 days move to <session>.archive.jsonl;
 # once a day the first run deletes ledger, snapshot, artifact and pointer files
-# untouched for 30 days (JEV_RETAIN_DAYS).
+# untouched for 30 days (JEV_RETAIN_DAYS), trims logs over 5 MB, and starts
+# autotune.sh in the background (JEV_AUTOTUNE=0 turns that off).
 # Never blocks, never prints. JEV_LEDGER=0 or JEV_DISABLED=1 turns it off.
 # Safe as an async hook: a killed run releases its lock (TERM trap), and a
 # lock whose holder is gone is broken at once.
@@ -132,6 +133,16 @@ if [ ! -e "$stamp" ]; then
   done
   find "$JEV_HOME/artifacts" -mindepth 1 -maxdepth 1 -type d -mtime +"$RETAIN_DAYS" ! -name "$sid" -exec rm -rf {} + 2>/dev/null || true
   find "$LDIR" "$JEV_HOME/artifacts" -maxdepth 2 -name '.tmp.*' -mmin +60 -exec rm -rf {} + 2>/dev/null || true
+  # logs over 5 MB keep their last 20,000 lines
+  for lf in "$JEV_HOME"/log/*.jsonl; do
+    [ -f "$lf" ] && [ "$(wc -c <"$lf" | tr -d ' ')" -gt 5242880 ] || continue
+    tail -n 20000 "$lf" >"$lf.tmp" 2>/dev/null && mv "$lf.tmp" "$lf"
+  done
+  # re-tune from outcome.sh records when enough have arrived (autotune.sh decides; detached)
+  if [ "${JEV_AUTOTUNE:-1}" != 0 ]; then
+    if [ "${JEV_AUTOTUNE_SYNC:-0}" = 1 ]; then "$JEV_DIR/autotune.sh" >/dev/null 2>&1 || true
+    else (nohup "$JEV_DIR/autotune.sh" >/dev/null 2>&1 &) ; fi
+  fi
 fi
 
 facts="$LDIR/$sid.jsonl"

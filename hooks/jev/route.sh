@@ -120,16 +120,26 @@ req=$(jq -n --arg task "$task" --argjson ctx "$ctx" --arg model "$JEV_MODEL" '{
 
 resp=$(jev_call <<<"$req") || exit 1
 
-thresholds=$(jq -cn \
-  --argjson hp "${JEV_ROUTE_HAIKU_P:-0.6}" --argjson hm "${JEV_ROUTE_HAIKU_MECH:-0}" \
-  --argjson ha "${JEV_ROUTE_HAIKU_AMB:-0.9}" --argjson sp "${JEV_ROUTE_SONNET_POPUS:-0.35}" \
-  --argjson sc "${JEV_ROUTE_SONNET_CONF:-0}" --argjson sig "${JEV_ROUTE_SIGNAL_MIN:-0.7}" \
-  --argjson rv "${JEV_ROUTE_REVIEWER_OPUS:-0.5}" --argjson dp "${JEV_ROUTE_DEEPEN:-0.6}" '
-  {haiku_p: $hp, haiku_mech: $hm, haiku_amb: $ha, sonnet_popus: $sp, sonnet_conf: $sc,
-   sec: $sig, review: $sig, reviewer_opus: $rv, deepen: $dp}')
+# Thresholds: the defaults below, then $JEV_HOME/tune/thresholds.json if autotune
+# applied one (only ever a more conservative point, see autotune.sh), then any
+# JEV_ROUTE_* variable. The security/review gate is never tuned.
+tuned='{}'
+tf="$JEV_HOME/tune/thresholds.json"
+if [ -f "$tf" ]; then
+  tuned=$(jq -c '{haiku_p, haiku_mech, haiku_amb, sonnet_popus, sonnet_conf} | with_entries(select(.value | type == "number"))' "$tf" 2>/dev/null) || tuned='{}'
+fi
+thresholds=$(jq -cn --argjson t "$tuned" \
+  --arg hp "${JEV_ROUTE_HAIKU_P:-}" --arg hm "${JEV_ROUTE_HAIKU_MECH:-}" --arg ha "${JEV_ROUTE_HAIKU_AMB:-}" \
+  --arg sp "${JEV_ROUTE_SONNET_POPUS:-}" --arg sc "${JEV_ROUTE_SONNET_CONF:-}" --arg sig "${JEV_ROUTE_SIGNAL_MIN:-}" \
+  --arg rv "${JEV_ROUTE_REVIEWER_OPUS:-}" --arg dp "${JEV_ROUTE_DEEPEN:-}" '
+  {haiku_p: 0.6, haiku_mech: 0, haiku_amb: 0.9, sonnet_popus: 0.35, sonnet_conf: 0,
+   sec: 0.7, review: 0.7, reviewer_opus: 0.5, deepen: 0.6}
+  + $t
+  + ({haiku_p: $hp, haiku_mech: $hm, haiku_amb: $ha, sonnet_popus: $sp, sonnet_conf: $sc,
+      sec: $sig, review: $sig, reviewer_opus: $rv, deepen: $dp} | with_entries(select(.value != "") | .value |= tonumber))')
 id="r$(date +%s)-$$-$RANDOM"
 
-out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --arg id "$id" --argjson anchors "$anchors" '
+out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --arg id "$id" --argjson anchors "$anchors" --argjson tuned "$tuned" '
   include "policy";
   . as $r
   | .answers as $a
@@ -141,7 +151,7 @@ out=$(jq -e -c -L "$JEV_DIR" --argjson ctx "$ctx" --argjson t "$thresholds" --ar
   | {id: $id, model: $d.model, reviewer_model: $d.reviewer_model, deepen: $d.deepen, policy: $d.policy,
      confidence: $in.confidence, probabilities: $in.probabilities, signals: $in.signals,
      jev_choice: $a.tier.choice, jev_model: $r.model, prompt_tokens: $r.usage.input_tokens,
-     above: $d.above, anchors_stripped: $anchors}' <<<"$resp") || exit 1
+     above: $d.above, anchors_stripped: $anchors, tuned: ($tuned != {})}' <<<"$resp") || exit 1
 
 if [ "${JEV_ROUTE_NO_LOG:-0}" != 1 ]; then
   jev_log route.jsonl "$(jq -c --argjson ctx "$ctx" '{action: "route", context: $ctx} + .' <<<"$out")"
