@@ -28,7 +28,8 @@ bad() {
   fails=$((fails + 1))
 }
 
-# <text containing a secret> TAB <the secret value that must disappear>
+# <text containing a secret> TAB <the secret value that must disappear>; a literal
+# \n in the text is a newline
 cat >"$W/planted.tsv" <<'EOF'
 export ANTHROPIC_API_KEY=s@@k-ant-api03-FAKEabcdefghijklmnopqrstuvwxyz012345	FAKEabcdefghijklmnopqrstuvwxyz012345
 the jev key is a@@pikFAKEREDACTME0123456789abcdefghijklmnopqrstuvwxyz	a@@pikFAKEREDACTME0123456789
@@ -76,6 +77,11 @@ machine api.example.com login bot password n3tRcFAKEpw	n3tRcFAKEpw
 slack app token x@@app-1-A0FAKE123-4567890-abcdefFAKE	x@@app-1-A0FAKE123
 {"cookie":"sid=FAKEcookieJSON0123456789"}	FAKEcookieJSON0123456789
 mysql -u root -p'Quoted QFAKEpw9' app_db	QFAKEpw9
+{"passphrase": "correct horse FAKE staple"}	correct horse FAKE staple
+env: [{"name": "DB_PASSWORD", "value": "FAKEnameValuePw1"}]	FAKEnameValuePw1
+{"Name":"STRIPE_API_KEY","Value":"FAKEecsValue22"}	FAKEecsValue22
+env:\n  - name: API_TOKEN\n    value: FAKEyamlTok3n9\n  - name: LOG_LEVEL\n    value: debug	FAKEyamlTok3n9
+- name: "SIGNING_SECRET"\n  value: "FAKE quoted yaml"	FAKE quoted yaml
 EOF
 # token-shaped values carry an @@ that is removed here, so the repository
 # never holds a string a secret scanner would take for a real key
@@ -85,8 +91,9 @@ keep=("/home/dev/projects/platform/lib/platform/events.ex" "pg-staging-7.interna
 
 log "## 1. unit: redact()"
 while IFS=$'\t' read -r text secret; do
+  text=${text//\\n/$'\n'}
   r=$(printf '%s' "$text" | redact)
-  case $r in *"$secret"*) bad "not redacted: ${text:0:50}… -> $r" ;; *) ok "redacted: ${r:0:90}" ;; esac
+  case $r in *"$secret"*) bad "not redacted: ${text:0:50}… -> $r" ;; *) r=${r//$'\n'/ \\n }; ok "redacted: ${r:0:90}" ;; esac
 done <"$W/planted.tsv"
 k="read ${keep[0]}, connect to ${keep[1]}, remote ${keep[2]}, see ${keep[3]}"
 r=$(printf '%s' "$k" | redact)
@@ -100,6 +107,7 @@ trap 'kill $fpid 2>/dev/null' EXIT
 for _ in $(seq 1 50); do grep -q ready "$W/fake.out" 2>/dev/null && break; sleep 0.1; done
 export TYPESAFE_BASE_URL="http://127.0.0.1:$port" TYPESAFE_API_KEY=apikFAKEKEYFORTHELISTENER JEV_HOME="$W/home"
 all=$(cut -f1 "$W/planted.tsv" | paste -sd'\n' -)
+all=${all//\\n/$'\n'}
 all="$all
 Files: ${keep[0]} on ${keep[1]}"
 

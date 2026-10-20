@@ -45,8 +45,12 @@ def redact:
   | gsub("\\b(?:AKIA|ASIA)[0-9A-Z]{16}\\b"; "<secret>")
   | gsub("\\bAIza[0-9A-Za-z_-]{35}\\b"; "<secret>")
   | gsub("\\beyJ[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}\\.[A-Za-z0-9_-]{8,}"; "<jwt>")
-  # env-style assignments whose name says secret: FOO_TOKEN=..., export DB_PASSWORD="..."
-  | gsub("(?<k>\\b(?:[A-Za-z_][A-Za-z0-9_]*)?(?i:key|token|secret|password|passwd|pwd|credentials?)[A-Za-z0-9_]*[\"']?\\s*[:=]\\s*)(?!\\d{1,9}\\b)(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s\"',;}]+)"; "\(.k)<redacted>")
+  # name/value pairs whose name says secret (Kubernetes, ECS, Actions env lists):
+  # {"name": "DB_PASSWORD", "value": "..."} and YAML "- name: API_TOKEN" / "value: ..."
+  | gsub("(?<k>\"(?i:name)\"\\s*:\\s*\"[^\"\\n]*(?i:key|token|secret|password|passwd|passphrase|pwd|credentials?)[^\"\\n]*\"\\s*,\\s*\"(?i:value)\"\\s*:\\s*)\"[^\"\\n]*\""; "\(.k)\"<redacted>\"")
+  | gsub("(?<k>\\b(?i:name):[ \\t]*[\"']?[A-Za-z0-9_.-]*(?i:key|token|secret|password|passwd|passphrase|pwd|credentials?)[A-Za-z0-9_.-]*[\"']?[ \\t]*\\r?\\n[ \\t]*(?i:value):[ \\t]*)(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s][^\\n]*)"; "\(.k)<redacted>")
+  # env-style assignments whose name says secret: FOO_TOKEN=..., export DB_PASSWORD="...", "passphrase": "..."
+  | gsub("(?<k>\\b(?:[A-Za-z_][A-Za-z0-9_]*)?(?i:key|token|secret|password|passwd|passphrase|pwd|credentials?)[A-Za-z0-9_]*[\"']?\\s*[:=]\\s*)(?!\\d{1,9}\\b)(?:\"[^\"\\n]*\"|'[^'\\n]*'|[^\\s\"',;}]+)"; "\(.k)<redacted>")
   # long hex/base64 runs shortly after a key-ish word ("api key: 3f9a…", "secret is AbC…")
   | gsub("(?<k>(?i:key|token|secret|password|signature|credential)[^\\n]{0,24}?)(?:[A-Fa-f0-9]{32,}|[A-Za-z0-9+/_-]{32,}={0,2})"; "\(.k)<redacted>")
   # email addresses (git@host:org/repo remotes are kept)
