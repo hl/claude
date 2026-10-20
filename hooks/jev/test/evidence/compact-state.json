@@ -1,9 +1,9 @@
 {
-  "session_id": "5c862eeb-11ff-42ac-82f1-14f57b1ac730",
+  "session_id": "91d0cdba-424d-48ec-834e-d29e4fbc46c8",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-20T14:58:08Z",
-  "extracted_epoch": 1792508288,
+  "extracted_at": "2026-10-20T15:45:36Z",
+  "extracted_epoch": 1792511136,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
@@ -13,9 +13,9 @@
       "n": 2,
       "kind": "user",
       "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
-      "src": "9da1c118-5512-436b-9021-a70774bc4140",
-      "score": 2.5,
-      "legend": "Critical",
+      "src": "0e345394-46e4-496c-87f0-f7dc58229271",
+      "score": 2.48,
+      "legend": "Important",
       "covered_p": 0.01,
       "covered": false
     },
@@ -23,8 +23,8 @@
       "n": 1,
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821.",
-      "src": "c5397437-00f2-4b42-8d1b-0beda7a4f680",
-      "score": 1.31,
+      "src": "60006e62-78f3-4e49-b90f-42960c4da4b7",
+      "score": 1.49,
       "legend": "Nice to have",
       "covered_p": 0.01,
       "covered": false
@@ -33,57 +33,67 @@
       "n": 3,
       "kind": "user",
       "text": "User said: Use the Agent tool once in the foreground with subagent_type general-purpose, model haiku, description Rollout checklist, and this prompt: Reply with exactly these three lines and nothing else, the slashes being line breaks: Artifact: rollout-checklist / 1. drain the queue / 2. flip fanout_streams_enabled. Then reply DONE.",
-      "src": "b82117ba-d621-4579-b4ae-063b207d4904",
-      "score": 0.89,
+      "src": "827a9030-a1ec-4c04-8526-f2cbce90b877",
+      "score": 0.96,
       "legend": "Nice to have",
       "covered_p": 0.01,
       "covered": false
     },
     {
-      "n": 5,
+      "n": 6,
       "kind": "file",
       "text": "File changed this session: /private/tmp/jev-live-compact/notes.txt",
-      "src": "1b57b98a-9e70-4fef-b557-78189b472716",
-      "score": 0.68,
+      "src": "fd190d7d-522d-45dd-9d82-8629adc4e9eb",
+      "score": 0.56,
       "legend": "Nice to have",
       "covered_p": 0.02,
       "covered": false
     },
     {
-      "n": 6,
+      "n": 5,
+      "kind": "user",
+      "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
+      "src": "59159953-41ea-47f4-9ff6-623eb3ecefdf",
+      "score": 0.56,
+      "legend": "Nice to have",
+      "covered_p": 0.02,
+      "covered": false
+    },
+    {
+      "n": 7,
       "kind": "user",
       "text": "User said: Run the shell command: ls /nonexistent-jev-dir and tell me the error in one line.",
-      "src": "01fbefcb-fc89-42ce-9ed7-f00ae4bf7e81",
-      "score": 0.58,
-      "legend": "Nice to have",
-      "covered_p": 0.53,
-      "covered": true
+      "src": "f2c5d4d6-ee27-4c64-9a98-f9c6deca6f13",
+      "score": 0.48,
+      "legend": "Irrelevant",
+      "covered_p": 0.42,
+      "covered": false
     },
     {
       "n": 4,
-      "kind": "user",
-      "text": "User said: Use the Write tool to create notes.txt containing the single line: fanout v2. Then reply DONE.",
-      "src": "611dc99c-b1e7-4b0e-9149-197c6a5abb1f",
-      "score": 0.47,
+      "kind": "decision",
+      "text": "The agent is still running, so I don't have its output yet. It launched in the background instead of the foreground. A hook also raised its model from haiku to claude-opus-5-5. I'll wait for the completion notification before replying with the result.",
+      "src": "88bf4202-f488-46d3-a434-cd14920210b4",
+      "score": 0.48,
       "legend": "Irrelevant",
       "covered_p": 0.01,
       "covered": false
     },
     {
-      "n": 7,
+      "n": 8,
       "kind": "error",
       "text": "Last failing command: ls /nonexistent-jev-dir — output: Exit code 2 \"/nonexistent-jev-dir\": No such file or directory (os error 2)",
-      "src": "f7fc703d-d9c8-42fc-a909-1f1bcbf2a394",
-      "score": 0.33,
+      "src": "b646b2c2-f44e-4a4a-b7b4-bacc12488fbb",
+      "score": 0.45,
       "legend": "Irrelevant",
-      "covered_p": 0.22,
+      "covered_p": 0.19,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "2103393688-573",
+    "summary_id": "1420471174-499",
     "source": "SubagentStop",
-    "at": "2026-10-20T14:58:11Z"
+    "at": "2026-10-20T15:45:39Z"
   },
-  "consumed_at": "2026-10-20T14:58:11Z"
+  "consumed_at": "2026-10-20T15:45:40Z"
 }

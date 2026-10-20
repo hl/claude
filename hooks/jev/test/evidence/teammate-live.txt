@@ -5,32 +5,31 @@ lead      PostToolUse  teammate_spawned
 teammate  TeammateIdle  live-writer
 lead      UserPromptSubmit  Now run one foreground subagent with the
 lead      PostToolUse  async_launched
-lead      UserPromptSubmit  <agent-message from="a4cae56c4f006fb28">
+lead      UserPromptSubmit  <agent-message from="a19bb5b38b4226f91">
 
 # TeammateIdle payload:
-{"session_id":"7ef653d2-0151-4cc4-a27d-1183005b74c7","transcript_path":"~/.claude/projects/-private-tmp-jev-live-team/7ef653d2-0151-4cc4-a27d-1183005b74c7.jsonl","cwd":"/tmp/jev-live-team","permission_mode":"auto","agent_type":"general-purpose","hook_event_name":"TeammateIdle","teammate_name":"live-writer","team_name":"session-327eaf7c"}
+{"session_id":"b0aaf36f-68e7-45d7-aa14-9660a1b12096","transcript_path":"~/.claude/projects/-private-tmp-jev-live-team/b0aaf36f-68e7-45d7-aa14-9660a1b12096.jsonl","cwd":"/tmp/jev-live-team","permission_mode":"auto","agent_type":"general-purpose","hook_event_name":"TeammateIdle","teammate_name":"live-writer","team_name":"session-b4defffd"}
 
-# /tmp/jev-live-team/jevhome/artifacts/327eaf7c-e523-4148-84d0-6879751a1fc9/INDEX.md:
-- 2026-10-20T14:59:09Z teammate live-writer (reply): /tmp/jev-live-team/jevhome/artifacts/327eaf7c-e523-4148-84d0-6879751a1fc9/live-demo.md — Artifact: live-demo
+# /tmp/jev-live-team/jevhome/artifacts/b4defffd-5a29-4099-8fd0-ddb1d03d90da/INDEX.md:
+- 2026-10-20T15:46:31Z teammate live-writer (reply): /tmp/jev-live-team/jevhome/artifacts/b4defffd-5a29-4099-8fd0-ddb1d03d90da/live-demo.md — Artifact: live-demo
 
 # live-demo.md:
-<!-- teammate live-writer@session-327eaf7c (general-purpose, claude-haiku-5-5), 2026-10-20T14:59:09Z, live-writer -->
+<!-- teammate live-writer@session-b4defffd (general-purpose, claude-haiku-5-5), 2026-10-20T15:46:31Z, live-writer -->
 Artifact: live-demo
 The live teammate deliverable.
-END-OF-LIVE-DEMO
+END-OF-LIVE-DEMO.
 
 # artifact.jsonl:
-{"ts":"2026-10-20T14:59:09Z","hook":"artifact-hook","session_id":"327eaf7c-e523-4148-84d0-6879751a1fc9","event":"TeammateIdle","status":"saved","path":"/tmp/jev-live-team/jevhome/artifacts/327eaf7c-e523-4148-84d0-6879751a1fc9/live-demo.md","chars":67,"agent_id":"live-writer@session-327eaf7c","who":"teammate live-writer (reply)","marker":"live-demo","waited_s":0.2}
+{"ts":"2026-10-20T15:46:31Z","hook":"artifact-hook","session_id":"b4defffd-5a29-4099-8fd0-ddb1d03d90da","event":"TeammateIdle","status":"saved","path":"/tmp/jev-live-team/jevhome/artifacts/b4defffd-5a29-4099-8fd0-ddb1d03d90da/live-demo.md","chars":68,"agent_id":"live-writer@session-b4defffd","who":"teammate live-writer (reply)","marker":"live-demo","waited_s":0.0}
 
 # lead pane, lines naming the teammate or the hook:
   "live-writer", subagent_type general-purpose, model      
-⏺ I've spawned the teammate "live-writer" (haiku). I'm
-⏺ Teammate @live-writer finished                      
-⏺ live-writer has replied. Its deliverable, exactly as it
+⏺ I've spawned the teammate "live-writer" (haiku). I'm now
+⏺ Teammate @live-writer finished                         
+⏺ live-writer has finished and gone idle. Its deliverable
   Agent call, one per line, prefixed with HOOK:.           
 ⏺ HOOK: Background subagent running on claude-haiku-5-5.
-  HOOK: Teammate live-writer reply saved to             
-❯ Now reply to live-writer                                 
-  ◯ live-writer  live demo deliverable              1m 7s
+  HOOK: Teammate live-writer reply saved to                
+  ◯ live-writer  live demo deliverable              1m 2s
 
 live-teammate: 0 failure(s)

@@ -176,7 +176,7 @@ No hook can tell the lead at that moment, because TeammateIdle output goes to th
 2. a `.pending` queue that the lead's next own PostToolUse(Agent) turns into `Teammate <name> reply saved to <path>` (or `message (<summary>) saved to …`), announced once. An in-process teammate's Agent calls share the lead's session but carry an `agent_id`, so they leave the queue alone;
 3. the artifact index that compaction re-injects. `INDEX.md` itself is left out of that index.
 
-This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's `Artifact: live-demo` reply was saved as `artifacts/<lead>/live-demo.md`, after a 0.2 s wait for the flush. It got its INDEX.md line, and the lead quoted `Teammate live-writer reply saved to <path>` from its next Agent call.
+This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's `Artifact: live-demo` reply was saved as `artifacts/<lead>/live-demo.md`. The wait for the flush was 0.2 s in two of the three live runs and 0 in the last. It got its INDEX.md line, and the lead quoted `Teammate live-writer reply saved to <path>` from its next Agent call.
 
 `artifact.sh <name> [--from-file <path>] [--session <id>]` does the same by hand. The session comes from `--session`, `$CLAUDE_CODE_SESSION_ID` or `$CLAUDE_SESSION_ID`.
 

@@ -1,4 +1,4 @@
-transcript lines: compact_boundary 108; SessionStart hook_additional_context 120; first post-compaction api-request-blob containing it 132
+transcript lines: compact_boundary 106; SessionStart hook_additional_context 118; first post-compaction api-request-blob containing it 134
 --- the hook_additional_context record:
 {
   "type": "attachment",
@@ -7,11 +7,11 @@ transcript lines: compact_boundary 108; SessionStart hook_additional_context 120
     "hookEvent": "SessionStart",
     "hookName": "SessionStart",
     "content": [
-      "Live sections of /private/tmp/jev-live-compact/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):\n## 2026-10-18 — fan-out rollout (OPS-4821)\n  Status: waiting on CI for the rollout PR\n\nArtifacts saved this session (read the file instead of redoing the work):\n* /tmp/jev-live-compact/jevhome/artifacts/5c862eeb-11ff-42ac-82f1-14f57b1ac730/rollout-checklist.md — subagent a688d23c88b76e6f1 (general-purpose), 2026-10-20T14:56:40Z, Rollout checklist\n\nFacts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical; a fact that conflicts with the summary may be stale, so check the file or PR):\n- User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/5c862eeb-11ff-42ac-82f1-14f57b1ac730.json."
+      "Live sections of /private/tmp/jev-live-compact/.orchestrator.md (sections marked DONE or BLOCKED left out; the file is authoritative):\n## 2026-10-18 — fan-out rollout (OPS-4821)\n  Status: waiting on CI for the rollout PR\n\nArtifacts saved this session (read the file instead of redoing the work):\n* /tmp/jev-live-compact/jevhome/artifacts/91d0cdba-424d-48ec-834e-d29e4fbc46c8/rollout-checklist.md — subagent a60ff49b40b01c66b (general-purpose), 2026-10-20T15:44:10Z, Rollout checklist\n\nFacts preserved across compaction by the Jev hook (in transcript order; the summary did not include these or they were critical; a fact that conflicts with the summary may be stale, so check the file or PR):\n- User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.\nThe full ranked fact list is in /tmp/jev-live-compact/jevhome/compact/91d0cdba-424d-48ec-834e-d29e4fbc46c8.json."
     ]
   }
 }
 --- model answer after compaction:
-Staging database: `pg-staging-9`, port `6545`.
-Ticket: `OPS-4821`.
-Checklist: `/tmp/jev-live-compact/jevhome/artifacts/5c862eeb-11ff-42ac-82f1-14f57b1ac730/rollout-checklist.md`
+Staging database: pg-staging-9, port 6545
+Ticket: OPS-4821
+Checklist: /tmp/jev-live-compact/jevhome/artifacts/91d0cdba-424d-48ec-834e-d29e4fbc46c8/rollout-checklist.md
