@@ -26,12 +26,18 @@
 # Jev is sure the task is mechanical and safe, or (Agent hook) to keep a requested
 # haiku Jev is sure about or that reads as a poll; sonnet only when P(opus) <= 0.15
 # with no security or review signal. One Jev request, about 2k tokens.
+#
+# The session is logged from $CLAUDE_CODE_SESSION_ID when the caller has it
+# (Claude Code exports it to Bash tool commands).
 set -euo pipefail
 
 JEV_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 JEV_HOOK=${JEV_HOOK:-route}
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
+# a CLI run from Claude's Bash tool: attribute its records to that session
+[ -n "$JEV_SESSION" ] || JEV_SESSION=${CLAUDE_CODE_SESSION_ID:-}
+case $JEV_SESSION in *[!A-Za-z0-9._-]*) JEV_SESSION= ;; esac
 
 jev_disabled && exit 3
 

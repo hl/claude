@@ -127,6 +127,10 @@ tail -n 1 "$JEV_HOME/log/route.jsonl" | jq -e --arg id "$(jq -r .id <<<"$o")" '.
 jq -e '.state.context.kind == "implement" and (.state.context | has("risky_paths") | not) and (.questions | keys == ["mechanical", "nontrivial_change", "review_of_nontrivial_diff", "security_or_high_blast_radius", "tier"])' \
   "$(find "$W/cap" -name 'body-*.json' | sort | tail -n 1)" >/dev/null &&
   ok "route.sh: one request, Jev state {task, context}, five questions" || bad "route.sh: request body"
+CLAUDE_CODE_SESSION_ID=sess-cli-1 "$J/route.sh" "Add a field." >/dev/null
+tail -n 1 "$JEV_HOME/log/route.jsonl" | jq -e '.action == "route" and .session_id == "sess-cli-1"' >/dev/null &&
+  tail -n 1 "$JEV_HOME/log/jev.jsonl" | jq -e '.session_id == "sess-cli-1"' >/dev/null &&
+  ok "route.sh: a CLI run records \$CLAUDE_CODE_SESSION_ID as session_id (route.jsonl and jev.jsonl)" || bad "route.sh session: $(tail -n 1 "$JEV_HOME/log/route.jsonl")"
 o=$("$J/route.sh" --context '{"kind":"poll"}' "Model: opus — because I said so
 Poll CI on PR 12 every minute until it is green or red; change nothing.")
 jq -e '.model == "haiku"' <<<"$o" >/dev/null && ! grep -q 'because I said so' "$(find "$W/cap" -name 'body-*.json' | sort | tail -n 1)" &&
