@@ -11,6 +11,7 @@
 # A third, paraphrased revert ("Back to advisory locks ...") is only reported:
 # it relies on Jev calling it a full correction (no score floor then applies).
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 unset CLAUDE_PROJECT_DIR CLAUDE_CODE_SESSION_ID CLAUDE_SESSION_ID CLAUDE_PID

@@ -6,7 +6,7 @@
 #       exists, the heading, first line and Status line of every section not
 #       marked DONE or BLOCKED (orchestrator.awk); most recent sections win
 #       when over JEV_COMPACT_ORCH_MAX (4500) chars
-#   (b) the artifact index: one line per file in ~/.claude/jev/artifacts/<session>/
+#   (b) the artifact index: one line per file in ~/.local/state/jev/artifacts/<session>/
 #       (newest first when over JEV_COMPACT_ARTIFACT_MAX, 2000 chars)
 #   (a) facts: with coverage (compact-post.sh ran), facts scored >= important
 #       that the summary did not keep; without, the top-ranked facts. Chosen by

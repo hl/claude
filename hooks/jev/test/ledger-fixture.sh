@@ -20,6 +20,7 @@
 # superseded one, the artifact line, the live .orchestrator.md section and not
 # the DONE/BLOCKED ones, in < 9000 chars.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures/ledger-session.jsonl"

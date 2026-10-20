@@ -2,10 +2,10 @@
 # route-eval.sh — labelled eval for route.sh (needs a Jev key; hits the live API).
 #
 #   route-eval.sh                                   committed fixture (sanitised real tasks)
-#   JEV_EVAL_SET=~/.claude/jev/eval/labelled.jsonl route-eval.sh   the local real set
+#   JEV_EVAL_SET=~/.local/state/jev/eval/labelled.jsonl route-eval.sh   the local real set
 #
 # The real set is harvested from local transcripts (harvest.sh) and labelled
-# blind by an opus agent (label-batches.sh); it never leaves ~/.claude/jev/eval.
+# blind by an opus agent (label-batches.sh); it never leaves ~/.local/state/jev/eval.
 # With the default JEV_EVAL_SET unset, the local set is used when it exists
 # and EVAL_FIXTURE is not given; set JEV_EVAL_SET=none to force the fixture.
 #
@@ -19,9 +19,12 @@
 # run, keyed by task id) are kept for tune.sh in a new timestamped file,
 # $JEV_EVAL_DIR/results-<UTC time>.jsonl, for the real set.
 set -euo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ROUTE="$HERE/../route.sh"
-EVAL_DIR=${JEV_EVAL_DIR:-$HOME/.claude/jev/eval}
+EVAL_DIR=${JEV_EVAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/jev/eval}
+# not migrated yet (the hooks move ~/.local/state/jev on their first run): read the old place
+[ -n "${JEV_EVAL_DIR:-}" ] || [ -d "$EVAL_DIR" ] || [ ! -d "$HOME/.claude/jev/eval" ] || EVAL_DIR=$HOME/.claude/jev/eval
 if [ -n "${EVAL_FIXTURE:-}" ] || [ "${JEV_EVAL_SET:-}" = none ]; then
   SET=${EVAL_FIXTURE:-$HERE/fixtures/route-eval-real.jsonl}
   real=false

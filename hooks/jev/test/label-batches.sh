@@ -11,9 +11,12 @@
 # opus calls), chosen by id order (ids are md5-based, so this is a fixed
 # pseudo-random draw). Batch files show description, subagent_type and the
 # prompt (head 1600 + tail 400 chars), never the model that ran, so labels are
-# blind to past choices. Everything stays under ~/.claude/jev/eval (JEV_EVAL_DIR).
+# blind to past choices. Everything stays under ~/.local/state/jev/eval (JEV_EVAL_DIR).
 set -euo pipefail
-DIR=${JEV_EVAL_DIR:-$HOME/.claude/jev/eval}
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
+DIR=${JEV_EVAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/jev/eval}
+# not migrated yet (the hooks move ~/.local/state/jev on their first run): read the old place
+[ -n "${JEV_EVAL_DIR:-}" ] || [ -d "$DIR" ] || [ ! -d "$HOME/.claude/jev/eval" ] || DIR=$HOME/.claude/jev/eval
 H="$DIR/harvest.jsonl"
 SIZE=${JEV_LABEL_BATCH:-40}
 

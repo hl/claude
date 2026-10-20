@@ -30,7 +30,7 @@
 #
 # No permissionDecision is returned: the normal permission flow applies and
 # updatedInput is still honoured (verified on 2.1.302). Fails open: any
-# problem -> exit 0, no output. Every decision goes to ~/.claude/jev/log/route.jsonl
+# problem -> exit 0, no output. Every decision goes to ~/.local/state/jev/log/route.jsonl
 # with the reason; that file is the only place that shows the model that ran.
 set -euo pipefail
 trap 'exit 0' EXIT

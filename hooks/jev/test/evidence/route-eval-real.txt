@@ -5,7 +5,7 @@
 # (test/label-batches.sh): all 31 tasks with a weak under_routed label + a per-tier sample by the
 # tier that ran (haiku 120, sonnet 130, opus 150, fable 20) = 451 tasks. Labels: ONE opus agent,
 # prompt in test/label-prompt.txt, blind to the model that ran: haiku 151, sonnet 186, opus 114.
-# Task-level data stays local in ~/.claude/jev/eval/; only aggregates are committed.
+# Task-level data stays local in ~/.local/state/jev/eval/; only aggregates are committed.
 #
 # Anchoring (N15). 136 of 451 briefs (30%) carry a line naming a tier ("Model: haiku — ...":
 # 62 haiku, 61 sonnet, 13 opus), and every one of them names the tier that actually ran. They are
@@ -21,8 +21,8 @@
 # threshold over the folds (higher P(haiku) bar, lower P(opus) bar).
 #
 # Reproduce (local):
-#   EVAL_RUNS=3 JEV_EVAL_SET=~/.claude/jev/eval/labelled.jsonl hooks/jev/test/route-eval.sh
-#   JEV_TUNE_SPLIT=1 hooks/jev/test/tune.sh ~/.claude/jev/eval/results-<time>.jsonl
+#   EVAL_RUNS=3 JEV_EVAL_SET=~/.local/state/jev/eval/labelled.jsonl hooks/jev/test/route-eval.sh
+#   JEV_TUNE_SPLIT=1 hooks/jev/test/tune.sh ~/.local/state/jev/eval/results-<time>.jsonl
 
 ## 1. Session 1 (results-20261018T220034Z: 3 Jev runs per task on stripped briefs) — tune.sh, task-split holdout
 rows: 1353 eval rows over 451 tasks (from results-20261018T220034Z.jsonl), 0 outcome

@@ -15,12 +15,15 @@
 # the first 400 chars of the prompt. Scratch test sessions (/tmp/jev-*, /tmp/rv-*)
 # are skipped.
 #
-# Output stays local: ~/.claude/jev/eval/harvest.jsonl (JEV_EVAL_DIR). It holds
+# Output stays local: ~/.local/state/jev/eval/harvest.jsonl (JEV_EVAL_DIR). It holds
 # real prompts — never commit it. ~/.claude/.gitignore ignores jev/.
 set -euo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 SRC=${1:-$HOME/.claude/projects}
-OUT=${JEV_EVAL_DIR:-$HOME/.claude/jev/eval}
+OUT=${JEV_EVAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/jev/eval}
+# not migrated yet (the hooks move ~/.local/state/jev on their first run): read the old place
+[ -n "${JEV_EVAL_DIR:-}" ] || [ -d "$OUT" ] || [ ! -d "$HOME/.claude/jev/eval" ] || OUT=$HOME/.claude/jev/eval
 mkdir -p "$OUT"
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/jev-harvest.XXXXXX")
 trap 'rm -rf "$tmp"' EXIT

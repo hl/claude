@@ -1,11 +1,11 @@
 {
-  "session_id": "f558ba9a-4cf6-4cbe-b7ed-ff932c8bdb66",
+  "session_id": "a6c6447e-5af3-447a-97cf-7d9f65dec9ea",
   "mode": "ledger",
-  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/f558ba9a-4cf6-4cbe-b7ed-ff932c8bdb66.jsonl",
+  "ledger_path": "/tmp/jev-live-compact/jevhome/ledger/a6c6447e-5af3-447a-97cf-7d9f65dec9ea.jsonl",
   "trigger": "manual",
   "transcript_path": "…",
-  "extracted_at": "2026-10-18T22:37:25Z",
-  "extracted_epoch": 1792363045,
+  "extracted_at": "2026-10-20T08:12:31Z",
+  "extracted_epoch": 1792483951,
   "phase": "consumed",
   "jev_ok": true,
   "guard_blocked": false,
@@ -18,7 +18,7 @@
       "id": "f1",
       "kind": "user",
       "text": "User said: Context for this session, reply OK only: the staging database is pg-staging-7 on port 6544, and migrations must never run against it. The release branch is release/2026-10-17. The ticket is OPS-4821. [later corrected: User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.]",
-      "score": 2.92,
+      "score": 2.94,
       "covered_p": 0.01,
       "covered": false
     },
@@ -27,16 +27,25 @@
       "id": "f2",
       "kind": "user",
       "text": "User said: Correction, reply OK only: the staging database moved to pg-staging-9 on port 6545 last night; pg-staging-7 is gone.",
-      "score": 2.9,
+      "score": 2.95,
+      "covered_p": 0.01,
+      "covered": false
+    },
+    {
+      "n": 3,
+      "id": "f3",
+      "kind": "user",
+      "text": "User said: Use the Agent tool once in the foreground with subagent_type general-purpose, model haiku, description Rollout checklist, and this prompt: Reply with exactly these three lines and nothing else, the slashes being line breaks: Artifact: rollout-checklist / 1. drain the queue / 2. flip fanout_streams_enabled. Then reply DONE.",
+      "score": 1.58,
       "covered_p": 0.01,
       "covered": false
     }
   ],
   "coverage": {
-    "summary_id": "367769179-495",
+    "summary_id": "4057618136-1371",
     "source": "SubagentStop",
-    "at": "2026-10-18T22:37:27Z",
-    "summary_quality": 1.53
+    "at": "2026-10-20T08:12:37Z",
+    "summary_quality": 1.19
   },
-  "consumed_at": "2026-10-18T22:37:27Z"
+  "consumed_at": "2026-10-20T08:12:37Z"
 }

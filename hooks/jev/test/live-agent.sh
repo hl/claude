@@ -10,6 +10,7 @@
 #               review -> the subagent must run on an opus ID
 # Also checks the hook output carries no permissionDecision.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 EVID="$HERE/evidence"

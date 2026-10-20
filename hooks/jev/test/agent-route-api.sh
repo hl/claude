@@ -6,6 +6,7 @@
 # plugin agents or with CLAUDE_CODE_SUBAGENT_MODEL; the escalation confidence
 # gate; the fill allowlist and sonnet floor; never-lower; updatedInput only.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 HOOK="$HERE/../agent-route.sh"
 JEV_HOME=$(mktemp -d "${TMPDIR:-/tmp}/jev-ar.XXXXXX")

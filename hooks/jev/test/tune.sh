@@ -32,12 +32,15 @@
 # lower ambiguity and P(opus) bars), scored on the full set and on the
 # unanchored subset (briefs that name no tier).
 set -euo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
-EVAL_DIR=${JEV_EVAL_DIR:-$HOME/.claude/jev/eval}
+EVAL_DIR=${JEV_EVAL_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/jev/eval}
+# not migrated yet (the hooks move ~/.local/state/jev on their first run): read the old place
+[ -n "${JEV_EVAL_DIR:-}" ] || [ -d "$EVAL_DIR" ] || [ ! -d "$HOME/.claude/jev/eval" ] || EVAL_DIR=$HOME/.claude/jev/eval
 # shellcheck disable=SC2012 # timestamped names; newest by name
 RES=${1:-$(ls "$EVAL_DIR"/results-*.jsonl 2>/dev/null | sort | tail -n 1)}
-ROUTE_LOG=${JEV_TUNE_ROUTE_LOG:-${JEV_HOME:-$HOME/.claude/jev}/log/route.jsonl}
+ROUTE_LOG=${JEV_TUNE_ROUTE_LOG:-${JEV_HOME:-${XDG_STATE_HOME:-$HOME/.local/state}/jev}/log/route.jsonl}
 MARGIN=${JEV_TUNE_MARGIN:-0.1}
 SIG=${JEV_TUNE_SIGNAL:-0.7}
 MAX_SU=${EVAL_MAX_SONNET_UNDER:-0.02}

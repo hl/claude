@@ -11,6 +11,7 @@
 #     rewrites test/evidence/redaction.txt.
 # All secrets below are fake.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 # shellcheck source=SCRIPTDIR/../lib.sh

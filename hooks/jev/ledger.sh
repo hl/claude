@@ -24,7 +24,7 @@
 # one of its facts changed.
 # Candidates scored >= JEV_COMPACT_MIN_SCORE (important), and lower-scored ones
 # that supersede an important live fact, are appended in transcript order to
-#   ~/.claude/jev/ledger/<session_id>.jsonl
+#   ~/.local/state/jev/ledger/<session_id>.jsonl
 #     {id, ts, kind, text, score, supersedes: [ids], corrects: [ids],
 #      superseded_by, corrected_by: [ids], source_uuid}
 # and the facts they supersede get superseded_by. The cursor lives next to it

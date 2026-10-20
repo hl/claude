@@ -13,6 +13,7 @@
 #   - pre-boundary decoys are never extracted; a second SessionStart without a
 #     new PreCompact falls back to ranking the ledger and leaves the state consumed
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J="$HERE/.."
 FIX="$HERE/fixtures"

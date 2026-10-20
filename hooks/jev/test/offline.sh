@@ -4,6 +4,7 @@
 # fail-open contract: with no key, an unreachable or hanging API, a bad key, or
 # JEV_DISABLED=1, every hook exits 0 with no stdout, well inside its timeout.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures"

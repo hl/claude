@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # compact-pre.sh — PreCompact hook. Final ledger flush, then a snapshot of the
 # facts compaction must not lose, for compact-post.sh / compact-session.sh in
-# ~/.claude/jev/compact/<session_id>.json.
+# ~/.local/state/jev/compact/<session_id>.json.
 #
 # Ledger mode (default): runs ledger.sh --flush (the same incremental step the
 # Stop hook runs, waiting for a running one), then snapshots the live,

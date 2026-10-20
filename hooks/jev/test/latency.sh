@@ -10,6 +10,7 @@
 # Only timings and sizes are printed. JEV_LAT_REAL=0 skips it. With JEV_LIVE=1
 # or JEV_EVIDENCE=1 the output also goes to test/evidence/latency.txt.
 set -uo pipefail
+export JEV_MIGRATE=0 # tests never move this machine's real ~/.claude/jev
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 J=$(cd "$HERE/.." && pwd)
 FIX="$HERE/fixtures"

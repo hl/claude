@@ -4,7 +4,8 @@ then `label-batches.sh --merge`. Labels reproduce only up to that agent's judgem
 Known bias: 30% of the briefs carry a line naming the tier their author chose
 ("Model: haiku — ..."), and the labeller agreed with that line 93% of the time
 (70% agreement with the tier that ran where no such line exists); route.sh strips
-these lines, the labeller saw them. See README "Routing".
+these lines, the labeller saw them. See README "Routing". The paths below are as they
+were at labelling time; the eval data now lives in $JEV_HOME/eval (~/.local/state/jev/eval).
 
 -----
 

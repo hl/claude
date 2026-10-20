@@ -3,7 +3,7 @@
 #
 #   outcome.sh <route-id> '{"rounds": 2, "escalated": false, "verdict": "PASS", "final_model": "sonnet"}'
 #
-# Appends {action: "outcome", id, ...} to ~/.claude/jev/log/route.jsonl. Fields
+# Appends {action: "outcome", id, ...} to ~/.local/state/jev/log/route.jsonl. Fields
 # (all optional, others are kept): rounds (review rounds), escalated (true when
 # a fresh agent one tier up took over), verdict (the final review verdict, or
 # "blocked"), final_model (the model that finished the work). test/tune.sh

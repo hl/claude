@@ -9,7 +9,7 @@
 #                    hanging, blackhole, bad key, JEV_DISABLED, JEV_LEDGER=0), circuit breaker
 # offline-v2.sh      policy.jq as code; ledger, artifacts and injection against a local fake Jev
 # redact.sh          redaction unit tests + planted secrets never reach a captured request body
-# route-eval.sh      routing eval: the local real set if ~/.claude/jev/eval/labelled.jsonl exists,
+# route-eval.sh      routing eval: the local real set if $JEV_HOME/eval/labelled.jsonl exists,
 #                    else the committed sanitised fixture; zero opus under-routing, <= 2% sonnet
 # agent-route-api.sh escalate / fill / log semantics of the Agent hook
 # compact-fixture.sh planted facts + fake summary: omitted facts re-injected, both hook orders, v1 mode
@@ -21,6 +21,8 @@
 # live-compact.sh    tmux /compact with the Stop ledger: order, injection after the boundary, answer
 set -uo pipefail
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# The tests use their own JEV_HOME; never move this machine's real state.
+export JEV_MIGRATE=0
 # shellcheck source=SCRIPTDIR/../lib.sh
 . "$HERE/../lib.sh"
 

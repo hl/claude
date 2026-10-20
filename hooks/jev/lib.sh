@@ -13,7 +13,9 @@
 #   JEV_MODEL              model (default jev-latest)
 #   JEV_TIMEOUT            curl --max-time in seconds (default 8)
 #   JEV_LONG_CONTEXT=1     send the long-context header up front (262k, slower)
-#   JEV_HOME               state/log root (default ~/.claude/jev)
+#   JEV_HOME               state/log root (default ${XDG_STATE_HOME:-~/.local/state}/jev;
+#                          an old ~/.claude/jev is moved there once, see below)
+#   JEV_MIGRATE=0          never move an old ~/.claude/jev (the tests set this)
 #   JEV_COOLDOWN           seconds to skip API calls after a timeout or connection
 #                          failure (default 300; 0 disables the breaker)
 #   JEV_CHARS_PER_TOKEN    chars-per-token used for the state budget (default 4)
@@ -23,7 +25,30 @@
 # unredacted text by accident.
 
 JEV_LIB_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-JEV_HOME=${JEV_HOME:-$HOME/.claude/jev}
+
+# State lives outside ~/.claude: that directory is a public repo and a protected
+# directory for Claude Code, so nothing the hooks write should land in it. A
+# ~/.claude/jev left by an earlier version is moved once (whole, or entry by
+# entry into an existing new home) and replaced by a one-line pointer file.
+jev_migrate_home() {
+  local old="$HOME/.claude/jev" new=$1 e
+  [ -d "$old" ] && [ ! -L "$old" ] || return 0
+  mkdir -p "$(dirname "$new")" 2>/dev/null || return 0
+  if [ ! -e "$new" ]; then
+    mv "$old" "$new" 2>/dev/null || return 0
+  else
+    for e in "$old"/* "$old"/.[!.]*; do
+      [ -e "$e" ] || continue
+      [ -e "$new/$(basename "$e")" ] || mv "$e" "$new/" 2>/dev/null || true
+    done
+    rmdir "$old" 2>/dev/null || return 0
+  fi
+  printf 'Jev hook state moved to %s (set JEV_HOME to change it); this file can be deleted.\n' "$new" >"$old" 2>/dev/null || true
+}
+if [ -z "${JEV_HOME:-}" ]; then
+  JEV_HOME="${XDG_STATE_HOME:-$HOME/.local/state}/jev"
+  [ "${JEV_MIGRATE:-1}" = 0 ] || jev_migrate_home "$JEV_HOME"
+fi
 JEV_LOG_DIR="$JEV_HOME/log"
 JEV_BASE_URL=${TYPESAFE_BASE_URL:-https://api.typesafe.ai}
 JEV_MODEL=${JEV_MODEL:-jev-latest}
