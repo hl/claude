@@ -9,6 +9,7 @@
 #                    hanging, blackhole, bad key, JEV_DISABLED), circuit breaker
 # offline-hooks.sh   policy.jq as code; route.sh, the Agent hook (scope, skips, route ids),
 #                    artifacts, one request per compaction step, injection, sweep (fake Jev)
+#                    and .orchestrator.md pruning
 # zero-traffic.sh    10 turns through every Jev hook in settings.json: 0 requests in an ordinary
 #                    project; in a Claudette project only on Agent spawns and compaction
 # redact.sh          redaction unit tests + planted secrets never reach a captured request body

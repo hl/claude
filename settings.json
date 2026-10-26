@@ -22,6 +22,11 @@
           {
             "type": "command",
             "command": "$HOME/.claude/hooks/mix_format_edited.sh"
+          },
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/orchestrator-prune.sh",
+            "timeout": 10
           }
         ]
       },
@@ -75,6 +80,16 @@
             "type": "command",
             "command": "$HOME/.claude/hooks/jev/compact-session.sh",
             "timeout": 20
+          }
+        ]
+      },
+      {
+        "matcher": "^(startup|resume|clear|compact)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.claude/hooks/jev/orchestrator-prune.sh",
+            "timeout": 10
           }
         ]
       }

@@ -10,6 +10,14 @@
 # section are finished too. Table rows marked DONE or BLOCKED, table separators
 # and blank lines are never the "first line". H1 is the file title and is
 # skipped unless the file has no deeper headings.
+#
+# -v mode=prune -v cutoff=YYYY-MM-DD (orchestrator-prune.sh): prints every line
+# tagged K (keep), A (archive), C (collapsed heading, keep) or D (finished
+# heading past cutoff, archive). A finished
+# section shrinks to its heading (" — DONE" appended when only its Status line
+# said so); the heading goes too once its leading date is before cutoff.
+# Deeper headings under it are archived with the body.
+# -v mode=report: one TSV line per live top-level section: lines, heading.
 function trim(s) { sub(/^[ \t>*-]+/, "", s); sub(/[ \t]+$/, "", s); gsub(/\t/, " ", s); return s }
 function cut(s, n) { return length(s) > n ? substr(s, 1, n - 1) "…" : s }
 function level(h) { match(h, /^#+/); return RLENGTH }
@@ -33,7 +41,66 @@ function flush() {
 }
 { lines[NR] = $0 }
 /^##+ / { deep = 1 }
+function is_head(l) { return l ~ /^#+ / && (deep == 0 || l !~ /^# /) }
+function status_done(l,    s) {
+  if (!match(l, /[Ss]tatus\**:[ \t]*\**[A-Za-z]+/)) return 0
+  s = substr(l, RSTART, RLENGTH); sub(/^[Ss]tatus\**:[ \t]*\**/, "", s)
+  return tolower(s) ~ /^(done|blocked|merged)$/
+}
+function head_date(h,    t) {
+  t = h; sub(/^#+[ \t]*/, "", t)
+  return t ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/ ? substr(t, 1, 10) : ""
+}
+# sections(): fin[h] for every heading line h, top[] (min heading level), and
+# role[i] for every line: "live", "fin" (top of a finished section), "in" (inside one).
+function sections(    i, h, lv, dl) {
+  h = 0; top = 99
+  for (i = 1; i <= NR; i++) {
+    if (is_head(lines[i])) { h = i; fin[h] = finished_heading(lines[i]); if (level(lines[i]) < top) top = level(lines[i]); continue }
+    if (h && status_done(lines[i])) fin[h] = 1
+  }
+  dl = 0
+  for (i = 1; i <= NR; i++) {
+    if (is_head(lines[i])) {
+      lv = level(lines[i])
+      if (dl > 0 && lv <= dl) dl = 0
+      if (dl > 0) role[i] = "in"
+      else if (fin[i]) { role[i] = "fin"; dl = lv }
+      else role[i] = "live"
+      continue
+    }
+    role[i] = dl > 0 ? "in" : "live"
+  }
+}
 END {
+  if (mode == "prune") {
+    sections()
+    for (i = 1; i <= NR; i++) {
+      l = lines[i]
+      if (role[i] == "live") { print "K\t" l; continue }
+      if (role[i] == "fin") {
+        d = head_date(l)
+        if (d != "" && cutoff != "" && d < cutoff) { print "D\t" l; continue }
+        if (!finished_heading(l)) { sub(/[ \t]+$/, "", l); l = l " — DONE" }
+        print "C\t" l
+        continue
+      }
+      print (l ~ /^[ \t]*$/ ? "K\t" : "A\t") l
+    }
+    exit
+  }
+  if (mode == "report") {
+    sections()
+    h = 0
+    for (i = 1; i <= NR + 1; i++) {
+      if (i > NR || (is_head(lines[i]) && level(lines[i]) <= top)) {
+        if (h) print n "\t" lines[h]
+        h = (i <= NR && role[i] == "live") ? i : 0; n = 0
+      }
+      n++
+    }
+    exit
+  }
   donelevel = 0
   for (i = 1; i <= NR; i++) {
     l = lines[i]

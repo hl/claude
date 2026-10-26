@@ -421,5 +421,53 @@ wait "${pids[@]}" # not a bare wait: the fake Jev server is a background job too
 [ "$(wc -l <"$JEV_HOME/log/par.jsonl" | tr -d ' ')" = 12 ] && jq -e -s 'length == 12' "$JEV_HOME/log/par.jsonl" >/dev/null 2>&1 &&
   ok "jev_log: 12 parallel $(printf '%s' "$big" | wc -c | tr -d ' ')-byte lines all parse" || bad "jev_log: interleaved lines"
 
+# --- 10. orchestrator-prune.sh: finished sections shrink, old ones go, all of it archived
+OP="$W/orchp" && mkdir -p "$OP"
+old=$(date -u -v-30d +%Y-%m-%d 2>/dev/null || date -u -d '30 days ago' +%Y-%m-%d)
+today=$(date -u +%Y-%m-%d)
+cat >"$OP/.orchestrator.md" <<EOF
+# Orchestrator log
+
+## $today — live change
+Status: implementing
+body that stays
+
+## $today — merged change — DONE: #12
+- long finished body
+- more finished body
+
+### nested under the finished one
+- also archived
+
+## $today — status-only finish
+Status: merged
+- body
+
+## $old — ancient change — BLOCKED: no access
+- gone entirely
+EOF
+cp "$OP/.orchestrator.md" "$W/orch-before.md"
+pl=$(jq -cn --arg f "$OP/.orchestrator.md" '{hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: {file_path: $f}}')
+out=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
+arch=$(find "$W/oh/orchestrator-archive" -name '*.md' 2>/dev/null | head -1)
+grep -q 'body that stays' "$OP/.orchestrator.md" && ! grep -q 'finished body\|nested under\|ancient' "$OP/.orchestrator.md" &&
+  grep -qx "## $today — merged change — DONE: #12" "$OP/.orchestrator.md" && grep -qx "## $today — status-only finish — DONE" "$OP/.orchestrator.md" &&
+  ok "prune: finished sections collapse to their heading (status-only gets — DONE), old ones go" || bad "prune result: $(cat "$OP/.orchestrator.md")"
+[ -n "$arch" ] && grep -q 'long finished body' "$arch" && grep -q 'also archived' "$arch" && grep -q 'ancient change' "$arch" &&
+  ok "prune: every removed line is in the archive" || bad "prune archive: ${arch:-missing}"
+jq -e '.hookSpecificOutput.additionalContext | test("2 finished section.*1 finished heading.*Re-read")' <<<"$out" >/dev/null &&
+  ok "prune: PostToolUse tells the session what was pruned" || bad "prune message: $out"
+diff <(awk -f "$J/orchestrator.awk" "$W/orch-before.md") <(awk -f "$J/orchestrator.awk" "$OP/.orchestrator.md") >/dev/null &&
+  ok "prune: the compaction view (live sections) is unchanged" || bad "prune changed the live sections"
+h=$(cksum <"$OP/.orchestrator.md")
+out2=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$(jq -cn --arg d "$OP" '{hook_event_name: "SessionStart", source: "startup", cwd: $d}')")
+[ "$(cksum <"$OP/.orchestrator.md")" = "$h" ] && [ -z "$out2" ] && ok "prune: idempotent, SessionStart is silent" || bad "prune second run: $out2"
+awk '{ print } /^body that stays$/ { for (i = 1; i <= 90; i++) print "- live line " i }' "$OP/.orchestrator.md" >"$OP/x" && mv "$OP/x" "$OP/.orchestrator.md"
+out3=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
+jq -e '.hookSpecificOutput.additionalContext | test("lines \\(limit 80\\)") and test("live change \\(9[0-9] lines\\)")' <<<"$out3" >/dev/null &&
+  ok "prune: over 80 lines names the live sections to condense" || bad "prune size warning: $out3"
+out4=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<'{"hook_event_name":"PostToolUse","tool_input":{"file_path":"/tmp/notes.md"}}')
+[ -z "$out4" ] && ok "prune: other files are ignored" || bad "prune acted on another file: $out4"
+
 echo "offline-hooks: $fails failure(s)"
 [ "$fails" -eq 0 ]

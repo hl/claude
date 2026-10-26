@@ -28,6 +28,7 @@ Teammate turn ends ──TeammateIdle (teammate's process)──▶ artifact-hoo
                  ──SubagentStop (compaction agent)──▶ compact-post.sh: Jev "summary keeps fact N?" (1 request)
                  ──SessionStart(compact)──▶ compact-session.sh: live .orchestrator.md sections > artifact index > uncovered facts
                  ──PostCompact──▶ compact-post.sh (skips: already covered)
+Session start, Edit/Write of .orchestrator.md ──▶ orchestrator-prune.sh: finished sections → archive (no Jev call)
 ```
 
 ## Enable, scope, disable
@@ -37,6 +38,7 @@ Set `TYPESAFE_API_KEY` in the environment, or put an `export TYPESAFE_API_KEY=..
 - `JEV_SCOPE=all`: the Jev-calling hooks act in every session, not only Claudette sessions.
 - `JEV_DISABLED=1`: every hook does nothing and `route.sh` exits 3. `artifact.sh` still writes the file it was asked to write.
 - `JEV_ROUTE_MODE=off`: only the Agent hook is off.
+- `JEV_ORCH_PRUNE=0`: only the `.orchestrator.md` pruning is off.
 - `JEV_ARTIFACTS=0`: only the automatic saving of subagent and teammate results is off. The "ran on" line stays.
 
 ## What leaves the machine
@@ -146,6 +148,19 @@ Parts 1 and 2 need neither Jev nor a state file, so they work in any session, an
 
 The compaction guard is opt-in. With `JEV_COMPACT_GUARD=1`, `compact-pre.sh` blocks one auto-compaction per session (exit 2) when the last turn is mid-operation with p ≥ 0.85. It never blocks a manual `/compact`, and never blocks twice. It stays off by default because a hook cannot tell a routine auto-compaction from one that is recovering from a context-limit error.
 
+## Keeping .orchestrator.md lean
+
+`orchestrator-prune.sh` runs at session start and after every Edit or Write of a file named `.orchestrator.md`. It makes no Jev call and works in every session.
+
+- A finished section shrinks to its heading. A section is finished when its heading ends in ` — DONE` or ` — BLOCKED` (the same rule `orchestrator.awk` uses for compaction), or its `Status:` is done, blocked or merged; in the last case ` — DONE` is appended to the heading. Deeper headings under it go with the body.
+- A collapsed heading whose leading date is more than `JEV_ORCH_KEEP_DAYS` (14) days old is removed too.
+- Everything removed is appended to `$JEV_HOME/orchestrator-archive/<path>.md`. The file is gitignored, so the archive is its only history, and the sweep never deletes it.
+- After an edit, the session is told what was pruned and to re-read the file. If the file is still over `JEV_ORCH_MAX_LINES` (80) lines, it also gets the live sections to condense: those over `JEV_ORCH_SECTION_MAX` (20) lines and those dated before the cutoff. At session start the hook prunes without saying anything, so sessions that don't maintain the file are not nagged.
+- Live sections are never removed automatically: condensing them takes judgement.
+- The write is atomic and skipped when the file changed during the prune. Worktrees don't get the file (it is gitignored), so only the main checkout is pruned.
+
+`orchestrator-prune.sh --dry-run <file>` prints what a prune would do.
+
 ## Artifacts
 
 `artifact-hook.sh` saves every subagent reply whose first line is `Artifact: <name>`, as `<name>.md`, whatever its length. It also saves every other result longer than 2,000 characters, as `agent-<n>-<slug>-<agentId>.md`.
@@ -218,6 +233,7 @@ This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's 
 | `JEV_COMPACT_MIN_SCORE`, `JEV_COMPACT_COVERED_MIN` | `1.5`, `0.5` | Score that counts as important; probability at which the summary keeps a fact. |
 | `JEV_COMPACT_MAX_CHARS`, `JEV_COMPACT_ORCH_MAX`, `JEV_COMPACT_ARTIFACT_MAX` | `9000`, `4500`, `2000` | Injection caps: total, `.orchestrator.md` part, artifact index. |
 | `JEV_COMPACT_MAX_AGE` | `3600` s | Older compaction state is ignored. |
+| `JEV_ORCH_KEEP_DAYS`, `JEV_ORCH_MAX_LINES`, `JEV_ORCH_SECTION_MAX` | `14`, `80`, `20` | `.orchestrator.md` pruning: days a collapsed heading stays, file size and live-section size that trigger the condense message. |
 | `JEV_COMPACT_GUARD`, `JEV_COMPACT_GUARD_MIN` | unset, `0.85` | The opt-in guard above. |
 
 ## Logs and state
