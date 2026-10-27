@@ -153,9 +153,9 @@ The compaction guard is opt-in. With `JEV_COMPACT_GUARD=1`, `compact-pre.sh` blo
 `orchestrator-prune.sh` runs at session start and after every Edit or Write of a file named `.orchestrator.md`. It makes no Jev call and works in every session.
 
 - A finished section shrinks to its heading. A section is finished when its heading ends in ` — DONE` or ` — BLOCKED` (the same rule `orchestrator.awk` uses for compaction), or its `Status:` is done, blocked or merged; in the last case ` — DONE` is appended to the heading. Deeper headings under it go with the body.
-- A collapsed heading whose leading date is more than `JEV_ORCH_KEEP_DAYS` (14) days old is removed too.
+- The first prune that sees a section finished stamps its heading ` (closed YYYY-MM-DD)` with that day. The heading is removed once the stamp is more than `JEV_ORCH_KEEP_DAYS` (3) days old, so it stays 3 days after it closes, however long the change ran. A finished heading without a stamp (written before stamping existed) is stamped on its next prune, not removed. The stamp is ignored when deciding whether a heading is finished.
 - Everything removed is appended to `$JEV_HOME/orchestrator-archive/<path>.md`. The file is gitignored, so the archive is its only history, and the sweep never deletes it.
-- After an edit, the session is told what was pruned and to re-read the file. If the file is still over `JEV_ORCH_MAX_LINES` (80) lines, it also gets the live sections to condense: those over `JEV_ORCH_SECTION_MAX` (20) lines and those dated before the cutoff. At session start the hook prunes without saying anything, so sessions that don't maintain the file are not nagged.
+- After an edit, the session is told what was pruned and to re-read the file. If the file is still over `JEV_ORCH_MAX_LINES` (80) lines, it also gets the live sections to condense: those over `JEV_ORCH_SECTION_MAX` (20) lines and those dated more than `JEV_ORCH_STALE_DAYS` (14) days ago, to close as stale. At session start the hook prunes without saying anything, so sessions that don't maintain the file are not nagged.
 - Live sections are never removed automatically: condensing them takes judgement.
 - The write is atomic and skipped when the file changed during the prune. Worktrees don't get the file (it is gitignored), so only the main checkout is pruned.
 
@@ -233,7 +233,7 @@ This was verified live in `test/evidence/teammate-live.txt`. A haiku teammate's 
 | `JEV_COMPACT_MIN_SCORE`, `JEV_COMPACT_COVERED_MIN` | `1.5`, `0.5` | Score that counts as important; probability at which the summary keeps a fact. |
 | `JEV_COMPACT_MAX_CHARS`, `JEV_COMPACT_ORCH_MAX`, `JEV_COMPACT_ARTIFACT_MAX` | `9000`, `4500`, `2000` | Injection caps: total, `.orchestrator.md` part, artifact index. |
 | `JEV_COMPACT_MAX_AGE` | `3600` s | Older compaction state is ignored. |
-| `JEV_ORCH_KEEP_DAYS`, `JEV_ORCH_MAX_LINES`, `JEV_ORCH_SECTION_MAX` | `14`, `80`, `20` | `.orchestrator.md` pruning: days a collapsed heading stays, file size and live-section size that trigger the condense message. |
+| `JEV_ORCH_KEEP_DAYS`, `JEV_ORCH_STALE_DAYS`, `JEV_ORCH_MAX_LINES`, `JEV_ORCH_SECTION_MAX` | `3`, `14`, `80`, `20` | `.orchestrator.md` pruning: days a collapsed heading stays after its close stamp, age at which the condense message names a live section as stale, file size and live-section size that trigger the condense message. |
 | `JEV_COMPACT_GUARD`, `JEV_COMPACT_GUARD_MIN` | unset, `0.85` | The opt-in guard above. |
 
 ## Logs and state
