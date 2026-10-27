@@ -11,12 +11,15 @@
 # and blank lines are never the "first line". H1 is the file title and is
 # skipped unless the file has no deeper headings.
 #
-# -v mode=prune -v cutoff=YYYY-MM-DD (orchestrator-prune.sh): prints every line
-# tagged K (keep), A (archive), C (collapsed heading, keep) or D (finished
-# heading past cutoff, archive). A finished
-# section shrinks to its heading (" — DONE" appended when only its Status line
-# said so); the heading goes too once its leading date is before cutoff.
-# Deeper headings under it are archived with the body.
+# -v mode=prune -v cutoff=YYYY-MM-DD -v today=YYYY-MM-DD (orchestrator-prune.sh):
+# prints every line tagged K (keep), A (archive), C (collapsed heading, keep),
+# S (collapsed heading stamped now, keep) or D (finished heading closed before
+# cutoff, archive). A finished section shrinks to its heading (" — DONE" appended
+# when only its Status line said so). The first prune that sees it finished
+# appends " (closed <today>)"; the heading goes once that stamp is before cutoff,
+# so retention counts from when it closed, not from its leading date. Deeper
+# headings under it are archived with the body. A trailing close stamp is
+# ignored when deciding whether a heading is finished.
 # -v mode=report: one TSV line per live top-level section: lines, heading.
 function trim(s) { sub(/^[ \t>*-]+/, "", s); sub(/[ \t]+$/, "", s); gsub(/\t/, " ", s); return s }
 function cut(s, n) { return length(s) > n ? substr(s, 1, n - 1) "…" : s }
@@ -25,6 +28,7 @@ function finished_heading(h,    t, rest, k) {
   t = h
   sub(/^#+[ \t]*/, "", t)
   sub(/[ \t]+$/, "", t)
+  sub(/[ \t]+\(closed [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\)$/, "", t)
   if (t ~ /^[*_]*(DONE|BLOCKED)[*_]*:/) return 1
   if (t ~ /[(\[][*_]*(DONE|BLOCKED)[*_]*[)\]]$/) return 1
   # the text after the last separator, whichever dash it uses
@@ -47,9 +51,10 @@ function status_done(l,    s) {
   s = substr(l, RSTART, RLENGTH); sub(/^[Ss]tatus\**:[ \t]*\**/, "", s)
   return tolower(s) ~ /^(done|blocked|merged)$/
 }
-function head_date(h,    t) {
-  t = h; sub(/^#+[ \t]*/, "", t)
-  return t ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/ ? substr(t, 1, 10) : ""
+# close_date(h): the date of a trailing " (closed YYYY-MM-DD)" stamp, or ""
+function close_date(h) {
+  if (!match(h, /\(closed [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\)[ \t]*$/)) return ""
+  return substr(h, RSTART + 8, 10)
 }
 # sections(): fin[h] for every heading line h, top[] (min heading level), and
 # role[i] for every line: "live", "fin" (top of a finished section), "in" (inside one).
@@ -79,9 +84,13 @@ END {
       l = lines[i]
       if (role[i] == "live") { print "K\t" l; continue }
       if (role[i] == "fin") {
-        d = head_date(l)
-        if (d != "" && cutoff != "" && d < cutoff) { print "D\t" l; continue }
-        if (!finished_heading(l)) { sub(/[ \t]+$/, "", l); l = l " — DONE" }
+        c = close_date(l)
+        if (c != "" && cutoff != "" && c < cutoff) { print "D\t" l; continue }
+        sub(/[ \t]+$/, "", l)
+        sub(/[ \t]+\(closed [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\)$/, "", l)
+        if (!finished_heading(l)) l = l " — DONE"
+        if (c != "") { print "C\t" l " (closed " c ")"; continue }
+        if (today != "") { print "S\t" l " (closed " today ")"; continue }
         print "C\t" l
         continue
       }

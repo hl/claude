@@ -3,8 +3,9 @@
 #
 # Hook (SessionStart; PostToolUse Edit|Write on a file named .orchestrator.md):
 #   - a finished section (heading marked DONE / BLOCKED, or Status: done, blocked,
-#     merged) shrinks to its heading; the heading goes too once its leading date
-#     is more than JEV_ORCH_KEEP_DAYS (3) old;
+#     merged) shrinks to its heading, stamped " (closed <today>)" the first time;
+#     the heading goes too once that stamp is more than JEV_ORCH_KEEP_DAYS (3)
+#     days old (an unstamped heading is stamped, never dropped);
 #   - what is removed is appended to $JEV_HOME/orchestrator-archive/<path>.md
 #     (the file is gitignored, so this is its only history; never swept);
 #   - PostToolUse only: tells the session what was pruned (re-read before the
@@ -62,22 +63,24 @@ orch=$(cd "$(dirname "$orch")" && pwd)/.orchestrator.md
 
 # days_ago <n>: the UTC date n days ago (BSD date, then GNU)
 days_ago() { date -u -v-"$1"d +%Y-%m-%d 2>/dev/null || date -u -d "$1 days ago" +%Y-%m-%d; }
-# keep_cutoff: a finished heading dated before it is dropped; stale_cutoff: a live
+# keep_cutoff: a finished heading closed before it is dropped; stale_cutoff: a live
 # section dated before it is named for closing in the size report.
+today=$(days_ago 0)
 keep_cutoff=$(days_ago "$KEEP_DAYS")
 stale_cutoff=$(days_ago "$STALE_DAYS")
 tmpd=$(mktemp -d "${TMPDIR:-/tmp}/jev-orch.XXXXXX") || exit 0
 trap 'rm -rf "$tmpd"; exit 0' EXIT
 
 before=$(cksum <"$orch")
-awk -v mode=prune -v cutoff="$keep_cutoff" -f "$JEV_DIR/orchestrator.awk" "$orch" >"$tmpd/tagged" 2>/dev/null || exit 0
-grep '^[KC]' "$tmpd/tagged" | cut -c3- | cat -s >"$tmpd/new"
+awk -v mode=prune -v cutoff="$keep_cutoff" -v today="$today" -f "$JEV_DIR/orchestrator.awk" "$orch" >"$tmpd/tagged" 2>/dev/null || exit 0
+grep '^[KCS]' "$tmpd/tagged" | cut -c3- | cat -s >"$tmpd/new"
 grep '^[AD]' "$tmpd/tagged" | cut -c3- >"$tmpd/gone"
-collapsed=$(grep -c '^C' "$tmpd/tagged")
+collapsed=$(grep -c '^[CS]' "$tmpd/tagged")
+stamped=$(grep -c '^S' "$tmpd/tagged")
 changed=0
 cmp -s "$tmpd/new" "$orch" || changed=1
-# Already-collapsed headings come back as C too: count only those that lost a body.
-pruned=$(awk -F'\t' '$1 == "C" { c = 1; next } $1 == "A" && c { n++; c = 0 } $1 == "D" { c = 0 } $1 == "K" && $2 !~ /^[ \t]*$/ { c = 0 } END { print n + 0 }' "$tmpd/tagged")
+# Already-collapsed headings come back as C (or S) too: count only those that lost a body.
+pruned=$(awk -F'\t' '$1 == "C" || $1 == "S" { c = 1; next } $1 == "A" && c { n++; c = 0 } $1 == "D" { c = 0 } $1 == "K" && $2 !~ /^[ \t]*$/ { c = 0 } END { print n + 0 }' "$tmpd/tagged")
 dropped=$(grep -c '^D' "$tmpd/tagged")
 
 adir="$JEV_HOME/orchestrator-archive"
@@ -94,8 +97,8 @@ if [ "$changed" = 1 ] && [ "$dry" = 0 ]; then
       rm -f "$orch.jev-tmp"
       exit 0
     fi
-    jev_log orchestrator.jsonl "$(jq -cn --arg f "$orch" --argjson p "$pruned" --argjson d "$dropped" \
-      --argjson l "$(wc -l <"$tmpd/new" | tr -d ' ')" '{event: "prune", file: $f, collapsed: $p, dropped: $d, lines: $l}')"
+    jev_log orchestrator.jsonl "$(jq -cn --arg f "$orch" --argjson p "$pruned" --argjson d "$dropped" --argjson s "$stamped" \
+      --argjson l "$(wc -l <"$tmpd/new" | tr -d ' ')" '{event: "prune", file: $f, collapsed: $p, stamped: $s, dropped: $d, lines: $l}')"
   else
     changed=0
   fi
@@ -104,8 +107,8 @@ fi
 # --- report on the pruned text
 lines=$(wc -l <"$tmpd/new" | tr -d ' ')
 msg=""
-if [ "$changed" = 1 ] && { [ "$pruned" -gt 0 ] || [ "$dropped" -gt 0 ]; }; then
-  msg="Pruned .orchestrator.md: $pruned finished section(s) collapsed to their heading, $dropped finished heading(s) dated before $keep_cutoff dropped. Removed text is in $archive. Re-read the file before editing it again."
+if [ "$changed" = 1 ] && { [ "$pruned" -gt 0 ] || [ "$dropped" -gt 0 ] || [ "$stamped" -gt 0 ]; }; then
+  msg="Pruned .orchestrator.md: $pruned finished section(s) collapsed to their heading, $stamped heading(s) stamped (closed $today), $dropped finished heading(s) closed before $keep_cutoff dropped. Removed text is in $archive. Re-read the file before editing it again."
 fi
 if [ "$lines" -gt "$MAX_LINES" ]; then
   big=$(awk -v mode=report -f "$JEV_DIR/orchestrator.awk" "$tmpd/new" | awk -F'\t' -v m="$SECTION_MAX" -v c="$stale_cutoff" '

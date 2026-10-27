@@ -421,10 +421,10 @@ wait "${pids[@]}" # not a bare wait: the fake Jev server is a background job too
 [ "$(wc -l <"$JEV_HOME/log/par.jsonl" | tr -d ' ')" = 12 ] && jq -e -s 'length == 12' "$JEV_HOME/log/par.jsonl" >/dev/null 2>&1 &&
   ok "jev_log: 12 parallel $(printf '%s' "$big" | wc -c | tr -d ' ')-byte lines all parse" || bad "jev_log: interleaved lines"
 
-# --- 10. orchestrator-prune.sh: finished sections shrink, old ones go, all of it archived
+# --- 10. orchestrator-prune.sh: finished sections shrink and get a close stamp, old stamps go, all of it archived
 OP="$W/orchp" && mkdir -p "$OP"
 ago() { date -u -v-"$1"d +%Y-%m-%d 2>/dev/null || date -u -d "$1 days ago" +%Y-%m-%d; }
-old=$(ago 30) d5=$(ago 5) d2=$(ago 2)
+old=$(ago 30) d14=$(ago 14) d5=$(ago 5) d3=$(ago 3) d2=$(ago 2)
 today=$(date -u +%Y-%m-%d)
 cat >"$OP/.orchestrator.md" <<EOF
 # Orchestrator log
@@ -444,16 +444,26 @@ body that stays
 Status: merged
 - body
 
-## $old — ancient change — BLOCKED: no access
+## $today — paren shape (DONE)
+
+## $old — ancient change — BLOCKED: no access (closed $old)
 - gone entirely
 
-## $d2 — recent finish — DONE: #13
-- recent finished body
+## $d5 — long-running change — DONE: #14
+- long-running finished body
 
-## $d5 — older finish — DONE: #14
+## $d5 — older finish — DONE: #15 (closed $d5)
 - older finished body
 
+## $d5 — boundary finish — DONE: #16 (closed $d3)
+
+## $d2 — recent finish — DONE: #13 (closed $d2)
+- recent finished body
+
 ## $d5 — live five days
+Status: reviewing
+
+## $d14 — live fourteen days
 Status: reviewing
 
 ## $old — stale live
@@ -464,27 +474,34 @@ pl=$(jq -cn --arg f "$OP/.orchestrator.md" '{hook_event_name: "PostToolUse", too
 out=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
 arch=$(find "$W/oh/orchestrator-archive" -name '*.md' 2>/dev/null | head -1)
 grep -q 'body that stays' "$OP/.orchestrator.md" && ! grep -q 'finished body\|nested under\|ancient\|older finish' "$OP/.orchestrator.md" &&
-  grep -qx "## $today — merged change — DONE: #12" "$OP/.orchestrator.md" && grep -qx "## $today — status-only finish — DONE" "$OP/.orchestrator.md" &&
-  ok "prune: finished sections collapse to their heading (status-only gets — DONE), old ones go" || bad "prune result: $(cat "$OP/.orchestrator.md")"
-grep -qx "## $d2 — recent finish — DONE: #13" "$OP/.orchestrator.md" && grep -qx "## $d5 — live five days" "$OP/.orchestrator.md" &&
-  grep -qx "## $old — stale live" "$OP/.orchestrator.md" &&
-  ok "prune: a finished heading 2 days old stays, one 5 days old goes (JEV_ORCH_KEEP_DAYS 3); live sections stay at any age" ||
+  grep -qx "## $today — merged change — DONE: #12 (closed $today)" "$OP/.orchestrator.md" &&
+  grep -qx "## $today — status-only finish — DONE (closed $today)" "$OP/.orchestrator.md" &&
+  grep -qx "## $today — paren shape (DONE) (closed $today)" "$OP/.orchestrator.md" &&
+  ok "prune: finished sections collapse to their heading and get stamped (closed today); status-only gets — DONE" || bad "prune result: $(cat "$OP/.orchestrator.md")"
+grep -qx "## $d5 — long-running change — DONE: #14 (closed $today)" "$OP/.orchestrator.md" &&
+  ok "prune: a heading dated 5 days ago and closed now stays, stamped today (retention counts from the close)" ||
+  bad "prune close stamp: $(cat "$OP/.orchestrator.md")"
+grep -qx "## $d5 — boundary finish — DONE: #16 (closed $d3)" "$OP/.orchestrator.md" &&
+  grep -qx "## $d2 — recent finish — DONE: #13 (closed $d2)" "$OP/.orchestrator.md" &&
+  grep -qx "## $d5 — live five days" "$OP/.orchestrator.md" && grep -qx "## $old — stale live" "$OP/.orchestrator.md" &&
+  ok "prune: stamps 2 and exactly 3 days old stay, 5 and 30 days old go (JEV_ORCH_KEEP_DAYS 3); live sections stay at any age" ||
   bad "prune retention: $(cat "$OP/.orchestrator.md")"
-[ -n "$arch" ] && grep -q 'long finished body' "$arch" && grep -q 'also archived' "$arch" && grep -q 'ancient change' "$arch" && grep -q 'older finished body' "$arch" &&
+[ -n "$arch" ] && grep -q 'long finished body' "$arch" && grep -q 'also archived' "$arch" && grep -q 'ancient change' "$arch" &&
+  grep -q 'older finish — DONE: #15' "$arch" && grep -q 'older finished body' "$arch" &&
   ok "prune: every removed line is in the archive" || bad "prune archive: ${arch:-missing}"
-jq -e '.hookSpecificOutput.additionalContext | test("3 finished section.*2 finished heading.*Re-read")' <<<"$out" >/dev/null &&
-  ok "prune: PostToolUse tells the session what was pruned" || bad "prune message: $out"
+jq -e '.hookSpecificOutput.additionalContext | test("4 finished section.*4 heading.*stamped.*2 finished heading.*Re-read")' <<<"$out" >/dev/null &&
+  ok "prune: PostToolUse tells the session what was pruned and stamped" || bad "prune message: $out"
 diff <(awk -f "$J/orchestrator.awk" "$W/orch-before.md") <(awk -f "$J/orchestrator.awk" "$OP/.orchestrator.md") >/dev/null &&
-  ok "prune: the compaction view (live sections) is unchanged" || bad "prune changed the live sections"
+  ok "prune: the compaction view (live sections) is unchanged; stamped headings still read as finished" || bad "prune changed the live sections"
 h=$(cksum <"$OP/.orchestrator.md")
 out2=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$(jq -cn --arg d "$OP" '{hook_event_name: "SessionStart", source: "startup", cwd: $d}')")
-[ "$(cksum <"$OP/.orchestrator.md")" = "$h" ] && [ -z "$out2" ] && ok "prune: idempotent, SessionStart is silent" || bad "prune second run: $out2"
+[ "$(cksum <"$OP/.orchestrator.md")" = "$h" ] && [ -z "$out2" ] && ok "prune: idempotent (stamps are not re-stamped), SessionStart is silent" || bad "prune second run: $out2"
 awk '{ print } /^body that stays$/ { for (i = 1; i <= 90; i++) print "- live line " i }' "$OP/.orchestrator.md" >"$OP/x" && mv "$OP/x" "$OP/.orchestrator.md"
 out3=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
 jq -e '.hookSpecificOutput.additionalContext | test("lines \\(limit 80\\)") and test("live change \\(9[0-9] lines\\)")' <<<"$out3" >/dev/null &&
   ok "prune: over 80 lines names the live sections to condense" || bad "prune size warning: $out3"
-jq -e '.hookSpecificOutput.additionalContext | test("stale live: dated before") and (test("live five days") | not)' <<<"$out3" >/dev/null &&
-  ok "prune: a live section over 14 days old is named as stale, one 5 days old is not (JEV_ORCH_STALE_DAYS)" || bad "prune stale report: $out3"
+jq -e '.hookSpecificOutput.additionalContext | test("stale live: dated before") and (test("live five days") | not) and (test("live fourteen days") | not)' <<<"$out3" >/dev/null &&
+  ok "prune: a live section 30 days old is named as stale, ones 5 and exactly 14 days old are not (JEV_ORCH_STALE_DAYS)" || bad "prune stale report: $out3"
 out4=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<'{"hook_event_name":"PostToolUse","tool_input":{"file_path":"/tmp/notes.md"}}')
 [ -z "$out4" ] && ok "prune: other files are ignored" || bad "prune acted on another file: $out4"
 
