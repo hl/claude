@@ -4,14 +4,14 @@
 # Hook (SessionStart; PostToolUse Edit|Write on a file named .orchestrator.md):
 #   - a finished section (heading marked DONE / BLOCKED, or Status: done, blocked,
 #     merged) shrinks to its heading; the heading goes too once its leading date
-#     is more than JEV_ORCH_KEEP_DAYS (14) old;
+#     is more than JEV_ORCH_KEEP_DAYS (3) old;
 #   - what is removed is appended to $JEV_HOME/orchestrator-archive/<path>.md
 #     (the file is gitignored, so this is its only history; never swept);
 #   - PostToolUse only: tells the session what was pruned (re-read before the
 #     next edit) and, when the file is still over JEV_ORCH_MAX_LINES (80), which
 #     live sections to condense or close: over JEV_ORCH_SECTION_MAX (20) lines,
-#     or dated before the cutoff. SessionStart prunes silently, so sessions that
-#     don't maintain the file are not nagged.
+#     or dated more than JEV_ORCH_STALE_DAYS (14) ago. SessionStart prunes
+#     silently, so sessions that don't maintain the file are not nagged.
 #
 # CLI: orchestrator-prune.sh [--dry-run] <file>   (prints the report)
 #
@@ -25,7 +25,8 @@ export JEV_HOOK=orchestrator-prune
 # shellcheck source=SCRIPTDIR/lib.sh
 . "$JEV_DIR/lib.sh"
 
-KEEP_DAYS=${JEV_ORCH_KEEP_DAYS:-14}
+KEEP_DAYS=${JEV_ORCH_KEEP_DAYS:-3}
+STALE_DAYS=${JEV_ORCH_STALE_DAYS:-14}
 MAX_LINES=${JEV_ORCH_MAX_LINES:-80}
 SECTION_MAX=${JEV_ORCH_SECTION_MAX:-20}
 
@@ -59,12 +60,17 @@ fi
 [ -n "$orch" ] && [ -f "$orch" ] || exit 0
 orch=$(cd "$(dirname "$orch")" && pwd)/.orchestrator.md
 
-cutoff=$(date -u -v-"$KEEP_DAYS"d +%Y-%m-%d 2>/dev/null || date -u -d "$KEEP_DAYS days ago" +%Y-%m-%d)
+# days_ago <n>: the UTC date n days ago (BSD date, then GNU)
+days_ago() { date -u -v-"$1"d +%Y-%m-%d 2>/dev/null || date -u -d "$1 days ago" +%Y-%m-%d; }
+# keep_cutoff: a finished heading dated before it is dropped; stale_cutoff: a live
+# section dated before it is named for closing in the size report.
+keep_cutoff=$(days_ago "$KEEP_DAYS")
+stale_cutoff=$(days_ago "$STALE_DAYS")
 tmpd=$(mktemp -d "${TMPDIR:-/tmp}/jev-orch.XXXXXX") || exit 0
 trap 'rm -rf "$tmpd"; exit 0' EXIT
 
 before=$(cksum <"$orch")
-awk -v mode=prune -v cutoff="$cutoff" -f "$JEV_DIR/orchestrator.awk" "$orch" >"$tmpd/tagged" 2>/dev/null || exit 0
+awk -v mode=prune -v cutoff="$keep_cutoff" -f "$JEV_DIR/orchestrator.awk" "$orch" >"$tmpd/tagged" 2>/dev/null || exit 0
 grep '^[KC]' "$tmpd/tagged" | cut -c3- | cat -s >"$tmpd/new"
 grep '^[AD]' "$tmpd/tagged" | cut -c3- >"$tmpd/gone"
 collapsed=$(grep -c '^C' "$tmpd/tagged")
@@ -99,10 +105,10 @@ fi
 lines=$(wc -l <"$tmpd/new" | tr -d ' ')
 msg=""
 if [ "$changed" = 1 ] && { [ "$pruned" -gt 0 ] || [ "$dropped" -gt 0 ]; }; then
-  msg="Pruned .orchestrator.md: $pruned finished section(s) collapsed to their heading, $dropped finished heading(s) dated before $cutoff dropped. Removed text is in $archive. Re-read the file before editing it again."
+  msg="Pruned .orchestrator.md: $pruned finished section(s) collapsed to their heading, $dropped finished heading(s) dated before $keep_cutoff dropped. Removed text is in $archive. Re-read the file before editing it again."
 fi
 if [ "$lines" -gt "$MAX_LINES" ]; then
-  big=$(awk -v mode=report -f "$JEV_DIR/orchestrator.awk" "$tmpd/new" | awk -F'\t' -v m="$SECTION_MAX" -v c="$cutoff" '
+  big=$(awk -v mode=report -f "$JEV_DIR/orchestrator.awk" "$tmpd/new" | awk -F'\t' -v m="$SECTION_MAX" -v c="$stale_cutoff" '
     { h = $2; sub(/^#+[ \t]*/, "", h); d = substr(h, 1, 10)
       if ($1 > m) printf "- %s (%d lines): condense to its live state\n", h, $1
       else if (d ~ /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/ && d < c) printf "- %s: dated before %s; close it (DONE or BLOCKED: stale) unless still running\n", h, c }' | head -n 12)

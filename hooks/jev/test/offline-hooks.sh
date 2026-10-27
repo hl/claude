@@ -423,7 +423,8 @@ wait "${pids[@]}" # not a bare wait: the fake Jev server is a background job too
 
 # --- 10. orchestrator-prune.sh: finished sections shrink, old ones go, all of it archived
 OP="$W/orchp" && mkdir -p "$OP"
-old=$(date -u -v-30d +%Y-%m-%d 2>/dev/null || date -u -d '30 days ago' +%Y-%m-%d)
+ago() { date -u -v-"$1"d +%Y-%m-%d 2>/dev/null || date -u -d "$1 days ago" +%Y-%m-%d; }
+old=$(ago 30) d5=$(ago 5) d2=$(ago 2)
 today=$(date -u +%Y-%m-%d)
 cat >"$OP/.orchestrator.md" <<EOF
 # Orchestrator log
@@ -445,17 +446,33 @@ Status: merged
 
 ## $old — ancient change — BLOCKED: no access
 - gone entirely
+
+## $d2 — recent finish — DONE: #13
+- recent finished body
+
+## $d5 — older finish — DONE: #14
+- older finished body
+
+## $d5 — live five days
+Status: reviewing
+
+## $old — stale live
+Status: implementing
 EOF
 cp "$OP/.orchestrator.md" "$W/orch-before.md"
 pl=$(jq -cn --arg f "$OP/.orchestrator.md" '{hook_event_name: "PostToolUse", tool_name: "Edit", tool_input: {file_path: $f}}')
 out=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
 arch=$(find "$W/oh/orchestrator-archive" -name '*.md' 2>/dev/null | head -1)
-grep -q 'body that stays' "$OP/.orchestrator.md" && ! grep -q 'finished body\|nested under\|ancient' "$OP/.orchestrator.md" &&
+grep -q 'body that stays' "$OP/.orchestrator.md" && ! grep -q 'finished body\|nested under\|ancient\|older finish' "$OP/.orchestrator.md" &&
   grep -qx "## $today — merged change — DONE: #12" "$OP/.orchestrator.md" && grep -qx "## $today — status-only finish — DONE" "$OP/.orchestrator.md" &&
   ok "prune: finished sections collapse to their heading (status-only gets — DONE), old ones go" || bad "prune result: $(cat "$OP/.orchestrator.md")"
-[ -n "$arch" ] && grep -q 'long finished body' "$arch" && grep -q 'also archived' "$arch" && grep -q 'ancient change' "$arch" &&
+grep -qx "## $d2 — recent finish — DONE: #13" "$OP/.orchestrator.md" && grep -qx "## $d5 — live five days" "$OP/.orchestrator.md" &&
+  grep -qx "## $old — stale live" "$OP/.orchestrator.md" &&
+  ok "prune: a finished heading 2 days old stays, one 5 days old goes (JEV_ORCH_KEEP_DAYS 3); live sections stay at any age" ||
+  bad "prune retention: $(cat "$OP/.orchestrator.md")"
+[ -n "$arch" ] && grep -q 'long finished body' "$arch" && grep -q 'also archived' "$arch" && grep -q 'ancient change' "$arch" && grep -q 'older finished body' "$arch" &&
   ok "prune: every removed line is in the archive" || bad "prune archive: ${arch:-missing}"
-jq -e '.hookSpecificOutput.additionalContext | test("2 finished section.*1 finished heading.*Re-read")' <<<"$out" >/dev/null &&
+jq -e '.hookSpecificOutput.additionalContext | test("3 finished section.*2 finished heading.*Re-read")' <<<"$out" >/dev/null &&
   ok "prune: PostToolUse tells the session what was pruned" || bad "prune message: $out"
 diff <(awk -f "$J/orchestrator.awk" "$W/orch-before.md") <(awk -f "$J/orchestrator.awk" "$OP/.orchestrator.md") >/dev/null &&
   ok "prune: the compaction view (live sections) is unchanged" || bad "prune changed the live sections"
@@ -466,6 +483,8 @@ awk '{ print } /^body that stays$/ { for (i = 1; i <= 90; i++) print "- live lin
 out3=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<"$pl")
 jq -e '.hookSpecificOutput.additionalContext | test("lines \\(limit 80\\)") and test("live change \\(9[0-9] lines\\)")' <<<"$out3" >/dev/null &&
   ok "prune: over 80 lines names the live sections to condense" || bad "prune size warning: $out3"
+jq -e '.hookSpecificOutput.additionalContext | test("stale live: dated before") and (test("live five days") | not)' <<<"$out3" >/dev/null &&
+  ok "prune: a live section over 14 days old is named as stale, one 5 days old is not (JEV_ORCH_STALE_DAYS)" || bad "prune stale report: $out3"
 out4=$(JEV_HOME="$W/oh" "$J/orchestrator-prune.sh" <<<'{"hook_event_name":"PostToolUse","tool_input":{"file_path":"/tmp/notes.md"}}')
 [ -z "$out4" ] && ok "prune: other files are ignored" || bad "prune acted on another file: $out4"
 
